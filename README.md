@@ -1,9 +1,11 @@
 # xotion-studio
 
-Private **video-editing autopilot**. Clone on any machine, give Claude Code an image/video/audio,
-get polished captioned videos, thumbnails, and Shorts/Reels — without re-explaining the workflow.
+Private **creative engine** — clone on any machine, give Claude Code files + a one-line prompt,
+get the result on autopilot. **Video editing · image editing · motion graphics.**
 
-Built on [HyperFrames](https://hyperframes.heygen.com) (HTML + GSAP → MP4) + Whisper + ffmpeg.
+Built on [HyperFrames](https://hyperframes.heygen.com) (HTML+GSAP→MP4) for motion graphics,
+**ffmpeg / ImageMagick** for video & image editing, **Whisper** for captions, **Kokoro** for TTS,
+**u2net** for background removal.
 
 ## Quick start (new machine)
 
@@ -13,34 +15,47 @@ cd xotion-studio
 ./scripts/setup.sh          # installs HyperFrames skills, whisper, checks ffmpeg/node
 ```
 
-Then open **Claude Code** in this folder and paste a prompt from `prompts/`:
-- `prompts/lyric-video.md` — image + audio → lyric video + thumbnail + reels
-- `prompts/captioned-video.md` — any video → captions / lyrics / brand graphics
+Open **Claude Code** in this folder and paste a prompt from `prompts/`. Claude reads `CLAUDE.md`
+automatically and follows the full toolkit — you just provide files.
 
-Claude reads `CLAUDE.md` automatically and follows the full workflow. You just provide the files.
+## What it can do
 
-## What's inside
+| Pillar | Engine | Examples |
+|---|---|---|
+| **Motion graphics** | HyperFrames | title cards, intros/outros, promos, explainers, kinetic type, data-viz, logo reveals, lower-thirds, lyric/caption videos, animated infographics |
+| **Video editing** | ffmpeg | trim, cut, concat, speed, reverse, crop, rotate, scale, color grade, stabilize, overlay/PiP, green-screen, xfade transitions, burn subtitles, watermark, audio swap, GIF, aspect conversion |
+| **Image editing** | ffmpeg / ImageMagick | resize, crop, convert, filters, text, compositing, collages, background removal, thumbnails, social graphics |
 
-| Folder | Contents |
+Most jobs combine pillars (e.g. grade footage + overlay an animated title).
+
+## Prompts
+
+| Prompt | Use |
 |---|---|
-| `CLAUDE.md` | The brain — full workflow, house style, hard-won rules. Agent reads this on every session. |
-| `templates/` | Proven compositions: lyric (16:9 & 9:16), UGC ad, reactive captions. |
-| `scripts/` | `transcribe.py`, `amplitude.py`, `encode-youtube.sh`, `cut-reels.sh`, `thumbnail.sh`, `setup.sh`. |
-| `prompts/` | Copy-paste prompt templates for common jobs. |
-| `assets/fonts/` | Inter, Poppins, Instrument Serif, JetBrains Mono (`.ttf`, local). |
-| `projects/` | One folder per video you make. Renders are gitignored. |
-| `docs/` | Extra notes / encoding cheatsheet. |
+| `prompts/edit-video.md` | "edit this video [trim / speed / reel / logo / grade...]" |
+| `prompts/edit-image.md` | "edit/convert/compose this image" |
+| `prompts/motion-graphics.md` | "make a [title / promo / explainer / data-viz / intro]" |
+| `prompts/captioned-video.md` | add captions / lyrics / brand graphics to any video |
+| `prompts/lyric-video.md` | image + audio → lyric video + thumbnail + reels |
+
+## Layout
+
+```
+CLAUDE.md                 # the brain: 3 pillars, workflows, rules, house style
+README.md
+new-project.sh            # ./new-project.sh name [W] [H] [duration]
+templates/                # title-card, lyric (16:9 & 9:16), ugc-ad, reactive-captions
+scripts/                  # transcribe, amplitude, tts, remove-bg, concat,
+                          #   encode-youtube, cut-reels, thumbnail, setup
+prompts/                  # copy-paste job prompts
+docs/                     # ffmpeg-recipes.md (full recipe book), encoding-cheatsheet.md
+assets/fonts/             # Inter, Poppins, Instrument Serif, JetBrains Mono (.ttf, local)
+projects/                 # one folder per job (renders/work gitignored)
+```
 
 ## Requirements
 
-- Node.js >= 22, ffmpeg, Python 3.9+ (whisper installs via setup).
-- macOS / Linux. (Windows: use WSL.)
+Node.js ≥ 22, ffmpeg, Python 3.9+ (whisper installs via setup). ImageMagick optional for some
+image ops (`brew install imagemagick`). macOS / Linux (Windows: WSL).
 
-## House style (summary)
-
-- Captions: Poppins Bold, ALL CAPS, pure white, word-by-word blur-clear reveal.
-- Default language English; any language supported (pass `--lang`).
-- Music bars in instrumental gaps. Auto thumbnails. 12 hook-centered reels on request.
-- Encoding: YouTube 1080p H.264/AAC `+faststart`; Shorts 1080×1920.
-
-See `CLAUDE.md` for the non-negotiable engineering rules.
+See `CLAUDE.md` for the non-negotiable engineering rules and house style.
