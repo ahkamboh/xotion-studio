@@ -31,6 +31,28 @@ footage) + A (HyperFrames title overlay) composited together. Decide the pipelin
 
 ---
 
+## ⛔ Acceptance loop (MANDATORY on EVERY job) — see `docs/qa-protocol.md`
+
+You are your own QA reviewer. **Never deliver on a single pass.** The loop:
+
+1. **Define done first.** Turn the user's request into an explicit ✓/✗ acceptance checklist
+   (specs + every instruction + brand + language + sync). Keep it visible — it's the definition
+   of done, not your taste.
+2. **Build.**
+3. **Mechanical gate:** `scripts/qa.sh <render> --w W --h H --fps 30 --dur D --project projects/<name>`
+   → checks exact resolution/fps/duration, blank-frame, lint 0 errors, HyperFrames visual inspect;
+   extracts `qa_*.jpg` frames. Must be **PASS**.
+4. **Visual review:** **Read every `qa_*.jpg`** and mark each criterion ✓/✗ from what you actually
+   SEE (captions present/correct/in-language/on-screen, animations fired, brand/colors/fonts right,
+   no overflow, audio present + normalized). Sample frames inside each key moment for timed content.
+5. **Loop:** for any ✗ → fix root cause → rebuild → re-run 3–4. Repeat until **ALL ✓ and gate PASS.**
+6. **Deliver decision:** all ✓ → deliver with a short per-criterion report + output paths. A
+   genuinely unachievable criterion → flag it explicitly, never ship silently. Never mark ✓ on
+   something you couldn't visually verify.
+
+"Rendered successfully" and "lint 0/0" are **NOT** done — they can't see invisible captions, wrong
+lyrics, wrong language, or off-brand color. The frames decide.
+
 ## A. Motion Graphics (HyperFrames)
 
 HyperFrames is the motion-graphics core. HTML is the source of truth; GSAP animates a paused
@@ -63,8 +85,8 @@ Deeper guidance lives in the installed skills at `~/.agents/skills/` (`hyperfram
 - `templates/title-card.html` — clean animated title / intro / lower-third starter
 
 **Workflow:** scaffold → build end-state layout first (static), then add GSAP entrances/exits →
-`npx hyperframes lint` (must be 0/0) → `npx hyperframes render --output renders/x.mp4` → extract
-frames, Read them, verify, fix.
+`npx hyperframes lint` (must be 0/0) → `npx hyperframes render --output renders/x.mp4` → run the
+**acceptance loop** (below) until every criterion passes.
 
 ## B. Video Editing (ffmpeg)
 
@@ -137,7 +159,8 @@ Known non-English → `--lang <code>`. Captions stay in source language unless a
 - **Source video on a track**: `<video class="clip" muted playsinline>` + separate
   `<audio data-track-index>`. Re-encode sources with dense keyframes first if render warns:
   `ffmpeg -i in.mp4 -c:v libx264 -r 30 -g 30 -keyint_min 30 -movflags +faststart -crf 18 -c:a aac out.mp4`
-- **Always verify** by extracting frames and Reading them before declaring done.
+- **Always run the acceptance loop** (top of this file / `docs/qa-protocol.md`) before declaring
+  done. Read the frames; verify every criterion; loop until all pass. One-pass delivery is a bug.
 
 ## House caption / type style (default look — override on request)
 
