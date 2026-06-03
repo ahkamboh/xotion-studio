@@ -25,3 +25,6 @@ __pycache__/
 !assets/fonts/**
 !scripts/**
 !prompts/**
+
+# SFX pack (small, reusable engine assets)
+!sfx/**

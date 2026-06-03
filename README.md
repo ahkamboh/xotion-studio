@@ -67,6 +67,39 @@ models/small.pt           # bundled Whisper model (Git LFS) — offline transcri
 projects/                 # one folder per job (renders/work gitignored)
 ```
 
+## Worked example — narrated promo (end-to-end, verified ✅)
+
+A real run of the full chain, built entirely from the engine's own scripts. Source lives in
+`projects/demo-promo/`; the render is `projects/demo-promo/renders/demo-promo.mp4`.
+
+![demo](docs/demo-promo-contact.jpg)
+
+**Prompt:** *"Make a short narrated promo for xotion studio, female voice, tech style, 16:9."*
+
+**What the agent did (all no-API):**
+```bash
+# 1. Art direction: prompt -> Tech Gradient style (blue-purple, Sora + Inter), 16:9   [presets/styles.md]
+# 2. Voiceover (female)
+scripts/tts.sh projects/demo-promo/work/script.txt af_nova work/vo.wav        # docs/voices.md
+# 3. Scene timing from the voice
+python3 scripts/transcribe.py work/vo.wav --model small --lang en --out work/vo-transcript.json
+# 4. Background music + duck it under the voice, master to -14 LUFS
+scripts/music-bed.sh work/bed.wav 8 uplift
+scripts/mix-audio.sh work/vo.wav work/bed.wav assets/master.wav 0.30
+# 5. Build from templates/narrated-motion.html, scenes timed to the VO words
+npx hyperframes lint            # 0 errors
+npx hyperframes render --output renders/demo-promo.mp4
+# 6. Acceptance loop — mechanical gate + read every frame
+scripts/qa.sh renders/demo-promo.mp4 --w 1920 --h 1080 --fps 30 --dur 7.5
+```
+
+**Result:** 1920×1080 · 30fps · 7.5s · voice over ducked music (−15.5 dB) · 4 scenes
+(`xotion studio` → `Give it any prompt` → glass `Style / Voice / Motion` chips → `Then renders
+your video`). QA mechanical gate **PASS**; all four scenes visually verified.
+
+This confirms the pipeline works: art-direction style → TTS → transcription → music bed →
+auto-ducked mix → motion-graphics render → QA. Reproduce or restyle by changing the prompt.
+
 ## Capabilities at a glance
 
 - **Transcribe** (offline, bundled model) · **TTS voiceover** · **subtitles** (.srt/.vtt) ·
