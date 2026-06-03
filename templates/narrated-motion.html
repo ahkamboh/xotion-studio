@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      /* NARRATED MOTION GRAPHIC — voiceover + background music + animated scenes.
+         Audio = one master track (voice mixed over ducked music via scripts/mix-audio.sh).
+         Scene start/end times come from the VO transcript (transcribe.py). Swap text/colors/fonts. */
+      @font-face { font-family:"Anton"; src:url("assets/fonts/anton-400.ttf") format("truetype"); }
+      @font-face { font-family:"Poppins"; font-weight:700; src:url("assets/fonts/poppins-700.ttf") format("truetype"); }
+      @font-face { font-family:"Inter"; font-weight:600; src:url("assets/fonts/inter-600.ttf") format("truetype"); }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      html,body { width:1920px; height:1080px; overflow:hidden; background:#0a0a0c; font-family:"Poppins",sans-serif; }
+      :root { --bg:#0a0a0c; --fg:#f5f1ea; --muted:rgba(245,241,234,.55); --accent:#ff6b35; }
+      #root { position:relative; width:1920px; height:1080px; overflow:hidden; background:var(--bg); }
+
+      .orb { position:absolute; border-radius:50%; filter:blur(150px); opacity:.45; }
+      .orb-1 { width:760px;height:760px;top:-160px;right:-180px; background:radial-gradient(circle,var(--accent),transparent 70%); }
+      .orb-2 { width:640px;height:640px;bottom:-160px;left:-160px; background:radial-gradient(circle,rgba(110,130,220,.6),transparent 70%); }
+
+      .scene { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:26px; text-align:center; padding:0 180px; visibility:hidden; }
+      .eyebrow { font-family:"Inter",sans-serif; font-weight:600; font-size:26px; letter-spacing:.45em; text-transform:uppercase; color:var(--accent); }
+      .big { font-family:"Anton",sans-serif; font-size:150px; line-height:.95; letter-spacing:-.01em; text-transform:uppercase; color:var(--fg); }
+      .big em { color:var(--accent); font-style:normal; }
+      .line { font-family:"Poppins",sans-serif; font-weight:700; font-size:40px; line-height:1.25; color:var(--muted); max-width:1200px; }
+      .line .w { display:inline-block; }
+
+      .progress { position:absolute; bottom:0; left:0; height:3px; width:100%; background:rgba(245,241,234,.08); }
+      .progress .fill { height:100%; background:var(--accent); transform-origin:left center; transform:scaleX(0); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="20" data-width="1920" data-height="1080">
+      <div class="orb orb-1"></div><div class="orb orb-2"></div>
+
+      <!-- AUDIO: the mixed master (voice over ducked music). Build with scripts/mix-audio.sh. -->
+      <audio id="vo" data-start="0" data-duration="20" data-track-index="0" src="assets/master.wav" data-volume="1"></audio>
+
+      <!-- One .scene per narration beat. Set data-* timings from the VO transcript. -->
+      <div class="scene s0"><div class="eyebrow">Introducing</div><div class="big">Big <em>Idea</em></div><div class="line">The opening hook the narrator says first.</div></div>
+      <div class="scene s1"><div class="eyebrow">Point One</div><div class="big">First <em>Thing</em></div><div class="line">Supporting sentence for point one.</div></div>
+      <div class="scene s2"><div class="eyebrow">Point Two</div><div class="big">Second <em>Thing</em></div><div class="line">Supporting sentence for point two.</div></div>
+      <div class="scene s3"><div class="eyebrow">In short</div><div class="big">The <em>Takeaway</em></div><div class="line">The closing line + call to action.</div></div>
+
+      <div class="progress"><div class="fill"></div></div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const Q = s => '[data-composition-id="main"] ' + s;
+      const TOTAL = 20;
+      const tl = gsap.timeline({ paused: true });
+
+      // ambient background (finite repeats)
+      tl.to(Q(".orb-1"),{scale:1.12,duration:5,yoyo:true,repeat:Math.floor(TOTAL/5)-1,ease:"sine.inOut"},0);
+      tl.to(Q(".orb-2"),{scale:1.1,duration:6,yoyo:true,repeat:Math.floor(TOTAL/6)-1,ease:"sine.inOut"},0);
+      tl.fromTo(Q(".progress .fill"),{scaleX:0},{scaleX:1,duration:TOTAL,ease:"none"},0);
+
+      // SCENES — [selector, start, end]  (align to VO transcript sentence times)
+      const scenes = [
+        [".s0", 0.3, 5.0],
+        [".s1", 5.0, 10.0],
+        [".s2", 10.0, 15.0],
+        [".s3", 15.0, 19.8],
+      ];
+      scenes.forEach(([sel, start, end]) => {
+        const s = Q(sel);
+        // split the .line into word spans (pre-render before animating)
+        const line = document.querySelector(s + " .line");
+        if (line && !line.dataset.split) { line.dataset.split = 1;
+          line.innerHTML = line.textContent.split(" ").map(w=>'<span class="w">'+w+'</span>').join(" "); }
+        tl.set(s, { visibility:"visible" }, start);
+        tl.from(s+" .eyebrow", { y:-16, opacity:0, duration:.5, ease:"expo.out" }, start);
+        tl.from(s+" .big",     { y:40, opacity:0, filter:"blur(8px)", duration:.7, ease:"power3.out" }, start+.1);
+        tl.from(s+" .line .w", { y:18, opacity:0, duration:.5, stagger:.05, ease:"power3.out" }, start+.4);
+        tl.to(s, { autoAlpha:0, duration:.4, ease:"power2.in" }, end-.4);
+        tl.set(s, { visibility:"hidden" }, end);
+      });
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

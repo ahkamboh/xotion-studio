@@ -78,11 +78,32 @@ Then read the HyperFrames skill docs as needed: `npx hyperframes docs <topic>`
 Deeper guidance lives in the installed skills at `~/.agents/skills/` (`hyperframes`,
 `hyperframes-cli`, `hyperframes-media`, `gsap`, `three`, `lottie`, `tailwind`, ...).
 
+**Presets (pick by the user's prompt — this is how you get pro output fast):**
+- `presets/video-presets.md` — 9 named video formats (narrated explainer, promo/hype, music
+  visualizer, lyric, kinetic typography, product showcase, data/infographic, logo sting, slideshow),
+  each with its **audio mode** (NARRATED voice+music · MUSIC-ONLY reactive · MIXED · SILENT), scene
+  structure, and which template/example to use. Start here for any motion-graphics request.
+- `presets/motion-presets.md` — After-Effects-style GSAP animation presets (entrances, emphasis,
+  exits, scene transitions, background motion). Pick one per element.
+- `docs/caption-styles.md` — 6 caption looks. `docs/voices.md` — male/female TTS voice catalog.
+
+**Audio modes — wire these per the chosen preset:**
+- **Narrated (voice + music):** `tts.sh script.txt <voice> vo.wav` (voice from `docs/voices.md`) →
+  `transcribe.py vo.wav` for scene timing → music via `music-bed.sh` or a provided track →
+  `mix-audio.sh vo.wav music master.wav` (auto-ducks music under the voice, normalizes) → use
+  `master.wav` on the audio track. Template: `templates/narrated-motion.html`.
+- **Music-only (reactive):** `amplitude.py track.mp3 --out assets/amp.js` → bars/orbs react to
+  `window.__AMP`. Template: `templates/music-visualizer.html`.
+- **Mixed / sound design:** combine the above; layer SFX as extra `<audio>` tracks.
+
 **Repo templates** (proven, copy into `index.html` and adapt):
+- `templates/narrated-motion.html` — voice + music + animated scenes (NARRATED preset)
+- `templates/music-visualizer.html` — pure music-reactive motion (MUSIC-ONLY preset)
 - `templates/lyric-video-landscape.html` / `lyric-video-vertical.html` — music lyric / caption video
 - `templates/ugc-ad-vertical.html` — talking-head ad: 3-tier captions + brand chip + callouts
 - `templates/reactive-captions-landscape.html` — HUD + captions over real footage
 - `templates/title-card.html` — clean animated title / intro / lower-third starter
+- `templates/thumbnail.html` — designed YouTube thumbnail (render 1 frame)
 
 **Workflow:** scaffold → build end-state layout first (static), then add GSAP entrances/exits →
 `npx hyperframes lint` (must be 0/0) → `npx hyperframes render --output renders/x.mp4` → run the

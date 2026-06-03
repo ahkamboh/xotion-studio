@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="assets/amp.js"></script>
+    <style>
+      /* PURE MUSIC-DRIVEN MOTION (no voice). Bars/orbs/title react to the track's amplitude.
+         1) scripts/amplitude.py track.mp3 --out assets/amp.js   2) set duration to track length.
+         Swap colors, title, art. 9:16 here; change dims for 16:9/1:1. */
+      @font-face { font-family:"Anton"; src:url("assets/fonts/anton-400.ttf") format("truetype"); }
+      @font-face { font-family:"Poppins"; font-weight:700; src:url("assets/fonts/poppins-700.ttf") format("truetype"); }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      html,body { width:1080px; height:1920px; overflow:hidden; background:#06060a; font-family:"Poppins",sans-serif; }
+      :root { --bg:#06060a; --fg:#ffffff; --accent:#7b5cff; --accent2:#ff5ca8; }
+      #root { position:relative; width:1080px; height:1920px; overflow:hidden; background:var(--bg); }
+
+      .glow { position:absolute; left:50%; top:46%; transform:translate(-50%,-50%); width:680px; height:680px; border-radius:50%;
+              background:radial-gradient(circle, rgba(123,92,255,.55), transparent 65%); filter:blur(40px); }
+      .ring { position:absolute; left:50%; top:46%; transform:translate(-50%,-50%); width:520px; height:520px; border-radius:50%;
+              border:2px solid rgba(255,255,255,.18); }
+
+      .bars { position:absolute; left:50%; top:46%; transform:translate(-50%,-50%); display:flex; align-items:center; gap:12px; height:300px; }
+      .bar { width:18px; height:100%; border-radius:12px; transform:scaleY(.1); transform-origin:center;
+             background:linear-gradient(180deg, var(--accent2), var(--accent)); box-shadow:0 0 24px rgba(123,92,255,.5); }
+
+      .title { position:absolute; left:0; right:0; bottom:360px; text-align:center;
+               font-family:"Anton",sans-serif; font-size:120px; letter-spacing:.02em; text-transform:uppercase; color:var(--fg); }
+      .sub { position:absolute; left:0; right:0; bottom:300px; text-align:center;
+             font-family:"Poppins",sans-serif; font-weight:700; font-size:26px; letter-spacing:.4em; text-transform:uppercase; color:rgba(255,255,255,.5); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="30" data-width="1080" data-height="1920">
+      <audio id="track" data-start="0" data-duration="30" data-track-index="0" src="assets/track.mp3" data-volume="1"></audio>
+      <div class="glow"></div>
+      <div class="ring"></div>
+      <div class="bars" id="bars">
+        <div class="bar" data-bi="0"></div><div class="bar" data-bi="1"></div><div class="bar" data-bi="2"></div>
+        <div class="bar" data-bi="3"></div><div class="bar" data-bi="4"></div><div class="bar" data-bi="5"></div>
+        <div class="bar" data-bi="6"></div><div class="bar" data-bi="7"></div><div class="bar" data-bi="8"></div>
+      </div>
+      <div class="title">TRACK NAME</div>
+      <div class="sub">artist</div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const Q = s => '[data-composition-id="main"] ' + s;
+      const TOTAL = 30;
+      const AMP = window.__AMP || [];
+      const OFFSETS = [8,6,4,2,0,2,4,6,8];   // symmetric wave from center
+      const tl = gsap.timeline({ paused: true });
+
+      // ambient glow breathing + slow ring spin
+      tl.to(Q(".glow"),{scale:1.1,opacity:.8,duration:3,yoyo:true,repeat:Math.floor(TOTAL/3)-1,ease:"sine.inOut"},0);
+      tl.to(Q(".ring"),{rotation:360,duration:TOTAL,ease:"none"},0);
+
+      // title pop in
+      tl.from(Q(".title"),{y:30,opacity:0,duration:.8,ease:"expo.out"},.3);
+      tl.from(Q(".sub"),{y:14,opacity:0,duration:.7,ease:"expo.out"},.6);
+
+      // amplitude-reactive bars (100ms steps)
+      for (let b=0;b<9;b++){
+        const sel=Q('.bar[data-bi="'+b+'"]'); const off=OFFSETS[b];
+        for (let t=0;t<TOTAL;t+=0.1){
+          const idx=Math.min(AMP.length-1, Math.floor(t*10)+off);
+          const v=AMP[idx]||0; const sy=0.1+Math.min(1,v)*1.5;
+          tl.to(sel,{scaleY:sy,duration:0.1,ease:"none"},t);
+        }
+      }
+      // glow pulses with overall energy (sampled every 0.2s)
+      for (let t=0;t<TOTAL;t+=0.2){
+        const v=AMP[Math.min(AMP.length-1,Math.floor(t*10))]||0;
+        tl.to(Q(".glow"),{scale:1+v*0.25,duration:0.2,ease:"none"},t);
+      }
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
