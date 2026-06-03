@@ -1,0 +1,58 @@
+# Cloud render: push a project under projects/ and render it in GitHub Actions.
+# Trigger manually (Actions tab -> Run workflow) with the project folder name,
+# or it auto-runs when a project's index.html changes on main.
+#
+# EXPERIMENTAL: HyperFrames rendering needs headless Chrome + ffmpeg in CI; large/long
+# comps may exceed runner limits. For heavy jobs, render locally.
+name: render
+
+on:
+  workflow_dispatch:
+    inputs:
+      project:
+        description: "project folder under projects/ (e.g. my-video)"
+        required: true
+  push:
+    branches: [main]
+    paths: ["projects/**/index.html"]
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Determine project
+        id: pick
+        run: |
+          if [ -n "${{ github.event.inputs.project }}" ]; then
+            echo "dir=projects/${{ github.event.inputs.project }}" >> "$GITHUB_OUTPUT"
+          else
+            d=$(git diff --name-only HEAD~1 HEAD | grep 'projects/.*/index.html' | head -1 | xargs dirname)
+            echo "dir=$d" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Lint
+        working-directory: ${{ steps.pick.outputs.dir }}
+        run: npx -y hyperframes lint
+
+      - name: Render
+        working-directory: ${{ steps.pick.outputs.dir }}
+        run: npx -y hyperframes render --output renders/out.mp4
+
+      - name: Upload render
+        uses: actions/upload-artifact@v4
+        with:
+          name: render-${{ github.run_number }}
+          path: ${{ steps.pick.outputs.dir }}/renders/out.mp4
+          retention-days: 14

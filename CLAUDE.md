@@ -86,7 +86,7 @@ grab the frame. `scripts/thumbnail.sh` pulls a frame from any video.
 
 ---
 
-## Asset prep (shared)
+## Asset prep & utilities (shared)
 
 | Need | Tool | Command |
 |---|---|---|
@@ -94,6 +94,25 @@ grab the frame. `scripts/thumbnail.sh` pulls a frame from any video.
 | Text → voiceover | Kokoro TTS | `scripts/tts.sh "text or file" af_nova out.wav` |
 | Remove background | u2net | `scripts/remove-bg.sh subject.mp4 out.webm` (transparent) |
 | Music-reactive bars | RMS envelope | `python3 scripts/amplitude.py <audio> --out assets/amp.js` |
+| **Subtitles (.srt/.vtt)** | from transcript | `python3 scripts/export-subs.py work/transcript.json --out subs` |
+| **Translate subs (offline)** | Argos MT | `python3 scripts/translate-subs.py subs.srt --to es` |
+| **Normalize loudness** | ffmpeg loudnorm | `scripts/normalize-audio.sh in out [-14]` (−14 LUFS, streaming std) |
+| **Color grade / LUT look** | ffmpeg | `scripts/grade.sh in out <teal-orange\|warm\|moody\|vintage\|clean\|vibrant\|bw\|cine>` |
+| **Generate music bed** | ffmpeg synth | `scripts/music-bed.sh bed.wav 30 <calm\|warm\|tense\|uplift\|dark>` |
+| **Auto-pick reel hooks** | energy+keywords | `python3 scripts/find-hooks.py audio segments.json --n 12 --len 18` → segments.txt |
+| **Verify a render (QA)** | frames + inspect | `scripts/verify.sh render.mp4 [ts,ts,...]` or `scripts/verify.sh --inspect <dir>` |
+| **Concatenate clips** | ffmpeg | `scripts/concat.sh out.mp4 a.mp4 b.mp4 ...` |
+| **Thumbnail (designed)** | template | render `templates/thumbnail.html` → grab frame 1 |
+| **Animated icons** | Lottie | `templates/lottie-overlay.html` + a `.json` from lottiefiles.com |
+
+**Caption styles:** `docs/caption-styles.md` has 6 drop-in looks (house, karaoke, bold punch-in,
+typewriter, slide-up mask, word-pop). Pick to match the brief.
+
+**Brand kits:** if a `brand.json` (or `brands/<name>.json`, see `brand.example.json`) exists, READ
+it first and apply its colors/fonts/logo/tone to every composition for that client.
+
+**Subtitle the deliverable:** for talking videos, also export `.srt` so YouTube captions are
+selectable/searchable (SEO + accessibility). Normalize loudness on final audio for consistent volume.
 
 Transcription language rule: model **small** (base hallucinates; never `*.en` for non-English).
 Known non-English → `--lang <code>`. Captions stay in source language unless asked to translate/romanize.
