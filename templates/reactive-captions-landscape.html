@@ -1,0 +1,892 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Inter"; font-weight: 400; src: url("assets/fonts/inter-400.ttf") format("truetype"); }
+      @font-face { font-family: "Inter"; font-weight: 500; src: url("assets/fonts/inter-500.ttf") format("truetype"); }
+      @font-face { font-family: "Inter"; font-weight: 600; src: url("assets/fonts/inter-600.ttf") format("truetype"); }
+      @font-face { font-family: "Inter"; font-weight: 700; src: url("assets/fonts/inter-700.ttf") format("truetype"); }
+      @font-face { font-family: "Inter"; font-weight: 800; src: url("assets/fonts/inter-800.ttf") format("truetype"); }
+      @font-face { font-family: "JetBrains Mono"; font-weight: 500; src: url("assets/fonts/jetbrains-500.ttf") format("truetype"); }
+      @font-face { font-family: "Instrument Serif"; font-style: italic; font-weight: 400; src: url("assets/fonts/instrument-italic.ttf") format("truetype"); }
+
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        width: 1920px; height: 1080px;
+        overflow: hidden;
+        background: #0a0a0a;
+        font-family: "Inter", system-ui, sans-serif;
+        color: #f4ede0;
+      }
+
+      :root {
+        --paper: #f4ede0;
+        --ink: #0a0a0a;
+        --amber: #d4a574;
+        --amber-warm: #e8b865;
+        --amber-soft: rgba(212, 165, 116, 0.18);
+        --line: rgba(244, 237, 224, 0.16);
+        --line-dark: rgba(10, 10, 10, 0.12);
+      }
+
+      #root {
+        position: relative;
+        width: 1920px; height: 1080px;
+        overflow: hidden;
+        background: #0a0a0a;
+      }
+
+      /* ============ BASE VIDEO ============ */
+      .source-video {
+        position: absolute;
+        inset: 0;
+        width: 1920px;
+        height: 1080px;
+        object-fit: cover;
+        z-index: 1;
+      }
+
+      /* slight vignette + warm cast on top of video */
+      .video-tint {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        pointer-events: none;
+        background:
+          radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.35) 100%),
+          linear-gradient(180deg, rgba(212,165,116,0.04) 0%, transparent 30%);
+        mix-blend-mode: multiply;
+        opacity: 0.7;
+      }
+
+      /* ============ FRAME / CORNERS ============ */
+      .frame-edge {
+        position: absolute;
+        inset: 40px;
+        border: 1px solid rgba(244, 237, 224, 0.08);
+        z-index: 20;
+        pointer-events: none;
+      }
+      .corner {
+        position: absolute;
+        width: 28px; height: 28px;
+        border: 1.5px solid var(--amber);
+        z-index: 21;
+      }
+      .corner.tl { top: 30px; left: 30px; border-right: none; border-bottom: none; }
+      .corner.tr { top: 30px; right: 30px; border-left: none; border-bottom: none; }
+      .corner.bl { bottom: 30px; left: 30px; border-right: none; border-top: none; }
+      .corner.br { bottom: 30px; right: 30px; border-left: none; border-top: none; }
+
+      /* ============ HUD ============ */
+      .hud-top {
+        position: absolute;
+        top: 80px; left: 80px;
+        z-index: 30;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 14px 22px;
+        background: rgba(10, 10, 10, 0.55);
+        backdrop-filter: blur(14px);
+        border: 1px solid rgba(244, 237, 224, 0.12);
+        border-radius: 999px;
+        font-family: "JetBrains Mono", monospace;
+        font-weight: 500;
+        font-size: 16px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--paper);
+      }
+      .live-dot {
+        width: 9px; height: 9px;
+        border-radius: 50%;
+        background: var(--amber);
+        box-shadow: 0 0 10px var(--amber);
+      }
+      .hud-top .divider {
+        width: 1px; height: 14px;
+        background: rgba(244, 237, 224, 0.25);
+      }
+      .hud-top .tag {
+        color: var(--amber);
+      }
+
+      .hud-right {
+        position: absolute;
+        top: 80px; right: 80px;
+        z-index: 30;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 14px 22px;
+        background: rgba(10, 10, 10, 0.55);
+        backdrop-filter: blur(14px);
+        border: 1px solid rgba(244, 237, 224, 0.12);
+        border-radius: 999px;
+        font-family: "JetBrains Mono", monospace;
+        font-weight: 500;
+        font-size: 16px;
+        letter-spacing: 0.18em;
+        color: var(--paper);
+      }
+      .hud-right .timecode {
+        min-width: 100px;
+        text-align: right;
+      }
+      .hud-right .total {
+        opacity: 0.45;
+      }
+
+      /* ============ SIDE CHAPTERS ============ */
+      .chapters {
+        position: absolute;
+        top: 50%;
+        left: 80px;
+        transform: translateY(-50%);
+        z-index: 30;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+      }
+      .chapter {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 0.28em;
+        text-transform: uppercase;
+        color: rgba(244, 237, 224, 0.42);
+      }
+      .chapter .dot {
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        background: rgba(244, 237, 224, 0.25);
+        border: 1px solid rgba(244, 237, 224, 0.4);
+      }
+      .chapter.active { color: var(--paper); }
+      .chapter.active .dot {
+        background: var(--amber);
+        border-color: var(--amber);
+        box-shadow: 0 0 10px var(--amber);
+      }
+
+      /* ============ PROGRESS BAR ============ */
+      .progress {
+        position: absolute;
+        bottom: 0; left: 0;
+        height: 3px; width: 100%;
+        background: rgba(244, 237, 224, 0.06);
+        z-index: 40;
+      }
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--amber), var(--amber-warm));
+        transform-origin: left center;
+        transform: scaleX(0);
+        box-shadow: 0 0 12px var(--amber);
+      }
+
+      /* ============ PULL QUOTE — LEFT BIG ============ */
+      .quote-left {
+        position: absolute;
+        left: 130px;
+        top: 360px;
+        max-width: 720px;
+        z-index: 25;
+        opacity: 0;
+      }
+      .quote-left .label {
+        display: inline-block;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: 0.4em;
+        text-transform: uppercase;
+        color: var(--amber);
+        padding: 8px 16px;
+        border: 1px solid var(--amber);
+        border-radius: 999px;
+        background: rgba(212, 165, 116, 0.1);
+        margin-bottom: 24px;
+      }
+      .quote-left .text {
+        font-family: "Instrument Serif", serif;
+        font-style: italic;
+        font-size: 84px;
+        line-height: 1.0;
+        letter-spacing: -0.025em;
+        color: var(--paper);
+      }
+      .quote-left .text em {
+        color: var(--amber);
+      }
+
+      /* ============ MEGA TAG (CURSOR 3) ============ */
+      .mega-tag {
+        position: absolute;
+        right: 140px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 25;
+        opacity: 0;
+        text-align: right;
+      }
+      .mega-tag .eyebrow {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 0.5em;
+        text-transform: uppercase;
+        color: var(--amber);
+        margin-bottom: 16px;
+      }
+      .mega-tag .name {
+        font-family: "Inter", sans-serif;
+        font-weight: 800;
+        font-size: 220px;
+        line-height: 0.9;
+        letter-spacing: -0.05em;
+        color: var(--paper);
+      }
+      .mega-tag .name em {
+        font-family: "Instrument Serif", serif;
+        font-style: italic;
+        font-weight: 400;
+        color: var(--amber);
+      }
+      .mega-tag .sub {
+        margin-top: 24px;
+        font-family: "Inter", sans-serif;
+        font-size: 20px;
+        font-weight: 500;
+        letter-spacing: 0.35em;
+        text-transform: uppercase;
+        color: rgba(244, 237, 224, 0.55);
+      }
+
+      /* ============ NAME CHIPS ============ */
+      .name-chip {
+        position: absolute;
+        z-index: 26;
+        padding: 18px 28px;
+        background: rgba(10, 10, 10, 0.72);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(244, 237, 224, 0.15);
+        border-radius: 8px;
+        opacity: 0;
+        min-width: 280px;
+      }
+      .name-chip::before {
+        content: "";
+        position: absolute;
+        left: 0; top: 18px; bottom: 18px;
+        width: 3px;
+        background: var(--amber);
+        box-shadow: 0 0 12px var(--amber);
+      }
+      .name-chip .name {
+        font-family: "Inter", sans-serif;
+        font-weight: 700;
+        font-size: 28px;
+        letter-spacing: -0.015em;
+        color: var(--paper);
+        margin-left: 18px;
+        line-height: 1.1;
+      }
+      .name-chip .role {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        color: var(--amber);
+        margin-left: 18px;
+        margin-top: 6px;
+      }
+      .name-chip.left { bottom: 200px; left: 180px; }
+      .name-chip.right { bottom: 200px; right: 180px; }
+
+      /* ============ MODEL BADGE STACK ============ */
+      .model-stack {
+        position: absolute;
+        right: 130px;
+        top: 280px;
+        z-index: 26;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-end;
+        opacity: 0;
+      }
+      .model-stack .header {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 0.4em;
+        text-transform: uppercase;
+        color: var(--amber);
+        margin-bottom: 8px;
+      }
+      .model-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 18px;
+        background: rgba(244, 237, 224, 0.92);
+        color: var(--ink);
+        border-radius: 999px;
+        font-family: "JetBrains Mono", monospace;
+        font-weight: 500;
+        font-size: 14px;
+        letter-spacing: 0.04em;
+      }
+      .model-pill .dot {
+        width: 7px; height: 7px;
+        border-radius: 50%;
+        background: var(--amber);
+      }
+      .model-pill.featured {
+        background: var(--amber);
+        color: var(--ink);
+        box-shadow: 0 8px 24px rgba(212, 165, 116, 0.4);
+      }
+      .model-pill.featured .dot { background: var(--ink); }
+
+      /* ============ STATS BLOCK (PR diff) ============ */
+      .stats-grid {
+        position: absolute;
+        left: 130px;
+        bottom: 220px;
+        z-index: 26;
+        display: grid;
+        grid-template-columns: repeat(3, auto);
+        gap: 18px;
+        opacity: 0;
+      }
+      .stat-card {
+        padding: 18px 24px;
+        background: rgba(10, 10, 10, 0.78);
+        backdrop-filter: blur(14px);
+        border: 1px solid rgba(244, 237, 224, 0.12);
+        border-radius: 10px;
+        min-width: 180px;
+      }
+      .stat-card .label {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        color: rgba(244, 237, 224, 0.5);
+        margin-bottom: 8px;
+      }
+      .stat-card .value {
+        font-family: "Inter", sans-serif;
+        font-weight: 700;
+        font-size: 32px;
+        letter-spacing: -0.02em;
+        color: var(--paper);
+      }
+      .stat-card .value em {
+        color: var(--amber);
+        font-style: normal;
+      }
+      .stat-card .value .add { color: #6ec27a; }
+      .stat-card .value .del { color: #d96b6b; }
+
+      /* ============ EDITORIAL PULL QUOTE CENTER ============ */
+      .quote-center {
+        position: absolute;
+        left: 130px;
+        right: 130px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 25;
+        text-align: center;
+        opacity: 0;
+      }
+      .quote-center .text {
+        font-family: "Instrument Serif", serif;
+        font-style: italic;
+        font-size: 130px;
+        line-height: 1.0;
+        letter-spacing: -0.03em;
+        color: var(--paper);
+      }
+      .quote-center .text em {
+        color: var(--amber);
+      }
+      .quote-center .attribution {
+        margin-top: 30px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 0.4em;
+        text-transform: uppercase;
+        color: var(--amber);
+      }
+
+      /* ============ AGENT ACTIVITY INDICATOR ============ */
+      .agent-status {
+        position: absolute;
+        right: 80px;
+        bottom: 240px;
+        z-index: 30;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 10px;
+        opacity: 0;
+      }
+      .agent-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 20px;
+        background: rgba(10, 10, 10, 0.72);
+        backdrop-filter: blur(14px);
+        border: 1px solid rgba(244, 237, 224, 0.12);
+        border-radius: 999px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--paper);
+      }
+      .agent-pill .pulse {
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        background: #6ec27a;
+        box-shadow: 0 0 10px #6ec27a;
+      }
+      .agent-pill.amber .pulse { background: var(--amber); box-shadow: 0 0 10px var(--amber); }
+
+      /* ============ CAPTIONS ============ */
+      .caption-box {
+        position: absolute;
+        bottom: 110px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 28;
+        text-align: center;
+        max-width: 1400px;
+        opacity: 0;
+      }
+      .caption-text {
+        display: inline-block;
+        padding: 16px 32px;
+        background: rgba(10, 10, 10, 0.62);
+        backdrop-filter: blur(18px);
+        border: 1px solid rgba(244, 237, 224, 0.10);
+        border-radius: 8px;
+        font-family: "Inter", sans-serif;
+        font-weight: 600;
+        font-size: 30px;
+        line-height: 1.25;
+        letter-spacing: -0.01em;
+        color: var(--paper);
+      }
+      .caption-text em {
+        color: var(--amber);
+        font-style: normal;
+      }
+
+      /* ============ OUTRO OVERLAY ============ */
+      .outro-card {
+        position: absolute;
+        z-index: 26;
+        bottom: 200px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 22px;
+        opacity: 0;
+      }
+      .outro-line {
+        font-family: "Instrument Serif", serif;
+        font-style: italic;
+        font-size: 52px;
+        line-height: 1;
+        color: var(--ink);
+        letter-spacing: -0.02em;
+      }
+      .outro-line em { color: var(--amber); }
+      .outro-cta {
+        display: inline-flex;
+        align-items: center;
+        gap: 14px;
+        padding: 18px 32px;
+        background: var(--ink);
+        color: var(--paper);
+        border-radius: 999px;
+        font-family: "Inter", sans-serif;
+        font-weight: 700;
+        font-size: 20px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+      .outro-cta .arrow { font-size: 24px; }
+
+      /* ============ SCAN HIGHLIGHT (subtle horizontal line during code scenes) ============ */
+      .scan-rail {
+        position: absolute;
+        top: 0; bottom: 0; right: 80px;
+        width: 1px;
+        background: linear-gradient(180deg, transparent, var(--amber), transparent);
+        opacity: 0;
+        z-index: 22;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="37"
+      data-width="1920"
+      data-height="1080"
+    >
+      <!-- ===== BASE VIDEO ===== -->
+      <video
+        id="src"
+        class="source-video clip"
+        data-start="0"
+        data-duration="37"
+        data-track-index="0"
+        src="assets/source.mp4"
+        muted
+        playsinline
+      ></video>
+
+      <!-- Original audio track -->
+      <audio
+        id="src-audio"
+        data-start="0"
+        data-duration="37"
+        data-track-index="1"
+        src="assets/source.mp4"
+        data-volume="1"
+      ></audio>
+
+      <!-- Tint -->
+      <div class="video-tint"></div>
+
+      <!-- Frame -->
+      <div class="frame-edge"></div>
+      <div class="corner tl"></div>
+      <div class="corner tr"></div>
+      <div class="corner bl"></div>
+      <div class="corner br"></div>
+
+      <!-- Scan rail -->
+      <div class="scan-rail"></div>
+
+      <!-- ===== HUD ===== -->
+      <div class="hud-top">
+        <span class="live-dot"></span>
+        <span class="tag">Cursor 3</span>
+        <span class="divider"></span>
+        <span>Launch Reel</span>
+      </div>
+
+      <div class="hud-right">
+        <span class="timecode" id="tc">00:00</span>
+        <span class="total">/ 00:37</span>
+      </div>
+
+      <!-- ===== CHAPTERS ===== -->
+      <div class="chapters">
+        <div class="chapter" data-ch="0">
+          <span class="dot"></span><span>01 · Intro</span>
+        </div>
+        <div class="chapter" data-ch="1">
+          <span class="dot"></span><span>02 · Announce</span>
+        </div>
+        <div class="chapter" data-ch="2">
+          <span class="dot"></span><span>03 · Models</span>
+        </div>
+        <div class="chapter" data-ch="3">
+          <span class="dot"></span><span>04 · Local + Cloud</span>
+        </div>
+        <div class="chapter" data-ch="4">
+          <span class="dot"></span><span>05 · Workflow</span>
+        </div>
+        <div class="chapter" data-ch="5">
+          <span class="dot"></span><span>06 · Colleagues</span>
+        </div>
+      </div>
+
+      <!-- ===== PULL QUOTE 1 (0-4s) ===== -->
+      <div class="quote-left q1">
+        <span class="label">Opening</span>
+        <div class="text">Coding is <em>changing.</em></div>
+      </div>
+
+      <!-- ===== MEGA TAG: CURSOR 3 (4.5-9s) ===== -->
+      <div class="mega-tag t1">
+        <div class="eyebrow">Introducing</div>
+        <div class="name">Cursor<em>3</em></div>
+        <div class="sub">A home for your agent</div>
+      </div>
+
+      <!-- ===== NAME CHIPS (9-13s) ===== -->
+      <div class="name-chip left chip-left">
+        <div class="name">Sualeh Asif</div>
+        <div class="role">Co-Founder · Anysphere</div>
+      </div>
+      <div class="name-chip right chip-right">
+        <div class="name">Michael Truell</div>
+        <div class="role">Co-Founder · Anysphere</div>
+      </div>
+
+      <!-- ===== MODEL BADGE STACK (13-18s) ===== -->
+      <div class="model-stack m-stack">
+        <div class="header">All models, one home</div>
+        <div class="model-pill featured"><span class="dot"></span>Composer 2 · Fast</div>
+        <div class="model-pill"><span class="dot"></span>GPT-5.4 · 1M ctx</div>
+        <div class="model-pill"><span class="dot"></span>Sonnet 4.6</div>
+        <div class="model-pill"><span class="dot"></span>Opus 4.6</div>
+      </div>
+
+      <!-- ===== CENTER QUOTE (19-22s) ===== -->
+      <div class="quote-center q-center">
+        <div class="text">Local + Cloud,<br /><em>seamless.</em></div>
+        <div class="attribution">— Cursor 3</div>
+      </div>
+
+      <!-- ===== STATS BLOCK (22-28s) ===== -->
+      <div class="stats-grid stats">
+        <div class="stat-card">
+          <div class="label">Active PR</div>
+          <div class="value">#9985</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Diff</div>
+          <div class="value"><span class="add">+456</span> <span class="del">−123</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Agent</div>
+          <div class="value"><em>Composer 2</em></div>
+        </div>
+      </div>
+
+      <!-- Agent indicator -->
+      <div class="agent-status agent">
+        <div class="agent-pill"><span class="pulse"></span>Agent · Running</div>
+        <div class="agent-pill amber"><span class="pulse"></span>Cloud · Synced</div>
+      </div>
+
+      <!-- ===== FINAL QUOTE (28-34s) ===== -->
+      <div class="quote-left q2">
+        <span class="label">The Future</span>
+        <div class="text">Agents,<br /><em>as colleagues.</em></div>
+      </div>
+
+      <!-- ===== OUTRO (34-37s) ===== -->
+      <div class="outro-card outro">
+        <div class="outro-line">Built with <em>Cursor 3.</em></div>
+        <div class="outro-cta">
+          <span>Available Now</span>
+          <span class="arrow">→</span>
+        </div>
+      </div>
+
+      <!-- Caption box -->
+      <div class="caption-box cap">
+        <div class="caption-text" id="cap-text"></div>
+      </div>
+
+      <!-- Progress -->
+      <div class="progress">
+        <div class="progress-fill"></div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      const Q = (s) => '[data-composition-id="main"] ' + s;
+      const TOTAL = 37;
+
+      // ============ AMBIENT ============
+      // Progress bar
+      tl.fromTo(Q(".progress-fill"), { scaleX: 0 },
+        { scaleX: 1, duration: TOTAL, ease: "none" }, 0);
+
+      // Live dot pulse (finite over total duration; ~0.8s cycle)
+      tl.fromTo(Q(".live-dot"), { scale: 1, opacity: 1 },
+        { scale: 1.6, opacity: 0.55, duration: 0.8, ease: "sine.inOut",
+          yoyo: true, repeat: Math.floor(TOTAL / 0.8) - 1 }, 0);
+
+      // Agent pulse (slower)
+      tl.fromTo(Q(".agent-pill .pulse"), { scale: 1, opacity: 1 },
+        { scale: 1.5, opacity: 0.6, duration: 0.9, ease: "sine.inOut",
+          yoyo: true, repeat: Math.floor(TOTAL / 0.9) - 1 }, 0);
+
+      // Scan rail subtle pulse
+      tl.fromTo(Q(".scan-rail"), { opacity: 0 },
+        { opacity: 0.35, duration: 1.5, ease: "sine.inOut",
+          yoyo: true, repeat: Math.floor(TOTAL / 1.5) - 1 }, 0);
+
+      // ============ FRAME ENTRANCE ============
+      tl.fromTo(Q(".corner"), { opacity: 0, scale: 0.5 },
+        { opacity: 1, scale: 1, duration: 0.7, stagger: 0.08, ease: "expo.out" }, 0.2);
+      tl.fromTo(Q(".frame-edge"), { opacity: 0 },
+        { opacity: 1, duration: 0.8, ease: "power2.out" }, 0.3);
+      tl.fromTo(Q(".hud-top"), { opacity: 0, x: -40 },
+        { opacity: 1, x: 0, duration: 0.7, ease: "expo.out" }, 0.4);
+      tl.fromTo(Q(".hud-right"), { opacity: 0, x: 40 },
+        { opacity: 1, x: 0, duration: 0.7, ease: "expo.out" }, 0.4);
+      tl.fromTo(Q(".chapters .chapter"), { opacity: 0, x: -20 },
+        { opacity: 0.42, x: 0, duration: 0.55, stagger: 0.08, ease: "expo.out" }, 0.6);
+
+      // ============ TIMECODE TICKER ============
+      tl.to({}, {
+        duration: TOTAL,
+        ease: "none",
+        onUpdate: function () {
+          const t = this.progress() * TOTAL;
+          const mm = String(Math.floor(t / 60)).padStart(2, "0");
+          const ss = String(Math.floor(t % 60)).padStart(2, "0");
+          const el = document.querySelector(Q("#tc"));
+          if (el) el.textContent = mm + ":" + ss;
+        },
+      }, 0);
+
+      // ============ CHAPTER ACTIVE STATE ============
+      function setChapter(i, at) {
+        tl.call(() => {
+          document.querySelectorAll(Q(".chapter")).forEach((el, idx) => {
+            el.classList.toggle("active", idx === i);
+          });
+        }, [], at);
+      }
+      setChapter(0, 0);
+      setChapter(1, 4.6);
+      setChapter(2, 9.0);
+      setChapter(3, 18.4);
+      setChapter(4, 21.9);
+      setChapter(5, 28.3);
+
+      // ============ QUOTE 1 — "Coding is changing" (0.6 - 4.4s) ============
+      tl.fromTo(Q(".q1 .label"), { opacity: 0, y: -10 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "expo.out" }, 0.6);
+      tl.fromTo(Q(".q1"), { opacity: 0, y: 30 },
+        { opacity: 1, y: 0, duration: 0.7, ease: "expo.out" }, 0.8);
+      tl.to(Q(".q1"), { opacity: 0, y: -20, duration: 0.45, ease: "power2.in" }, 4.1);
+
+      // ============ MEGA TAG — CURSOR 3 (4.7 - 8.8s) ============
+      tl.fromTo(Q(".t1 .eyebrow"), { opacity: 0, x: 30 },
+        { opacity: 1, x: 0, duration: 0.55, ease: "expo.out" }, 4.7);
+      tl.fromTo(Q(".t1"), { opacity: 0 },
+        { opacity: 1, duration: 0.5, ease: "power2.out" }, 4.8);
+      tl.fromTo(Q(".t1 .name"), { opacity: 0, x: 60, scale: 0.95 },
+        { opacity: 1, x: 0, scale: 1, duration: 0.95, ease: "expo.out" }, 4.9);
+      tl.fromTo(Q(".t1 .sub"), { opacity: 0, y: 20, letterSpacing: "0.6em" },
+        { opacity: 1, y: 0, letterSpacing: "0.35em", duration: 0.8, ease: "expo.out" }, 5.5);
+      tl.to(Q(".t1"), { opacity: 0, x: 80, duration: 0.55, ease: "power2.in" }, 8.4);
+
+      // ============ NAME CHIPS (9.0 - 13.5s) ============
+      tl.fromTo(Q(".chip-left"), { opacity: 0, x: -40, y: 10 },
+        { opacity: 1, x: 0, y: 0, duration: 0.7, ease: "expo.out" }, 9.0);
+      tl.fromTo(Q(".chip-right"), { opacity: 0, x: 40, y: 10 },
+        { opacity: 1, x: 0, y: 0, duration: 0.7, ease: "expo.out" }, 9.2);
+      tl.to(Q(".chip-left"), { opacity: 0, y: 20, duration: 0.4, ease: "power2.in" }, 13.0);
+      tl.to(Q(".chip-right"), { opacity: 0, y: 20, duration: 0.4, ease: "power2.in" }, 13.1);
+
+      // ============ MODEL STACK (13.5 - 18.2s) ============
+      tl.fromTo(Q(".m-stack"), { opacity: 0 },
+        { opacity: 1, duration: 0.4, ease: "power2.out" }, 13.5);
+      tl.fromTo(Q(".m-stack .header"), { opacity: 0, y: -10 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "expo.out" }, 13.6);
+      tl.fromTo(Q(".m-stack .model-pill"),
+        { opacity: 0, x: 40, scale: 0.9 },
+        { opacity: 1, x: 0, scale: 1, duration: 0.55, stagger: 0.1, ease: "back.out(1.6)" },
+        13.8);
+      tl.to(Q(".m-stack"), { opacity: 0, x: 60, duration: 0.5, ease: "power2.in" }, 17.8);
+
+      // ============ CENTER QUOTE — "Local + Cloud, seamless" (19.0 - 21.7s) ============
+      tl.fromTo(Q(".q-center"), { opacity: 0 },
+        { opacity: 1, duration: 0.4 }, 19.0);
+      tl.fromTo(Q(".q-center .text"), { opacity: 0, y: 30 },
+        { opacity: 1, y: 0, duration: 0.8, ease: "expo.out" }, 19.0);
+      tl.fromTo(Q(".q-center .attribution"), { opacity: 0, letterSpacing: "0.6em" },
+        { opacity: 1, letterSpacing: "0.4em", duration: 0.7, ease: "expo.out" }, 19.6);
+      tl.to(Q(".q-center"), { opacity: 0, scale: 1.04, duration: 0.5, ease: "power2.in" }, 21.4);
+
+      // ============ STATS + AGENT (22.0 - 28.0s) ============
+      tl.fromTo(Q(".stats"), { opacity: 0 },
+        { opacity: 1, duration: 0.3 }, 22.0);
+      tl.fromTo(Q(".stats .stat-card"),
+        { opacity: 0, y: 30, scale: 0.92 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.55, stagger: 0.12, ease: "expo.out" },
+        22.0);
+      tl.fromTo(Q(".agent"), { opacity: 0, x: 40 },
+        { opacity: 1, x: 0, duration: 0.7, ease: "expo.out" }, 22.4);
+      tl.to(Q(".stats"), { opacity: 0, y: 20, duration: 0.5, ease: "power2.in" }, 27.7);
+      tl.to(Q(".agent"), { opacity: 0, x: 40, duration: 0.5, ease: "power2.in" }, 27.7);
+
+      // ============ FINAL QUOTE — "Agents as colleagues" (28.4 - 33.8s) ============
+      tl.fromTo(Q(".q2 .label"), { opacity: 0, y: -10 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "expo.out" }, 28.4);
+      tl.fromTo(Q(".q2"), { opacity: 0, y: 40 },
+        { opacity: 1, y: 0, duration: 0.85, ease: "expo.out" }, 28.6);
+      tl.to(Q(".q2"), { opacity: 0, y: -25, duration: 0.5, ease: "power2.in" }, 33.5);
+
+      // ============ OUTRO (34.0 - 37.0s) ============
+      tl.fromTo(Q(".outro"), { opacity: 0, y: 30 },
+        { opacity: 1, y: 0, duration: 0.7, ease: "expo.out" }, 34.0);
+      tl.fromTo(Q(".outro .outro-cta"), { scale: 0.9, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.6, ease: "back.out(1.6)" }, 34.4);
+
+      // ============ CAPTIONS ============
+      // Caption groups: [text, start, end]
+      const captions = [
+        ["Coding is <em>changing.</em>", 0.05, 1.6],
+        ["It's changing for the <em>better</em>.", 1.6, 3.2],
+        ["Because coding <em>agents</em> are getting so good.", 3.2, 4.55],
+        ["They're getting <em>smarter</em>, <em>faster</em>.", 4.6, 7.2],
+        ["We're excited to announce <em>Cursor 3</em>.", 7.2, 9.0],
+        ["A <em>home</em> for your agent.", 9.1, 11.5],
+        ["The power of a pro dev environment.", 11.5, 13.8],
+        ["Language servers, files, remote <em>SSH</em>.", 13.8, 15.6],
+        ["With all of the <em>models</em>.", 15.6, 16.6],
+        ["Run as many agents as you want — <em>anywhere</em>.", 16.6, 18.4],
+        ["All of your agents in <em>one place</em>.", 18.4, 19.9],
+        ["<em>Local</em> and <em>cloud</em> — really seamless.", 19.9, 21.9],
+        ["Pull an agent locally. <em>Iterate</em> with it.", 21.9, 24.9],
+        ["Zap it back to the cloud when you're done.", 24.9, 28.3],
+        ["Agents that feel like <em>colleagues</em>.", 28.3, 31.0],
+        ["Build <em>anything</em> on a computer — <em>instantly</em>.", 31.0, 34.3],
+      ];
+
+      function setCap(html, at) {
+        tl.call(() => {
+          const el = document.querySelector(Q("#cap-text"));
+          if (el) el.innerHTML = html;
+        }, [], at);
+      }
+
+      captions.forEach((c, i) => {
+        const [html, start, end] = c;
+        setCap(html, start);
+        tl.fromTo(Q(".cap"), { opacity: 0, y: 14 },
+          { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" }, start);
+        tl.to(Q(".cap"), { opacity: 0, y: -8, duration: 0.25, ease: "power2.in" }, end - 0.1);
+      });
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

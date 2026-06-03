@@ -1,0 +1,27 @@
+# Renders & work artifacts (large, regenerable)
+projects/*/renders/
+projects/*/work/
+**/renders/
+**/work/
+*.mp4
+*.mov
+*.webm
+*.wav
+*.mp3
+# keep small sample outputs if you force-add: git add -f path
+
+# Node / HyperFrames
+node_modules/
+.DS_Store
+*.log
+
+# Whisper / python caches
+__pycache__/
+*.pyc
+.cache/
+
+# Allow templates, fonts, scripts, prompts, docs, md files
+!templates/**
+!assets/fonts/**
+!scripts/**
+!prompts/**

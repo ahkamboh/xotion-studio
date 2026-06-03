@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Inter"; font-weight: 400; src: url("assets/fonts/inter-400.ttf") format("truetype"); }
+      @font-face { font-family: "Inter"; font-weight: 500; src: url("assets/fonts/inter-500.ttf") format("truetype"); }
+      @font-face { font-family: "Inter"; font-weight: 600; src: url("assets/fonts/inter-600.ttf") format("truetype"); }
+      @font-face { font-family: "Inter"; font-weight: 700; src: url("assets/fonts/inter-700.ttf") format("truetype"); }
+      @font-face { font-family: "Inter"; font-weight: 800; src: url("assets/fonts/inter-800.ttf") format("truetype"); }
+
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        width: 1080px; height: 1920px;
+        overflow: hidden;
+        background: #000;
+        font-family: "Inter", system-ui, sans-serif;
+      }
+
+      :root {
+        --fg: #ffffff;
+        --ink: #0a0d1f;
+        --brand: #5B7EFF;
+        --brand-light: #B8C5FF;   /* periwinkle for soft glow start */
+        --brand-mid: #7B91FF;
+        --brand-deep: #4A6EFF;
+        --brand-soft: rgba(91, 126, 255, 0.20);
+        --brand-line: rgba(91, 126, 255, 0.45);
+      }
+
+      #root {
+        position: relative;
+        width: 1080px; height: 1920px;
+        overflow: hidden;
+        background: #000;
+      }
+
+      .source-video {
+        position: absolute;
+        inset: 0;
+        width: 1080px; height: 1920px;
+        object-fit: cover;
+        z-index: 1;
+      }
+
+      /* ============ PERSISTENT LOGO WATERMARK (top corner) ============ */
+      .logo-watermark {
+        position: absolute;
+        top: 60px;
+        left: 60px;
+        z-index: 25;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 18px 12px 14px;
+        background: rgba(255, 255, 255, 0.96);
+        backdrop-filter: blur(20px);
+        border-radius: 14px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        opacity: 0;
+      }
+      .logo-watermark img {
+        width: 56px;
+        height: 56px;
+        object-fit: contain;
+        display: block;
+      }
+      .logo-watermark .wm-text {
+        font-family: "Inter", sans-serif;
+        font-weight: 800;
+        font-size: 22px;
+        letter-spacing: -0.015em;
+        background: linear-gradient(135deg, var(--brand-light), var(--brand-deep));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        line-height: 1;
+      }
+      .logo-watermark .wm-tag {
+        font-family: "Inter", sans-serif;
+        font-weight: 600;
+        font-size: 10px;
+        letter-spacing: 0.28em;
+        text-transform: uppercase;
+        color: rgba(10, 13, 31, 0.5);
+        margin-top: 4px;
+      }
+      .logo-watermark .wm-block { line-height: 1; }
+
+      /* ============ CAPTION — Fintokei 3-tier hierarchy ============ */
+      .caption-wrap {
+        position: absolute;
+        left: 60px;
+        right: 60px;
+        bottom: 460px;
+        z-index: 20;
+        text-align: center;
+        opacity: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+      }
+      /* Small supporting line — plain white */
+      .cs {
+        font-family: "Inter", sans-serif;
+        font-weight: 600;
+        font-size: 54px;
+        line-height: 1.0;
+        letter-spacing: -0.015em;
+        color: #ffffff;
+        text-shadow:
+          0 4px 14px rgba(0, 0, 0, 0.65),
+          0 2px 4px rgba(0, 0, 0, 0.55);
+      }
+      /* BIG emphasis word — soft blue gradient with glow */
+      .cb {
+        font-family: "Inter", sans-serif;
+        font-weight: 800;
+        font-size: 124px;
+        line-height: 0.98;
+        letter-spacing: -0.035em;
+        background: linear-gradient(180deg,
+          #ffffff 0%,
+          var(--brand-light) 40%,
+          var(--brand-mid) 75%,
+          var(--brand-deep) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        filter:
+          drop-shadow(0 0 22px rgba(123, 145, 255, 0.55))
+          drop-shadow(0 6px 14px rgba(0, 0, 0, 0.55))
+          drop-shadow(0 2px 4px rgba(0, 0, 0, 0.7));
+      }
+      /* Slightly smaller "cb" variant for multi-word emphasis */
+      .cb.cb-sm { font-size: 100px; }
+      .cb.cb-tight { letter-spacing: -0.045em; }
+
+      /* ============ BRAND CHIP — small Fintokei tag style ============ */
+      .brand-card {
+        position: absolute;
+        left: 50%;
+        bottom: 620px;   /* sits right above big emphasis word */
+        transform: translateX(-50%);
+        z-index: 24;
+        padding: 5px 16px 5px 6px;
+        background: linear-gradient(180deg, var(--brand-mid), var(--brand-deep));
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        opacity: 0;
+        box-shadow:
+          0 8px 28px rgba(91, 126, 255, 0.55),
+          0 0 0 1.5px rgba(255, 255, 255, 0.22) inset;
+      }
+      .brand-card .brand-logo {
+        width: 30px;
+        height: 30px;
+        object-fit: contain;
+        display: block;
+        background: white;
+        border-radius: 7px;
+        padding: 3px;
+      }
+      .brand-card .brand-name {
+        font-family: "Inter", sans-serif;
+        font-weight: 800;
+        font-size: 22px;
+        letter-spacing: -0.015em;
+        color: white;
+        line-height: 1;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+      }
+
+      /* ============ PHASES GRAPHIC ============ */
+      .phases-graphic {
+        position: absolute;
+        top: 280px;
+        left: 60px;
+        right: 60px;
+        z-index: 23;
+        display: flex;
+        gap: 12px;
+        opacity: 0;
+      }
+      .phase-chip {
+        flex: 1;
+        padding: 18px 12px;
+        background: white;
+        border-radius: 16px;
+        text-align: center;
+        opacity: 0;
+        box-shadow: 0 12px 32px rgba(91, 126, 255, 0.35);
+        border: 2px solid transparent;
+        background-image: linear-gradient(white, white),
+                          linear-gradient(135deg, var(--brand-light), var(--brand-deep));
+        background-origin: border-box;
+        background-clip: padding-box, border-box;
+      }
+      .phase-chip .num {
+        font-family: "Inter", sans-serif;
+        font-weight: 800;
+        font-size: 28px;
+        letter-spacing: -0.02em;
+        line-height: 1;
+        background: linear-gradient(135deg, var(--brand-light), var(--brand-deep));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .phase-chip .lbl {
+        font-family: "Inter", sans-serif;
+        font-weight: 700;
+        font-size: 14px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--ink);
+        margin-top: 8px;
+      }
+
+      /* ============ ACCOUNT SIZES — floating Fintokei style ============ */
+      .sizes-graphic {
+        position: absolute;
+        top: 260px;
+        left: 60px;
+        right: 60px;
+        z-index: 23;
+        text-align: center;
+        opacity: 0;
+      }
+      .sizes-graphic .label {
+        font-family: "Inter", sans-serif;
+        font-weight: 600;
+        font-size: 30px;
+        letter-spacing: -0.01em;
+        color: #ffffff;
+        margin-bottom: 8px;
+        text-shadow:
+          0 4px 14px rgba(0, 0, 0, 0.6),
+          0 2px 4px rgba(0, 0, 0, 0.5);
+      }
+      .sizes-graphic .row {
+        font-family: "Inter", sans-serif;
+        font-weight: 800;
+        font-size: 92px;
+        line-height: 1;
+        letter-spacing: -0.04em;
+        background: linear-gradient(180deg,
+          #ffffff 0%,
+          var(--brand-light) 40%,
+          var(--brand-mid) 75%,
+          var(--brand-deep) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        filter:
+          drop-shadow(0 0 20px rgba(123, 145, 255, 0.55))
+          drop-shadow(0 6px 12px rgba(0, 0, 0, 0.6))
+          drop-shadow(0 2px 4px rgba(0, 0, 0, 0.7));
+      }
+      .sizes-graphic .row .arrow {
+        font-size: 70px;
+        opacity: 0.8;
+        margin: 0 8px;
+      }
+
+      /* ============ PRICE — floating big gradient number ============ */
+      .price-tag {
+        position: absolute;
+        top: 260px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 24;
+        text-align: center;
+        opacity: 0;
+      }
+      .price-tag .small {
+        font-family: "Inter", sans-serif;
+        font-weight: 600;
+        font-size: 56px;
+        line-height: 1;
+        letter-spacing: -0.015em;
+        color: #ffffff;
+        margin-bottom: 6px;
+        text-shadow:
+          0 4px 14px rgba(0, 0, 0, 0.65),
+          0 2px 4px rgba(0, 0, 0, 0.55);
+      }
+      .price-tag .big {
+        font-family: "Inter", sans-serif;
+        font-weight: 800;
+        font-size: 240px;
+        line-height: 0.95;
+        letter-spacing: -0.05em;
+        background: linear-gradient(180deg,
+          #ffffff 0%,
+          var(--brand-light) 38%,
+          var(--brand-mid) 72%,
+          var(--brand-deep) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        filter:
+          drop-shadow(0 0 30px rgba(123, 145, 255, 0.55))
+          drop-shadow(0 8px 18px rgba(0, 0, 0, 0.6))
+          drop-shadow(0 2px 4px rgba(0, 0, 0, 0.7));
+      }
+
+      /* ============ CTA STRIP ============ */
+      .cta-strip {
+        position: absolute;
+        bottom: 170px;
+        left: 60px;
+        right: 60px;
+        z-index: 25;
+        padding: 26px 30px;
+        background: linear-gradient(135deg, var(--brand-light), var(--brand-deep));
+        color: white;
+        border-radius: 24px;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        opacity: 0;
+        box-shadow: 0 20px 60px rgba(91, 126, 255, 0.55);
+      }
+      .cta-strip .cta-logo {
+        width: 64px; height: 64px;
+        background: white;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        padding: 6px;
+      }
+      .cta-strip .cta-logo img {
+        width: 100%; height: 100%;
+        object-fit: contain;
+      }
+      .cta-strip .cta-copy { flex: 1; }
+      .cta-strip .cta-lead {
+        font-family: "Inter", sans-serif;
+        font-weight: 600;
+        font-size: 14px;
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+        opacity: 0.85;
+        margin-bottom: 4px;
+      }
+      .cta-strip .cta-main {
+        font-family: "Inter", sans-serif;
+        font-weight: 800;
+        font-size: 38px;
+        letter-spacing: -0.015em;
+        line-height: 1;
+      }
+      .cta-strip .arrow {
+        width: 56px; height: 56px;
+        border-radius: 50%;
+        background: white;
+        color: var(--brand-deep);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        font-weight: 800;
+        flex-shrink: 0;
+      }
+
+      /* ============ PROGRESS BAR ============ */
+      .progress {
+        position: absolute;
+        bottom: 0; left: 0;
+        height: 4px; width: 100%;
+        background: rgba(255, 255, 255, 0.10);
+        z-index: 30;
+      }
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--brand-light), var(--brand-deep));
+        transform-origin: left center;
+        transform: scaleX(0);
+        box-shadow: 0 0 14px rgba(91, 126, 255, 0.6);
+      }
+
+      /* ============ COMPLIANCE DISCLAIMER ============ */
+      .disclaimer {
+        position: absolute;
+        bottom: 22px;
+        left: 60px;
+        right: 60px;
+        z-index: 28;
+        font-family: "Inter", sans-serif;
+        font-weight: 500;
+        font-size: 12px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.45);
+        text-align: center;
+        opacity: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="29"
+      data-width="1080"
+      data-height="1920"
+    >
+      <video
+        id="src"
+        class="source-video clip"
+        data-start="0"
+        data-duration="29"
+        data-track-index="0"
+        src="assets/source.mp4"
+        muted
+        playsinline
+      ></video>
+      <audio
+        id="src-audio"
+        data-start="0"
+        data-duration="29"
+        data-track-index="1"
+        src="assets/source.mp4"
+        data-volume="1"
+      ></audio>
+
+      <!-- CAPTION (3-tier: optional support / big emphasis / optional support) -->
+      <div class="caption-wrap cap" id="cap-text"></div>
+
+      <!-- BRAND CARD -->
+      <div class="brand-card brand">
+        <img class="brand-logo" src="assets/logo.webp" alt="Global4EX" />
+        <div class="brand-name">Global4EX</div>
+      </div>
+
+      <!-- ACCOUNT SIZES (floating gradient) -->
+      <div class="sizes-graphic sizes">
+        <div class="label">account sizes</div>
+        <div class="row">10K <span class="arrow">→</span> 200K</div>
+      </div>
+
+      <!-- PRICE -->
+      <div class="price-tag price">
+        <div class="small">just</div>
+        <div class="big">15</div>
+      </div>
+
+      <!-- PROGRESS -->
+      <div class="progress">
+        <div class="progress-fill"></div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      const Q = (s) => '[data-composition-id="main"] ' + s;
+      const TOTAL = 29;
+
+      // Progress
+      tl.fromTo(Q(".progress-fill"), { scaleX: 0 },
+        { scaleX: 1, duration: TOTAL, ease: "none" }, 0);
+
+      // ============ CAPTIONS ============
+      // Each caption: [html_with_cs_and_cb_spans, start, end]
+      // .cs = small white support line   .cb = big gradient emphasis line
+      const captions = [
+        ['<div class="cs">i wish someone</div><div class="cb">told me this</div><div class="cs">sooner</div>', 0.05, 2.4],
+        ['<div class="cs">there is a platform</div><div class="cb cb-sm">called</div>', 2.6, 4.05],
+        // 4.05-7.0 → brand chip handles it (caption hidden)
+        ['<div class="cs">a</div><div class="cb cb-sm">simulated trading</div><div class="cs">evaluation</div>', 7.02, 10.0],
+        ['<div class="cs">they have</div><div class="cb cb-sm">multiple options</div><div class="cs">to choose from</div>', 10.0, 13.0],
+        // 13.0-16.6 → sizes graphic
+        ['<div class="cs">if you pass, you get a</div><div class="cb cb-sm">simulated account</div>', 16.94, 20.5],
+        ['<div class="cs">with bi-weekly</div><div class="cb cb-sm">performance awards</div>', 20.5, 22.95],
+        ['<div class="cs">and the</div><div class="cb">cheapest</div><div class="cs">plan</div>', 23.25, 25.0],
+        // 25.05-26.7 → price graphic
+        ['<div class="cb">link in bio</div><div class="cs">↓</div>', 26.85, 28.9],
+      ];
+
+      function setCap(html, at) {
+        tl.call(() => {
+          const el = document.querySelector(Q("#cap-text"));
+          if (el) el.innerHTML = html;
+        }, [], at);
+      }
+
+      captions.forEach(([html, start, end], i) => {
+        setCap(html, start);
+        tl.fromTo(Q(".cap"), { opacity: 0, y: 16 },
+          { opacity: 1, y: 0, duration: 0.22, ease: "power2.out" }, start);
+        tl.to(Q(".cap"), { opacity: 0, y: -10, duration: 0.18, ease: "power2.in" }, end - 0.1);
+        tl.set(Q(".cap"), { opacity: 0 }, end);
+      });
+
+      // ============ GRAPHIC MOMENTS ============
+
+      // 1. BRAND CARD (4.05 - 8.9s) — when Global4EX is mentioned
+      tl.fromTo(Q(".brand"), { opacity: 0, y: -16, scale: 0.92 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: "back.out(1.5)" }, 4.05);
+      // Tiny logo wiggle for life
+      tl.to(Q(".brand .brand-logo"), { rotation: -8, duration: 0.4, ease: "sine.inOut",
+        yoyo: true, repeat: 1 }, 5.0);
+      tl.to(Q(".brand"), { opacity: 0, y: -16, duration: 0.35, ease: "power2.in" }, 8.9);
+      tl.set(Q(".brand"), { opacity: 0 }, 9.3);
+
+      // 2. ACCOUNT SIZES (13.5 - 16.5s)
+      tl.fromTo(Q(".sizes"), { opacity: 0, y: -16, scale: 0.96 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: "expo.out" }, 13.5);
+      tl.to(Q(".sizes .featured"),
+        { scale: 1.1, duration: 0.35, ease: "back.out(1.8)", yoyo: true, repeat: 1 }, 14.5);
+      tl.to(Q(".sizes"), { opacity: 0, y: -16, duration: 0.4, ease: "power2.in" }, 16.5);
+      tl.set(Q(".sizes"), { opacity: 0 }, 16.9);
+
+      // 3. PRICE (25.0 - 26.7s)
+      tl.fromTo(Q(".price"), { opacity: 0, scale: 0.7, y: -20 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.5, ease: "back.out(1.8)" }, 25.0);
+      tl.to(Q(".price"), { scale: 1.04, duration: 0.5, ease: "sine.inOut",
+        yoyo: true, repeat: 1 }, 25.6);
+      tl.to(Q(".price"), { opacity: 0, scale: 0.95, duration: 0.4, ease: "power2.in" }, 26.7);
+      tl.set(Q(".price"), { opacity: 0 }, 27.1);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
