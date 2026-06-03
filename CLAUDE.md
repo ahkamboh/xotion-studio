@@ -126,6 +126,17 @@ Full recipe book: **`docs/ffmpeg-recipes.md`** (trim, concat, speed, crop, rotat
 color, overlay/PiP, chroma-key, xfade transitions, burn subtitles, watermark, audio swap, GIF,
 aspect conversion with blurred pad, stabilize). Reach for it for any footage operation.
 
+**Auto-cut (tighten raw talking footage):** turn long raw clips into a clean edit by removing dead
+space + filler words, with 30ms fades at every cut. No API — uses the word-level transcript.
+- `python3 scripts/transcribe.py VIDEO --model small` → word-level transcript
+- `python3 scripts/autocut.py VIDEO work/transcript.json --max-gap 0.6 [--remove-fillers]
+  [--aggressive] --out work/cut.mp4` (run with `--report` first to preview time saved)
+- See `prompts/autocut-video.md`. This is the "drop raw footage → get a tight edit" capability.
+
+**Review long footage cheaply (token-efficient):** instead of reading many frames, generate one
+filmstrip + waveform: `python3 scripts/filmstrip.py VIDEO --out-dir work` → Read `filmstrip.jpg`
++ `waveform.png` (a 10-min video becomes ~2 images). Use this before/while editing long clips.
+
 Common quick refs:
 - Probe: `ffprobe -v error -show_entries stream=codec_type,width,height,r_frame_rate -show_entries format=duration -of default=noprint_wrappers=1 FILE`
 - Lossless trim: `ffmpeg -ss S -to E -i in.mp4 -c copy out.mp4` (re-encode for frame accuracy)
@@ -214,6 +225,14 @@ Known non-English → `--lang <code>`. Captions stay in source language unless a
 - **GIF**: see recipe `to-gif`.
 - Cut a vertical master into N reels: `scripts/cut-reels.sh master.mp4 segments.txt out_dir`.
 - Thumbnail/poster: `scripts/thumbnail.sh video.mp4 <ts> out.jpg`.
+
+## Session memory — `project.md` (use it)
+
+Each project keeps a `projects/<name>/project.md` (template: `templates/project.md`). At the START
+of working on an existing project, READ its `project.md` to continue where the last session left
+off — the brief, chosen style/voice/fonts, acceptance criteria, status, and outputs. UPDATE it
+after meaningful changes (decisions made, status ticked, outputs produced). This persists context
+across chats and machines so you never re-derive what was already decided.
 
 ## Per-project layout
 ```
