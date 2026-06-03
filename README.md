@@ -10,10 +10,19 @@ Built on [HyperFrames](https://hyperframes.heygen.com) (HTML+GSAP→MP4) for mot
 ## Quick start (new machine)
 
 ```bash
+# git-lfs is required — the Whisper model ships in the repo (no re-download).
+brew install git-lfs        # or: apt-get install git-lfs    (one time per machine)
+git lfs install
+
 git clone https://github.com/ahkamboh/xotion-studio.git
 cd xotion-studio
-./scripts/setup.sh          # installs HyperFrames skills, whisper, checks ffmpeg/node
+git lfs pull                # pulls the bundled Whisper small model (~460 MB)
+./scripts/setup.sh          # installs skills/whisper, copies model into cache
 ```
+
+> The **Whisper `small` model is bundled** in `models/small.pt` via Git LFS, so transcription
+> works offline immediately and never re-downloads (also avoids the model-hub SHA-corruption issue).
+> `setup.sh` copies it to `~/.cache/whisper/small.pt`.
 
 Open **Claude Code** in this folder and paste a prompt from `prompts/`. Claude reads `CLAUDE.md`
 automatically and follows the full toolkit — you just provide files.
