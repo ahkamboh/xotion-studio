@@ -1,0 +1,1 @@
+This is xotion studio. Give it any prompt. It picks the style, the voice, and the motion. Then renders your video, ready to post.
