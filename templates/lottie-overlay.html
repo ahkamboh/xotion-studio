@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <!-- lottie-web: animated icons/illustrations driven by the HyperFrames timeline.
+         Get free .json animations from lottiefiles.com (download "Lottie JSON"),
+         save to assets/icon.json. Register the player on window.__hfLottie so the
+         renderer can seek it deterministically. -->
+    <script src="https://cdn.jsdelivr.net/npm/lottie-web@5.12.2/build/player/lottie.min.js"></script>
+    <style>
+      * { margin:0; padding:0; box-sizing:border-box; }
+      html,body { width:1920px; height:1080px; overflow:hidden; background:#0a0a0c; }
+      #root { position:relative; width:1920px; height:1080px; overflow:hidden; }
+      #icon { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:520px; height:520px; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="5" data-width="1920" data-height="1080">
+      <div id="icon"></div>
+    </div>
+    <script>
+      window.__hfLottie = window.__hfLottie || {};
+      const anim = lottie.loadAnimation({
+        container: document.getElementById("icon"),
+        renderer: "svg", loop: false, autoplay: false,
+        path: "assets/icon.json",          // <-- your Lottie JSON
+      });
+      // expose for deterministic seeking by frame
+      window.__hfLottie["icon"] = anim;
+
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      // drive the lottie playhead from the GSAP timeline:
+      const proxy = { f: 0 };
+      anim.addEventListener("DOMLoaded", () => {
+        tl.to(proxy, {
+          f: anim.totalFrames - 1, duration: 5, ease: "none",
+          onUpdate: () => anim.goToAndStop(proxy.f, true),
+        }, 0);
+      });
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

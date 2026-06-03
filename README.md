@@ -53,14 +53,31 @@ Most jobs combine pillars (e.g. grade footage + overlay an animated title).
 CLAUDE.md                 # the brain: 3 pillars, workflows, rules, house style
 README.md
 new-project.sh            # ./new-project.sh name [W] [H] [duration]
-templates/                # title-card, lyric (16:9 & 9:16), ugc-ad, reactive-captions
-scripts/                  # transcribe, amplitude, tts, remove-bg, concat,
-                          #   encode-youtube, cut-reels, thumbnail, setup
+brand.example.json        # copy to brand.json -> auto-apply client colors/fonts/logo
+templates/                # title-card, thumbnail, lyric (16:9 & 9:16), ugc-ad,
+                          #   reactive-captions, lottie-overlay
+scripts/                  # transcribe, amplitude, tts, remove-bg, concat, export-subs,
+                          #   translate-subs, normalize-audio, grade, music-bed, find-hooks,
+                          #   verify, encode-youtube, cut-reels, thumbnail, download-fonts, setup
 prompts/                  # copy-paste job prompts
-docs/                     # ffmpeg-recipes.md (full recipe book), encoding-cheatsheet.md
-assets/fonts/             # Inter, Poppins, Instrument Serif, JetBrains Mono (.ttf, local)
+docs/                     # ffmpeg-recipes, caption-styles, FONTS, encoding-cheatsheet
+assets/fonts/             # ~73-family design library (.ttf, local)
+models/small.pt           # bundled Whisper model (Git LFS) — offline transcription
+.github/workflows/        # render.yml — optional cloud render on push
 projects/                 # one folder per job (renders/work gitignored)
 ```
+
+## Capabilities at a glance
+
+- **Transcribe** (offline, bundled model) · **TTS voiceover** · **subtitles** (.srt/.vtt) ·
+  **offline translation** to any language
+- **Caption styles**: 6 looks (house, karaoke, bold punch-in, typewriter, slide-up, word-pop)
+- **Color grades**: teal-orange, warm, moody, vintage, clean, vibrant, b&w, cine
+- **Audio**: loudness normalize (−14 LUFS), generate ambient music beds, mix/duck
+- **Auto reels**: hook detection scores the best segments for Shorts
+- **Brand kits**: `brand.json` auto-applies colors/fonts/logo
+- **QA**: `verify.sh` frame-extraction + HyperFrames visual inspect
+- **Thumbnails** & **Lottie** icon animations · **cloud render** via GitHub Actions
 
 ## Requirements
 

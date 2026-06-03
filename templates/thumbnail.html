@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1280, height=720" />
+    <!-- Designed YouTube thumbnail (1280x720). Render 1 frame -> jpg:
+         npx hyperframes render --output renders/thumb.mp4 then
+         ffmpeg -ss 0 -i renders/thumb.mp4 -frames:v 1 -q:v 2 renders/thumb.jpg
+         (data-duration is 1s; only the first frame matters). Swap text/image/colors. -->
+    <style>
+      @font-face { font-family:"Anton"; src:url("assets/fonts/anton-400.ttf") format("truetype"); }
+      @font-face { font-family:"Poppins"; font-weight:700; src:url("assets/fonts/poppins-700.ttf") format("truetype"); }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      html,body { width:1280px; height:720px; overflow:hidden; font-family:"Poppins",sans-serif; }
+      :root { --accent:#ff6b35; --ink:#0a0a0a; --fg:#ffffff; }
+      #root { position:relative; width:1280px; height:720px; overflow:hidden; background:var(--ink); }
+
+      .photo { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+      /* darken left half so big text reads */
+      .scrim { position:absolute; inset:0; background:linear-gradient(90deg, rgba(10,10,10,.92) 0%, rgba(10,10,10,.7) 42%, transparent 70%); }
+      .accent-bar { position:absolute; left:0; top:0; bottom:0; width:14px; background:var(--accent); }
+
+      .stack { position:absolute; left:70px; top:50%; transform:translateY(-50%); max-width:760px; }
+      .kicker { font-family:"Poppins",sans-serif; font-weight:700; font-size:30px; letter-spacing:.3em; text-transform:uppercase; color:var(--accent); margin-bottom:18px; }
+      .headline {
+        font-family:"Anton",sans-serif; font-size:140px; line-height:.92; letter-spacing:-.01em;
+        text-transform:uppercase; color:var(--fg);
+        text-shadow:0 6px 30px rgba(0,0,0,.6);
+      }
+      .headline em { color:var(--accent); font-style:normal; }
+      .tag { margin-top:24px; display:inline-block; background:var(--accent); color:var(--ink);
+        font-weight:700; font-size:30px; padding:12px 26px; border-radius:12px; letter-spacing:.02em; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="1" data-width="1280" data-height="720">
+      <!-- replace with your image; or delete <img> for a solid/gradient bg -->
+      <img class="photo" src="assets/bg.png" alt="" onerror="this.style.display='none'" />
+      <div class="scrim"></div>
+      <div class="accent-bar"></div>
+      <div class="stack">
+        <div class="kicker">YOUR KICKER</div>
+        <div class="headline">BIG <em>TITLE</em> HERE</div>
+        <div class="tag">WATCH NOW</div>
+      </div>
+    </div>
+    <script>
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = gsap.timeline({ paused: true });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  </body>
+</html>
