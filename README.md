@@ -71,14 +71,25 @@ models/small.pt           # bundled Whisper model (Git LFS) — offline transcri
 projects/                 # one folder per job (renders/work gitignored)
 ```
 
-## Worked example — narrated promo (end-to-end, verified ✅)
+## Worked example — explainer video about Xotion (end-to-end, verified ✅)
 
-A real run of the full chain, built entirely from the engine's own scripts. Source lives in
-`projects/demo-promo/`; the render is `projects/demo-promo/renders/demo-promo.mp4`.
+A **narrated explainer video about Xotion itself** — a female AI voice speaks over background
+music while animated scenes explain what the engine does. Built entirely from the engine's own
+scripts in one pass. ▶️ **Full video (with audio):**
+[`projects/demo-promo/renders/demo-promo.mp4`](projects/demo-promo/renders/demo-promo.mp4)
 
-![demo](docs/demo-promo-contact.jpg)
+![Xotion explainer video preview](docs/demo-promo.gif)
 
-**Prompt:** *"Make a short narrated promo for xotion studio, female voice, tech style, 16:9."*
+*Preview above is a silent GIF — download the MP4 for the female voiceover + music.*
+
+**What it is:** a 7.5-second 16:9 explainer in the **Tech Gradient** style (blue-purple, Sora font,
+glassmorphism). A **female voice** (Kokoro `af_nova`) narrates *"This is Xotion studio. Give it any
+prompt. It picks the style, the voice, and the motion. Then renders your video, ready to post."* —
+over an **uplift music bed that auto-ducks under the voice**. Four animated scenes are timed to the
+narration: **xotion studio → Give it any prompt → glass Style / Voice / Motion chips → Then renders
+your video**.
+
+**Prompt that made it:** *"Make a short narrated explainer about Xotion, female voice, tech style, 16:9."*
 
 **What the agent did (all no-API):**
 ```bash
@@ -97,9 +108,9 @@ npx hyperframes render --output renders/demo-promo.mp4
 scripts/qa.sh renders/demo-promo.mp4 --w 1920 --h 1080 --fps 30 --dur 7.5
 ```
 
-**Result:** 1920×1080 · 30fps · 7.5s · voice over ducked music (−15.5 dB) · 4 scenes
-(`xotion studio` → `Give it any prompt` → glass `Style / Voice / Motion` chips → `Then renders
-your video`). QA mechanical gate **PASS**; all four scenes visually verified.
+**Result:** 1920×1080 · 30fps · 7.5s · **female voiceover (`af_nova`) over ducked music** (mastered
+to −14 LUFS) · 4 animated scenes timed to the narration. QA mechanical gate **PASS**; all four
+scenes visually verified.
 
 This confirms the pipeline works: art-direction style → TTS → transcription → music bed →
 auto-ducked mix → motion-graphics render → QA. Reproduce or restyle by changing the prompt.
