@@ -1,0 +1,22 @@
+{
+  "name": "xotion-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Creative engine — video, image, motion graphics. Built on HyperFrames.",
+  "bin": {
+    "hf": "node_modules/.bin/hyperframes"
+  },
+  "scripts": {
+    "hf": "hyperframes",
+    "lint": "hyperframes lint",
+    "render": "hyperframes render",
+    "inspect": "hyperframes inspect",
+    "setup": "bash scripts/setup.sh"
+  },
+  "dependencies": {
+    "hyperframes": "0.6.70"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

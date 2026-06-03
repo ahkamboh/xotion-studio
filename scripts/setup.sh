@@ -8,9 +8,23 @@ command -v node >/dev/null || { echo "!! Node >= 22 required (https://nodejs.org
 command -v ffmpeg >/dev/null || { echo "!! ffmpeg required (brew install ffmpeg / apt install ffmpeg)"; exit 1; }
 echo "ok: node $(node -v), ffmpeg present"
 
-# 2. HyperFrames CLI + AI skills (installs gsap/hyperframes/etc agent skills)
-echo "-- installing HyperFrames skills --"
-npx -y skills add heygen-com/hyperframes || echo "  (skills add skipped/failed — rerun manually if needed)"
+# 2. HyperFrames — installed LOCALLY from the committed lockfile (pinned v0.6.70).
+#    After this one-time install, `npx hyperframes` (or node_modules/.bin/hyperframes)
+#    runs the local copy instantly — no per-use downloads, works offline.
+echo "-- installing HyperFrames (local, from package-lock.json) --"
+cd "$(dirname "$0")/.."
+npm ci 2>/dev/null || npm install
+echo "ok: hyperframes $(node_modules/.bin/hyperframes --version 2>/dev/null) installed locally"
+
+# 2b. Pre-fetch the headless browser so the first render doesn't stall (one-time, ~170MB).
+echo "-- fetching render browser (one-time) --"
+node_modules/.bin/hyperframes browser 2>/dev/null \
+  || node_modules/.bin/hyperframes doctor 2>/dev/null \
+  || echo "  (browser will auto-download on first render)"
+
+# 2c. AI coding skills for the agent (optional — improves agent guidance)
+echo "-- installing HyperFrames agent skills --"
+npx -y skills add heygen-com/hyperframes 2>/dev/null || echo "  (skills add skipped — rerun manually if needed)"
 
 # 3. Python deps for transcription + amplitude
 echo "-- installing python deps (whisper, soundfile) --"
