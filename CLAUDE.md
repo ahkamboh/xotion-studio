@@ -1,118 +1,155 @@
-# xotion-studio — Video Autopilot
+# xotion-studio — Creative Engine (video · image · motion graphics)
 
-This repo is a **clone-and-go video editing engine**. On any new machine: clone, run
-`./scripts/setup.sh`, open Claude Code here, and start giving prompts. The agent already
-knows the full workflow from this file — the user should NOT have to re-explain anything.
+A **clone-and-go general-purpose creative engine**. On any machine: clone, run
+`./scripts/setup.sh`, open Claude Code here, give a prompt + files, get a polished result.
+The agent already knows the full toolkit from this file — the user should NOT re-explain.
 
-## What this repo does
+**The user's style: "just give me files + a one-line prompt, you do the edit on autopilot."**
+Infer intent, pick sensible defaults, produce the result, verify with frames, iterate. Ask only
+when genuinely blocked (a real decision only the user can make).
 
-Given **a video and/or an image + audio**, produce polished social videos with:
-- Animated captions / lyrics (any language, default English)
-- Word-by-word reveal animations (blur-clear, rise, stagger)
-- Brand logos, callout graphics, music-visualizer bars
-- Auto thumbnails
-- YouTube uploads + vertical Shorts/Reels cut from a master
+---
 
-The user's working style: **"just give me a video/image, you do the edit on autopilot."**
-Infer intent, pick sensible defaults, render, show frames, iterate. Only ask when truly blocked.
+## The three pillars
 
-## The golden workflow (follow every time)
+| Pillar | Engine | Use for |
+|---|---|---|
+| **A. Motion Graphics** | **HyperFrames** (HTML + GSAP → MP4) | Title cards, lower-thirds, kinetic type, logo reveals, promos, explainers, data-viz, intros/outros, animated infographics, lyric/caption videos, ad overlays. Anything *designed and animated*. |
+| **B. Video Editing** | **ffmpeg** | Trim, cut, concat, speed, reverse, crop, rotate, resize, color grade, stabilize, overlay/PiP, green-screen, transitions (xfade), burn subtitles, watermark, extract/replace audio, GIF, format/aspect conversion. Anything *operating on existing footage*. |
+| **C. Image Editing** | **ffmpeg / ImageMagick** | Resize, crop, convert, filters, text overlay, compositing, collages, background removal, thumbnails, social-graphic generation (often via a 1-frame HyperFrames render). |
 
-1. **Probe the input**
-   `ffprobe -v error -show_entries stream=codec_type,width,height,r_frame_rate -show_entries format=duration -of default=noprint_wrappers=1 <file>`
-   - Decide orientation: landscape source → 1920×1080; vertical/reel source → 1080×1920.
-   - Duration drives the composition `data-duration`.
+**Most real jobs combine pillars.** e.g. "edit my clip + add an animated title" = B (cut/grade the
+footage) + A (HyperFrames title overlay) composited together. Decide the pipeline first, then build.
 
-2. **Scaffold a project** under `projects/<name>/` (kebab-case):
-   `cd projects && npx hyperframes init <name> --width W --height H --fps 30 --duration D --non-interactive`
-   Copy media into `projects/<name>/assets/`, copy needed fonts from repo `assets/fonts/`.
+### Decision flow
+1. **Operating on existing footage/photo?** → start with **B/C** (ffmpeg).
+2. **Designing/animating something new?** → **A** (HyperFrames).
+3. **Overlaying designed graphics on footage?** → both: load the video as the base layer in a
+   HyperFrames composition (`<video class="clip" muted playsinline>` + separate `<audio>`), animate
+   overlays on top, render. (This is how captions/HUD/lower-thirds go onto real footage.)
+4. **Need speech, captions, or a transparent subject?** → asset prep step (transcribe / TTS / bg-removal).
 
-3. **Transcribe** (if there's speech/lyrics):
-   `python3 ../../scripts/transcribe.py assets/<audio_or_video> --model small --out work/transcript.json`
-   - ALWAYS use whisper **small** (base hallucinates; never `*.en` for non-English).
-   - For known non-English audio: add `--lang <code>` (ur, hi, es, fr, ...). Captions stay in that
-     language unless the user says "romanize" or "translate". Default language = English.
+---
 
-4. **Amplitude** (if using music-visualizer bars during instrumental gaps):
-   `python3 ../../scripts/amplitude.py assets/<audio> --out assets/amp.js`
+## A. Motion Graphics (HyperFrames)
 
-5. **Pick a template** from repo `templates/` that matches the job, copy to `index.html`, adapt:
-   - `lyric-video-landscape.html` — music lyric video, 16:9 (YouTube)
-   - `lyric-video-vertical.html` — music lyric video, 9:16 (Shorts/Reels/Pinterest)
-   - `ugc-ad-vertical.html` — talking-head ad: captions + brand logo + callout graphics
-   - `reactive-captions-landscape.html` — overlay HUD/captions on talking-head footage
-   Re-point `@font-face` paths and `assets/` references. Update `data-width/height/duration`.
+HyperFrames is the motion-graphics core. HTML is the source of truth; GSAP animates a paused
+timeline registered as `window.__timelines["<id>"]`; the CLI renders deterministically to MP4.
 
-6. **Lint until clean**: `npx hyperframes lint` → must be `0 errors, 0 warnings`.
+**Don't hand-write from scratch when an example fits.** Scaffold from a built-in example:
+```bash
+cd projects && npx hyperframes init <name> --width W --height H --fps 30 --duration D \
+  --example <example> --non-interactive
+```
+Examples: `blank`, `warm-grain`, `play-mode`, `swiss-grid`, `vignelli`, `decision-tree`,
+`kinetic-type`, `product-promo`, `nyt-graph`. Map intent → example:
+- promo / product launch → `product-promo`
+- kinetic typography / lyric / quote → `kinetic-type`
+- data viz / chart / infographic → `nyt-graph`
+- editorial / grid layout → `swiss-grid` or `vignelli`
+- flowchart / process → `decision-tree`
+- film-grain / warm brand → `warm-grain`
+- start clean → `blank`
 
-7. **Render**: `npx hyperframes render --output renders/<name>.mp4`
+Then read the HyperFrames skill docs as needed: `npx hyperframes docs <topic>`
+(`gsap`, `data-attributes`, `compositions`, `rendering`, `examples`, `troubleshooting`).
+Deeper guidance lives in the installed skills at `~/.agents/skills/` (`hyperframes`,
+`hyperframes-cli`, `hyperframes-media`, `gsap`, `three`, `lottie`, `tailwind`, ...).
 
-8. **Verify**: extract 3 frames with ffmpeg (~5s, mid, a key moment), Read them, confirm
-   captions/graphics look right. Fix and re-render before declaring done.
+**Repo templates** (proven, copy into `index.html` and adapt):
+- `templates/lyric-video-landscape.html` / `lyric-video-vertical.html` — music lyric / caption video
+- `templates/ugc-ad-vertical.html` — talking-head ad: 3-tier captions + brand chip + callouts
+- `templates/reactive-captions-landscape.html` — HUD + captions over real footage
+- `templates/title-card.html` — clean animated title / intro / lower-third starter
 
-9. **Deliverables** depending on ask:
-   - YouTube master: `./scripts/encode-youtube.sh renders/x.mp4 renders/x-youtube.mp4 "TITLE"`
-   - Thumbnail: `./scripts/thumbnail.sh renders/x.mp4 6 renders/x-thumb.jpg`
-   - Reels: render a vertical master, then `./scripts/cut-reels.sh master.mp4 segments.txt renders/reels`
+**Workflow:** scaffold → build end-state layout first (static), then add GSAP entrances/exits →
+`npx hyperframes lint` (must be 0/0) → `npx hyperframes render --output renders/x.mp4` → extract
+frames, Read them, verify, fix.
 
-## NON-NEGOTIABLE rules (learned the hard way — do not relitigate)
+## B. Video Editing (ffmpeg)
 
-- **Whisper model = `small`.** `base` produced wrong lyrics and missed an entire bridge verse.
-- **Pre-render caption HTML into the DOM**, then animate the existing `.w` word spans.
-  NEVER create spans inside `tl.call(...)` then target them — GSAP resolves selector strings at
-  timeline-construction time, finds nothing, and the captions silently never appear.
-- **No `Math.random()` / `Date.now()` / network fetches** in compositions — capture engine is
-  deterministic and seeks to exact frames.
-- **Finite GSAP repeats only.** `repeat: -1` breaks the renderer. Use
-  `repeat: Math.floor(total/cycle) - 1`.
-- **Scope every GSAP selector** with `Q(s) => '[data-composition-id="main"] ' + s`.
-- **Don't set `opacity:0` in CSS on elements you animate with `gsap.from({opacity:0})`** — use
-  `fromTo` when CSS already holds an initial transform.
-- **Local fonts only.** Google Fonts `<link>` fails in sandboxed renders. Use `@font-face` →
-  `assets/fonts/*.ttf` (the repo ships Inter, Poppins, Instrument Serif, JetBrains Mono).
-- **Re-encode source video with dense keyframes before compositing** if the render warns about
-  sparse keyframes: `ffmpeg -i in.mp4 -c:v libx264 -r 30 -g 30 -keyint_min 30 -movflags +faststart -crf 18 -c:a aac out.mp4`
-- **Audio is a separate `<audio data-track-index="0">`**; video must be `muted playsinline`.
+Full recipe book: **`docs/ffmpeg-recipes.md`** (trim, concat, speed, crop, rotate, scale, pad,
+color, overlay/PiP, chroma-key, xfade transitions, burn subtitles, watermark, audio swap, GIF,
+aspect conversion with blurred pad, stabilize). Reach for it for any footage operation.
 
-## Caption style defaults (the house look)
+Common quick refs:
+- Probe: `ffprobe -v error -show_entries stream=codec_type,width,height,r_frame_rate -show_entries format=duration -of default=noprint_wrappers=1 FILE`
+- Lossless trim: `ffmpeg -ss S -to E -i in.mp4 -c copy out.mp4` (re-encode for frame accuracy)
+- Vertical-fill a landscape (blurred pad): see recipe `aspect-fill`.
+- Concatenate clips: `scripts/concat.sh out.mp4 a.mp4 b.mp4 ...`
 
-- Font: **Poppins Bold** for lyrics/social; Inter for UI/data; Instrument Serif italic for editorial.
-- Lyrics: **ALL CAPS**, pure white `#fff`, no shadow unless legibility demands it.
-- Long lines: split into TWO sequential one-line captions (timed from word data); avoid 3-line wraps.
-- Landscape: `white-space: nowrap`, ~78px. Vertical: allow 2-line wrap, ~70px, `width: 920px`.
-- Word reveal: opacity 0→1, y 22→0, scale 0.96→1, blur 6px→0, dur 0.65s, stagger 0.06s, `power3.out`.
-- Word exit: opacity→0, y→-14, blur→4px, dur 0.5s, stagger 0.03s, `power2.in`.
-- Music bars: 7 white pills, shown ONLY in instrumental gaps ≥3s, read `window.__AMP` at 100ms
-  steps with phase offsets `[0,2,4,6,4,2,0]`, `scaleY = 0.12 + min(1,amp)*1.35`.
-- For ads (Fintokei-style): 3-tier hierarchy — tiny brand chip, BIG gradient emphasis word,
-  small white support line. Highlight = vertical gradient `#B8C5FF→#7B91FF→#4A6EFF` with glow.
+## C. Image Editing (ffmpeg / ImageMagick)
 
-## Encoding specs
+Recipes in `docs/ffmpeg-recipes.md` (Image section). For *designed* social graphics / thumbnails
+with text + layout, prefer a **1-frame HyperFrames render** (full CSS/typography control), then
+grab the frame. `scripts/thumbnail.sh` pulls a frame from any video.
 
-- **YouTube (16:9)**: 1920×1080, H.264 High@4.2, yuv420p, 2s GOP, AAC 320k/48k, `+faststart`.
-- **Shorts / Reels / Pinterest (9:16)**: 1080×1920, same codec, AAC 256k, 15–30s clips.
-- Always `-movflags +faststart` so the file streams instantly.
+---
+
+## Asset prep (shared)
+
+| Need | Tool | Command |
+|---|---|---|
+| Speech → captions | Whisper | `python3 scripts/transcribe.py <media> --model small [--lang xx]` |
+| Text → voiceover | Kokoro TTS | `scripts/tts.sh "text or file" af_nova out.wav` |
+| Remove background | u2net | `scripts/remove-bg.sh subject.mp4 out.webm` (transparent) |
+| Music-reactive bars | RMS envelope | `python3 scripts/amplitude.py <audio> --out assets/amp.js` |
+
+Transcription language rule: model **small** (base hallucinates; never `*.en` for non-English).
+Known non-English → `--lang <code>`. Captions stay in source language unless asked to translate/romanize.
+**Default caption language = English.**
+
+---
+
+## NON-NEGOTIABLE rules (hard-won — don't relitigate)
+
+- Whisper model = **small**, not base.
+- **Pre-render caption/animated text into the DOM**, then animate the existing spans. NEVER create
+  elements inside `tl.call()` then target them — GSAP resolves selectors at construction time and
+  finds nothing → elements silently never appear.
+- **No `Math.random()` / `Date.now()` / network fetches** in compositions (deterministic renderer).
+- **Finite GSAP repeats only** — `repeat: -1` breaks rendering. Use `Math.floor(total/cycle)-1`.
+- **Scope every GSAP selector**: `Q = s => '[data-composition-id="main"] ' + s`.
+- **Local fonts only** (`@font-face` → `assets/fonts/*.ttf`; repo ships Inter, Poppins,
+  Instrument Serif, JetBrains Mono). Google Fonts `<link>` fails in sandbox renders.
+- **Source video on a track**: `<video class="clip" muted playsinline>` + separate
+  `<audio data-track-index>`. Re-encode sources with dense keyframes first if render warns:
+  `ffmpeg -i in.mp4 -c:v libx264 -r 30 -g 30 -keyint_min 30 -movflags +faststart -crf 18 -c:a aac out.mp4`
+- **Always verify** by extracting frames and Reading them before declaring done.
+
+## House caption / type style (default look — override on request)
+
+- Lyrics/social captions: **Poppins Bold**, ALL CAPS, pure white, word-by-word blur-clear reveal
+  (in: opacity0→1, y22→0, scale.96→1, blur6→0, .65s, stagger .06, power3.out; out: →0, y-14, blur4,
+  .5s, stagger .03, power2.in). Split long lines into two sequential one-liners.
+- UI/data: Inter. Editorial: Instrument Serif italic. Code/mono: JetBrains Mono.
+- Music bars: 7 white pills, instrumental gaps ≥3s only, read `window.__AMP` @100ms, offsets
+  `[0,2,4,6,4,2,0]`, `scaleY=0.12+min(1,amp)*1.35`.
+
+## Encoding / delivery specs
+
+- **YouTube 16:9**: 1920×1080, H.264 High@4.2, yuv420p, 2s GOP, AAC 320k/48k, `+faststart`
+  → `scripts/encode-youtube.sh in.mp4 out.mp4 "TITLE"`.
+- **Shorts / Reels / TikTok / Pinterest 9:16**: 1080×1920, AAC 256k, 15–30s.
+- **Square (IG feed)**: 1080×1080. **Story**: 1080×1920.
+- **GIF**: see recipe `to-gif`.
+- Cut a vertical master into N reels: `scripts/cut-reels.sh master.mp4 segments.txt out_dir`.
+- Thumbnail/poster: `scripts/thumbnail.sh video.mp4 <ts> out.jpg`.
 
 ## Per-project layout
-
 ```
 projects/<name>/
-  index.html         # the composition
-  assets/            # bg image, audio, amp.js, fonts (or symlink repo fonts)
-  work/              # transcript.json, extracted wavs, verification frames (gitignored)
-  renders/           # output mp4s (gitignored unless small)
+  index.html         # HyperFrames composition (if motion-graphics involved)
+  assets/            # media, amp.js, fonts
+  work/              # transcripts, intermediate files, verification frames (gitignored)
+  renders/           # output mp4/png/gif (gitignored)
 ```
 
-## Prompts library
+## Prompts library (`prompts/`)
+- `edit-video.md` — general "edit this video [do X]".
+- `edit-image.md` — general "edit/convert/compose this image".
+- `motion-graphics.md` — "make a [title card / promo / explainer / data-viz / intro] about X".
+- `captioned-video.md` — add captions/lyrics/graphics onto any video.
+- `lyric-video.md` — image + audio → lyric video + thumbnail + reels.
 
-`prompts/` holds copy-paste prompt templates. The most-used is `prompts/lyric-video.md`
-("here's an image + audio → make a lyric video + thumbnail + 12 reels"). Read it, fill the
-INPUTS, follow it exactly.
-
-## Skills / tooling reference
-
-- HyperFrames skill docs: run `npx hyperframes docs <topic>` (data-attributes, gsap, rendering...).
-- Installed agent skills live under `~/.agents/skills/` after `./scripts/setup.sh`
-  (`hyperframes`, `hyperframes-cli`, `hyperframes-media`, `gsap`, etc.).
-- Helper scripts in `scripts/`: `transcribe.py`, `amplitude.py`, `encode-youtube.sh`,
-  `cut-reels.sh`, `thumbnail.sh`, `setup.sh`.
+Read the relevant one, fill the INPUTS, follow it. If a request blends pillars, combine workflows.

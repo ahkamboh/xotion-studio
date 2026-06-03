@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      /* General-purpose animated title card / intro / lower-third starter.
+         Swap text, colors, fonts. Works at any size (set data-width/height + body/#root dims). */
+      @font-face { font-family: "Inter"; font-weight: 800; src: url("assets/fonts/inter-800.ttf") format("truetype"); }
+      @font-face { font-family: "Inter"; font-weight: 600; src: url("assets/fonts/inter-600.ttf") format("truetype"); }
+      @font-face { font-family: "Instrument Serif"; font-style: italic; src: url("assets/fonts/instrument-italic.ttf") format("truetype"); }
+
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #0a0a0c; font-family: "Inter", sans-serif; }
+      :root { --bg:#0a0a0c; --fg:#f4f1ea; --accent:#d4a574; }
+
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+
+      .orb { position:absolute; border-radius:50%; filter:blur(140px); opacity:.5; }
+      .orb-1 { width:760px;height:760px;top:-160px;right:-160px; background:radial-gradient(circle,var(--accent),transparent 70%); }
+      .orb-2 { width:620px;height:620px;bottom:-140px;left:-140px; background:radial-gradient(circle,rgba(110,130,220,.5),transparent 70%); }
+
+      .wrap { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:28px; text-align:center; padding:0 160px; }
+      .eyebrow { font-weight:600; font-size:26px; letter-spacing:.5em; text-transform:uppercase; color:var(--accent); opacity:0; }
+      .title { font-weight:800; font-size:170px; line-height:.95; letter-spacing:-.04em; color:var(--fg); }
+      .title .w { display:inline-block; opacity:0; }
+      .title em { font-family:"Instrument Serif",serif; font-style:italic; font-weight:400; color:var(--accent); }
+      .sub { font-size:34px; font-weight:600; letter-spacing:.04em; color:rgba(244,241,234,.6); opacity:0; }
+      .rule { width:120px; height:2px; background:var(--accent); transform:scaleX(0); transform-origin:center; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="6" data-width="1920" data-height="1080">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="wrap">
+        <div class="eyebrow" id="eyebrow">Presenting</div>
+        <div class="title" id="title"><em>Your</em> Title</div>
+        <div class="rule" id="rule"></div>
+        <div class="sub" id="sub">A short supporting subtitle goes here</div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const Q = s => '[data-composition-id="main"] ' + s;
+
+      // Split title into word spans (pre-rendered, then animated)
+      const titleEl = document.querySelector(Q("#title"));
+      const html = titleEl.innerHTML;
+      titleEl.innerHTML = html.replace(/(<em>.*?<\/em>|[^\s<]+)/g, m => '<span class="w">' + m + '</span> ');
+
+      const tl = gsap.timeline({ paused: true });
+      // ambient orb breathing (finite)
+      tl.to(Q(".orb-1"), { scale:1.12, duration:3, ease:"sine.inOut", yoyo:true, repeat:1 }, 0);
+      tl.to(Q(".orb-2"), { scale:1.1, duration:3.5, ease:"sine.inOut", yoyo:true, repeat:1 }, 0);
+
+      tl.fromTo(Q("#eyebrow"), { opacity:0, y:-16, letterSpacing:"0.8em" },
+        { opacity:1, y:0, letterSpacing:"0.5em", duration:.9, ease:"expo.out" }, .3);
+      tl.fromTo(Q(".title .w"), { opacity:0, y:40, filter:"blur(8px)" },
+        { opacity:1, y:0, filter:"blur(0px)", duration:.9, stagger:.08, ease:"power3.out" }, .5);
+      tl.fromTo(Q("#rule"), { scaleX:0 }, { scaleX:1, duration:.7, ease:"expo.out" }, 1.2);
+      tl.fromTo(Q("#sub"), { opacity:0, y:16 }, { opacity:1, y:0, duration:.8, ease:"expo.out" }, 1.4);
+
+      // graceful exit (last 0.8s)
+      tl.to(Q(".wrap"), { opacity:0, scale:1.05, duration:.7, ease:"power2.in" }, 5.2);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
