@@ -153,6 +153,8 @@ grab the frame. `scripts/thumbnail.sh` pulls a frame from any video.
 | **Normalize loudness** | ffmpeg loudnorm | `scripts/normalize-audio.sh in out [-14]` (−14 LUFS, streaming std) |
 | **Color grade / LUT look** | ffmpeg | `scripts/grade.sh in out <teal-orange\|warm\|moody\|vintage\|clean\|vibrant\|bw\|cine>` |
 | **Generate music bed** | ffmpeg synth | `scripts/music-bed.sh bed.wav 30 <calm\|warm\|tense\|uplift\|dark>` |
+| **SFX pack** | `sfx/*.wav` | whoosh/riser/impact/click/pop/sub-drop/sparkle — layer as extra `<audio>` tracks on motion hits (regen: `scripts/make-sfx.sh`) |
+| **Mix voice + music** | ffmpeg duck | `scripts/mix-audio.sh vo.wav music.mp3 master.wav` (auto-ducks music under voice, −14 LUFS) |
 | **Auto-pick reel hooks** | energy+keywords | `python3 scripts/find-hooks.py audio segments.json --n 12 --len 18` → segments.txt |
 | **Verify a render (QA)** | frames + inspect | `scripts/verify.sh render.mp4 [ts,ts,...]` or `scripts/verify.sh --inspect <dir>` |
 | **Concatenate clips** | ffmpeg | `scripts/concat.sh out.mp4 a.mp4 b.mp4 ...` |
