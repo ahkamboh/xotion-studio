@@ -14,7 +14,7 @@
     "setup": "bash scripts/setup.sh"
   },
   "dependencies": {
-    "hyperframes": "file:vendor/hyperframes-0.6.70.tgz"
+    "hyperframes": "0.6.70"
   },
   "engines": {
     "node": ">=22"

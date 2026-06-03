@@ -22,10 +22,8 @@ git lfs pull                # pulls the bundled Whisper small model (~460 MB)
                             #   the Whisper model into cache, installs python deps
 ```
 
-After `setup.sh`, **HyperFrames runs locally with no further downloads** — `npx hyperframes`
-resolves to the pinned local copy (v0.6.70) instantly, offline. `node_modules/` is regenerated
-per machine via `npm ci`, so it stays platform-correct (committing 400 MB of native binaries
-would be Mac-arm64-locked and blow the LFS quota — the lockfile is the right way).
+After `setup.sh`, the render engine is installed locally (pinned) and runs offline with no
+further downloads — `npx hyperframes` resolves to the local copy instantly.
 
 > The **Whisper `small` model is bundled** in `models/small.pt` via Git LFS, so transcription
 > works offline immediately and never re-downloads (also avoids the model-hub SHA-corruption issue).
@@ -124,3 +122,14 @@ Node.js ≥ 22, ffmpeg, Python 3.9+ (whisper installs via setup). ImageMagick op
 image ops (`brew install imagemagick`). macOS / Linux (Windows: WSL).
 
 See `CLAUDE.md` for the non-negotiable engineering rules and house style.
+
+## Credits
+
+Xotion is built on top of these open-source projects — thank you to their authors:
+
+- **[HyperFrames](https://github.com/heygen-com/hyperframes)** by HeyGen (Apache-2.0) — HTML→video render engine
+- **[FFmpeg](https://ffmpeg.org)** — video/image/audio processing
+- **[OpenAI Whisper](https://github.com/openai/whisper)** (MIT) — speech-to-text
+- **[GSAP](https://gsap.com)** — animation · **Google Fonts** (OFL) — typography
+
+Full attribution in [THIRD_PARTY.md](THIRD_PARTY.md).
