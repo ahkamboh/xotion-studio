@@ -78,7 +78,18 @@ Then read the HyperFrames skill docs as needed: `npx hyperframes docs <topic>`
 Deeper guidance lives in the installed skills at `~/.agents/skills/` (`hyperframes`,
 `hyperframes-cli`, `hyperframes-media`, `gsap`, `three`, `lottie`, `tailwind`, ...).
 
+**Art direction (do this FIRST — `presets/styles.md`):** before building any motion graphic, choose
+the visual style. Read the prompt's signals — industry, mood, audience, platform — and pick one of
+the 12 named styles (Luxe Noir, Bold Pop, Clean Corporate, Warm Editorial, Neon Cyber, Soft Pastel,
+Cinematic, Minimal Mono, Playful, Organic Nature, Tech Gradient, Brutalist Bold). Each bundles a
+complete look: **palette + font pairing + layout + motion personality + default ratio**, with a
+ready `:root` token block. A `brand.json` overrides palette/fonts. Pick the **aspect ratio** from the
+platform (16:9 YouTube · 9:16 Shorts/Reels/TikTok · 4:5 or 1:1 IG). Then state the chosen style in
+your reply so the user can redirect in one word. This makes color/font/layout/motion a deliberate
+system, not a per-element guess.
+
 **Presets (pick by the user's prompt — this is how you get pro output fast):**
+- `presets/styles.md` — **12 complete visual styles** (the art-direction system above). Start here.
 - `presets/video-presets.md` — 9 named video formats (narrated explainer, promo/hype, music
   visualizer, lyric, kinetic typography, product showcase, data/infographic, logo sting, slideshow),
   each with its **audio mode** (NARRATED voice+music · MUSIC-ONLY reactive · MIXED · SILENT), scene
