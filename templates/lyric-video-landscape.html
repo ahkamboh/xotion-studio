@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="assets/amp.js"></script>
+    <style>
+      @font-face {
+        font-family: "Poppins";
+        font-style: normal;
+        font-weight: 700;
+        src: url("assets/fonts/poppins-700.ttf") format("truetype");
+      }
+
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        width: 1920px; height: 1080px;
+        overflow: hidden;
+        background: #000;
+        font-family: "Poppins", sans-serif;
+      }
+
+      #root {
+        position: relative;
+        width: 1920px; height: 1080px;
+        overflow: hidden;
+        background: #000;
+      }
+
+      .bg {
+        position: absolute;
+        inset: 0;
+        width: 1920px;
+        height: 1080px;
+        object-fit: cover;
+        z-index: 1;
+        will-change: transform;
+      }
+
+      .veil {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        pointer-events: none;
+        background:
+          radial-gradient(ellipse 70% 50% at 50% 55%, rgba(0,0,0,0.30), transparent 70%);
+        opacity: 0;
+      }
+
+      .song-name {
+        position: absolute;
+        top: 70px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10;
+        font-family: "Poppins", sans-serif;
+        font-weight: 700;
+        font-size: 28px;
+        letter-spacing: 0.6em;
+        color: #ffffff;
+        opacity: 0;
+      }
+
+      /* Lyric — bigger, all caps, one line */
+      .lyric-stage {
+        position: absolute;
+        inset: 0;
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 80px;
+        pointer-events: none;
+      }
+      .ll {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        font-family: "Poppins", sans-serif;
+        font-weight: 700;
+        font-size: 78px;
+        line-height: 1.05;
+        letter-spacing: -0.01em;
+        text-transform: uppercase;
+        color: #ffffff;
+        opacity: 1;
+        visibility: hidden;
+        white-space: nowrap;
+        will-change: opacity;
+      }
+      .ll .w {
+        display: inline-block;
+        margin: 0 7px;
+        opacity: 0;
+        transform: translateY(22px) scale(0.96);
+        filter: blur(6px);
+        will-change: opacity, transform, filter;
+      }
+
+      /* ============ MUSIC VISUALIZER BARS ============ */
+      .bars {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        height: 160px;
+        z-index: 19;
+        opacity: 0;
+        will-change: opacity;
+      }
+      .bar {
+        width: 16px;
+        background: #ffffff;
+        border-radius: 10px;
+        transform-origin: center center;
+        transform: scaleY(0.12);
+        height: 100%;
+        will-change: transform;
+        box-shadow: 0 0 18px rgba(255,255,255,0.35);
+      }
+
+      .progress {
+        position: absolute;
+        bottom: 0; left: 0;
+        height: 2px; width: 100%;
+        background: rgba(255, 255, 255, 0.10);
+        z-index: 30;
+      }
+      .progress-fill {
+        height: 100%;
+        background: rgba(255, 255, 255, 0.85);
+        transform-origin: left center;
+        transform: scaleX(0);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="188"
+      data-width="1920"
+      data-height="1080"
+    >
+      <img class="bg" src="assets/bg.png" alt="" />
+      <div class="veil"></div>
+
+      <audio
+        id="song"
+        data-start="0"
+        data-duration="188"
+        data-track-index="0"
+        src="assets/echo.mp3"
+        data-volume="1"
+      ></audio>
+
+      <div class="song-name">E · C · H · O</div>
+
+      <!-- Music visualizer bars (shown only during instrumental gaps) -->
+      <div class="bars" id="bars">
+        <div class="bar" data-bi="0"></div>
+        <div class="bar" data-bi="1"></div>
+        <div class="bar" data-bi="2"></div>
+        <div class="bar" data-bi="3"></div>
+        <div class="bar" data-bi="4"></div>
+        <div class="bar" data-bi="5"></div>
+        <div class="bar" data-bi="6"></div>
+      </div>
+
+      <div class="lyric-stage" id="stage"></div>
+
+      <div class="progress">
+        <div class="progress-fill"></div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const Q = (s) => '[data-composition-id="main"] ' + s;
+      const TOTAL = 188;
+
+      // ============ LYRICS — re-transcribed with whisper small + cleaned ============
+      // [text, start, end]   Long lyrics split into two sequential one-liners.
+      const lyrics = [
+        ["In the quiet of the night", 0.4, 5.4],
+        ["I still call your name", 5.4, 11.5],
+
+        ["In the quiet of the night", 15.0, 17.5],
+        ["I still call your name", 17.5, 20.85],
+
+        ["Every shadow on the wall", 20.85, 24.0],
+        ["Whispers you the same", 24.0, 27.25],
+
+        ["I've been holding on to smoke", 27.25, 30.4],
+        ["Trying to keep you near", 30.4, 33.7],
+
+        ["But the echo of your love", 34.25, 37.5],
+        ["Is the only thing I hear", 37.5, 40.6],
+
+        ["Candlelight and empty rooms", 40.6, 43.6],
+        ["Your perfume still in the air", 43.6, 47.0],
+
+        ["I traced the silence where you stood", 47.0, 50.4],
+        ["Pretending you're still there", 50.4, 53.6],
+
+        ["Every letter that I wrote", 53.6, 56.5],
+        ["Burns slowly in my chest", 56.5, 59.2],
+
+        ["You were the prayer I never finished", 59.2, 63.2],
+        ["The peace I never confessed", 63.2, 70.0],
+
+        ["In the quiet of the night", 70.6, 71.95],
+        ["I still call your name", 71.95, 73.3],
+
+        ["Every shadow on the wall", 73.3, 76.8],
+        ["Whispers you the same", 76.8, 80.3],
+
+        ["3 AM, the city sleeps", 81.9, 83.2],
+        ["But I'm wide awake", 83.2, 84.5],
+
+        ["Replaying every word", 84.5, 86.0],
+        ["Every promise you couldn't make", 86.0, 87.85],
+
+        ["Built the whole religion", 87.85, 89.5],
+        ["Out of one look you gave", 89.5, 91.15],
+
+        ["Now I'm praying to a memory", 91.15, 92.8],
+        ["Digging my own grave", 92.8, 94.4],
+
+        ["They say time heals", 94.4, 95.8],
+        ["But the clock just mocks me slow", 95.8, 97.3],
+
+        ["Every ticking reminder", 97.3, 99.0],
+        ["Of the love I let go", 99.0, 100.6],
+
+        ["A poet with no muse", 100.6, 102.3],
+        ["Just depending on the pain", 102.3, 104.0],
+
+        ["Writing verses to a ghost", 104.0, 105.5],
+        ["Calling out your name", 105.5, 107.1],
+
+        ["I still call your name", 108.8, 113.5],
+        ["But the echo of your love", 113.5, 116.5],
+        ["Is the only thing I hear", 116.5, 119.6],
+
+        // 119.6 → 132 instrumental → bars show
+        ["If devotion were a crime", 132.0, 135.5],
+        ["I confess it every time", 135.5, 139.3],
+        ["The verse I can't complete", 139.3, 142.2],
+        ["The rhythm out of time", 142.9, 145.7],
+        ["In the quiet of the night", 145.7, 149.0],
+        ["I still call your name", 149.9, 152.4],
+        ["The echo of your love", 152.9, 155.8],
+        ["Is the only thing I hear", 155.8, 158.7],
+        // 158.7 → 188 outro → bars show
+      ];
+
+      // Instrumental windows where bars visualizer plays
+      const barWindows = [
+        [11.6, 14.7],    // between first chorus iterations
+        [120.0, 131.8],  // pre-bridge instrumental
+        [159.5, 187.5],  // outro
+      ];
+
+      // ============ PRE-RENDER lyric lines into DOM ============
+      const stage = document.querySelector(Q("#stage"));
+      lyrics.forEach((row, i) => {
+        const text = row[0];
+        const div = document.createElement("div");
+        div.className = "ll";
+        div.dataset.idx = i;
+        div.innerHTML = text.split(" ")
+          .map(w => '<span class="w">' + w + '</span>').join(" ");
+        stage.appendChild(div);
+      });
+
+      // ============ TIMELINE ============
+      const tl = gsap.timeline({ paused: true });
+
+      // Ken Burns
+      tl.fromTo(Q(".bg"),
+        { scale: 1.0 },
+        { scale: 1.18, duration: TOTAL, ease: "none" }, 0);
+
+      tl.fromTo(Q(".veil"),
+        { opacity: 0 },
+        { opacity: 1, duration: 2.5, ease: "power2.out" }, 0);
+
+      tl.fromTo(Q(".song-name"),
+        { opacity: 0, letterSpacing: "0.9em", y: -10 },
+        { opacity: 1, letterSpacing: "0.6em", y: 0, duration: 1.6, ease: "expo.out" }, 0.4);
+
+      tl.fromTo(Q(".progress-fill"),
+        { scaleX: 0 },
+        { scaleX: 1, duration: TOTAL, ease: "none" }, 0);
+
+      // Animate each pre-rendered lyric line
+      lyrics.forEach(([_t, start, end], i) => {
+        const lineSel = Q('.ll[data-idx="' + i + '"]');
+        const wordsSel = lineSel + " .w";
+        tl.set(lineSel, { visibility: "visible" }, start - 0.1);
+        tl.to(wordsSel, {
+          opacity: 1, y: 0, scale: 1, filter: "blur(0px)",
+          duration: 0.65, stagger: 0.06, ease: "power3.out"
+        }, start);
+        tl.to(wordsSel, {
+          opacity: 0, y: -14, filter: "blur(4px)",
+          duration: 0.5, stagger: 0.03, ease: "power2.in"
+        }, end - 0.55);
+        tl.set(lineSel, { visibility: "hidden" }, end);
+      });
+
+      // ============ AUDIO-REACTIVE BARS ============
+      // window.__AMP is loaded from assets/amp.js (1879 RMS samples @ 10Hz)
+      const AMP = window.__AMP || [];
+      // Bar phase offsets in 100ms units — creates a wave/breathing pattern
+      const OFFSETS = [0, 2, 4, 6, 4, 2, 0];
+
+      barWindows.forEach(([start, end]) => {
+        // Show bars container
+        tl.fromTo(Q(".bars"),
+          { opacity: 0, scale: 0.9 },
+          { opacity: 1, scale: 1, duration: 0.6, ease: "expo.out" }, start - 0.3);
+
+        // Animate each bar reading from AMP with phase offset
+        for (let b = 0; b < 7; b++) {
+          const barSel = Q('.bar[data-bi="' + b + '"]');
+          const offset = OFFSETS[b];
+
+          // Reset before window
+          tl.set(barSel, { scaleY: 0.12 }, start - 0.05);
+
+          // Walk in 100ms steps reading amplitude
+          for (let t = start; t < end; t += 0.1) {
+            const idx = Math.min(AMP.length - 1, Math.floor(t * 10) + offset);
+            const val = AMP[idx] || 0;
+            const sy = 0.12 + Math.min(1, val) * 1.35;  // map amp 0..1 → 0.12..1.47
+            tl.to(barSel, { scaleY: sy, duration: 0.1, ease: "none" }, t);
+          }
+        }
+
+        // Hide bars at window end
+        tl.to(Q(".bars"),
+          { opacity: 0, scale: 0.92, duration: 0.6, ease: "power2.in" }, end - 0.6);
+      });
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
