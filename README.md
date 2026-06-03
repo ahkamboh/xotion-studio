@@ -63,7 +63,6 @@ prompts/                  # copy-paste job prompts
 docs/                     # ffmpeg-recipes, caption-styles, FONTS, encoding-cheatsheet
 assets/fonts/             # ~73-family design library (.ttf, local)
 models/small.pt           # bundled Whisper model (Git LFS) — offline transcription
-.github/workflows/        # render.yml — optional cloud render on push
 projects/                 # one folder per job (renders/work gitignored)
 ```
 
@@ -110,7 +109,7 @@ auto-ducked mix → motion-graphics render → QA. Reproduce or restyle by chang
 - **Auto reels**: hook detection scores the best segments for Shorts
 - **Brand kits**: `brand.json` auto-applies colors/fonts/logo
 - **QA**: `verify.sh` frame-extraction + HyperFrames visual inspect
-- **Thumbnails** & **Lottie** icon animations · **cloud render** via GitHub Actions
+- **Thumbnails** & **Lottie** icon animations · **SFX pack** (whoosh/riser/impact/…)
 
 ## Requirements
 
