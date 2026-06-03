@@ -110,8 +110,11 @@ Known non-English → `--lang <code>`. Captions stay in source language unless a
 - **No `Math.random()` / `Date.now()` / network fetches** in compositions (deterministic renderer).
 - **Finite GSAP repeats only** — `repeat: -1` breaks rendering. Use `Math.floor(total/cycle)-1`.
 - **Scope every GSAP selector**: `Q = s => '[data-composition-id="main"] ' + s`.
-- **Local fonts only** (`@font-face` → `assets/fonts/*.ttf`; repo ships Inter, Poppins,
-  Instrument Serif, JetBrains Mono). Google Fonts `<link>` fails in sandbox renders.
+- **Local fonts only** (`@font-face` → `assets/fonts/*.ttf`). Google Fonts `<link>` fails in
+  sandbox renders. The repo ships a **~73-family design library** (`assets/fonts/`, named
+  `<slug>-<weight>.ttf`) — see **`docs/FONTS.md`** for the catalog, "pick by job" table, and
+  pairing cheat sheet. Choose fonts that fit the brief; don't default to Inter every time.
+  Top up the library anytime with `python3 scripts/download-fonts.py`.
 - **Source video on a track**: `<video class="clip" muted playsinline>` + separate
   `<audio data-track-index>`. Re-encode sources with dense keyframes first if render warns:
   `ffmpeg -i in.mp4 -c:v libx264 -r 30 -g 30 -keyint_min 30 -movflags +faststart -crf 18 -c:a aac out.mp4`
