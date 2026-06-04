@@ -149,6 +149,27 @@ ffmpeg -i assets/source.mp4 -i assets/master.wav -map 0:v -map 1:a -c:v copy -c:
 
 This shows the engine works on **footage you already made** — not just videos it builds from scratch.
 
+## Worked example 3 — male-voice narrated data video ✅
+
+A 32s vertical editorial piece, *"The Musk multiplier"* — six companies, one operator — with a
+**male AI voice** (`am_onyx`, deep/cinematic) over a dark music bed. Source:
+`projects/musk-multiplier/`. ▶️ **Full video (with audio):**
+[`projects/musk-multiplier/renders/musk-multiplier.mp4`](projects/musk-multiplier/renders/musk-multiplier.mp4)
+
+![Musk multiplier preview](docs/musk-multiplier.gif)
+
+*Silent GIF preview — download the MP4 for the male voiceover + music.*
+
+**What it is:** a "Field Notes" editorial study (dark `#1a120c`, Instrument Serif + JetBrains Mono)
+across 6 data scenes — **The Musk multiplier → Tesla $1.1T → SpaceX 134 launches → X −23% →
+$1.7T combined → "Love him or not, he runs more than you."** A **male voice** narrates each scene,
+timed to the animation, over a dark bed that ducks under the voice. Rebuilt natively in the engine
+from a source spec, with proper renderable TTS (male `am_onyx`).
+
+Together the three examples show the full range: **build from a prompt** (female voice, ex.1) ·
+**add voice to existing footage** (female, ex.2) · **rebuild a spec into a narrated data video**
+(male, ex.3) — every audio mode, both voices, all offline.
+
 ## Capabilities at a glance
 
 - **Transcribe** (offline, bundled model) · **TTS voiceover** · **subtitles** (.srt/.vtt) ·
