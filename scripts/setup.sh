@@ -60,3 +60,9 @@ echo ""
 echo "== done =="
 echo "Next: open Claude Code in this folder and paste a prompt from prompts/."
 echo "Or run:  ./new-project.sh my-video"
+
+# 5. (optional) whisperX for frame-accurate caption alignment — needs Python 3.12.
+#    Far better lyric/caption sync than small.pt. One-time:
+#      brew install python@3.12
+#      python3.12 -m venv .venv-whisperx && ./.venv-whisperx/bin/pip install whisperx
+#    Then align with:  ./.venv-whisperx/bin/python scripts/align.py <audio> --out work/transcript.json

@@ -28,3 +28,6 @@ __pycache__/
 
 # SFX pack (small, reusable engine assets)
 !sfx/**
+
+# whisperX venv (1.3GB, recreated via setup)
+.venv-whisperx/
