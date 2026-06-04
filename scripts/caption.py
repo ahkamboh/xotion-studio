@@ -40,12 +40,14 @@ WHISPERX_LANGS = {"ar","ca","cs","da","de","el","en","es","eu","fa","fi","fr","g
 def repo_root():
     return os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-def get_words(media, lang):
+def get_words(media, lang, aligner="auto"):
     """Return [{text,start,end}] using whisperX if possible, else small.pt."""
     root = repo_root(); tmp = "work/_caption_words.json"
     os.makedirs("work", exist_ok=True)
     venv = os.path.join(root, ".venv-whisperx/bin/python")
-    if lang in WHISPERX_LANGS and os.path.exists(venv):
+    use_wx = (aligner=="whisperx") or (aligner=="auto" and lang in WHISPERX_LANGS and os.path.exists(venv))
+    if aligner=="small": use_wx=False
+    if use_wx and lang in WHISPERX_LANGS and os.path.exists(venv):
         sys.stderr.write(f"[caption] aligning with whisperX ({lang})...\n")
         r = subprocess.run([venv, os.path.join(root,"scripts/align.py"), media,
                             "--lang", lang, "--out", tmp], capture_output=True, text=True)
@@ -153,9 +155,12 @@ def main():
     ap.add_argument("--color", default="#ffffff")
     ap.add_argument("--size", type=int, default=None)
     ap.add_argument("--maxchars", type=int, default=42)
+    ap.add_argument("--aligner", choices=["auto","whisperx","small"], default="small",
+                    help="small = Whisper small.pt (best for SUNG/music, matches perceived timing); "
+                         "whisperx = forced alignment (best for SPEECH); auto = whisperx if available")
     ap.add_argument("--out", default=".")
     a=ap.parse_args()
-    words=get_words(a.input, a.lang)
+    words=get_words(a.input, a.lang, a.aligner)
     ev=build_events(words, a.style, a.maxchars)
     emit(ev, a)
 
