@@ -172,9 +172,12 @@ grab the frame. `scripts/thumbnail.sh` pulls a frame from any video.
 | **Thumbnail (designed)** | template | render `templates/thumbnail.html` → grab frame 1 |
 | **Animated icons** | Lottie | `templates/lottie-overlay.html` + a `.json` from lottiefiles.com |
 
-**Captions — ALWAYS use the caption agent `scripts/caption.py`.** It is the canonical, tested path
-and bakes in every sync rule (whisperX forced alignment for 41 langs → exact onsets, small.pt
-fallback; no lead/lag; continuous display; collapses repeated words; z-index above the video).
+**Captions — ALWAYS use the caption agent `scripts/caption.py`.** It is the canonical, tested path.
+**Pass `--content`** (this is proven by side-by-side testing, do not second-guess it):
+- **`--content music`** (songs/singing) → uses **small.pt** — perfect *perceived* timing on sung vocals.
+- **`--content speech`** (talking/UGC/explainer/narration) → uses **whisperX** — far tighter on speech.
+The agent also handles: no lead/lag, continuous display, collapses repeated words, z-index above video,
+41-language whisperX + small.pt fallback.
 Do NOT hand-roll caption timing or re-introduce a lead offset — that's what caused repeated
 sync bugs. One command:
 `python3 scripts/caption.py MEDIA --lang xx --style word|line --out projects/<name>` → writes
