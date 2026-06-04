@@ -9,13 +9,14 @@ Add captions to my video/audio with the caption agent (scripts/caption.py).
 
 INPUTS:
 - MEDIA = "<audio or video path>"
-- LANG  = "en"        (en, ur, hi, es, fr, ar, zh, ... — REQUIRED for non-English)
+- LANG    = "en"      (en, ur, hi, es, fr, ar, zh, ... — REQUIRED for non-English)
+- CONTENT = "music"   (music/singing -> small.pt; speech/talking -> whisperX) — PROVEN, always set this
 - STYLE = "word"      (word = single centered word / IShowSpeed; line = phrase lines)
 - LOOK  = ""          (font, color, size, transition: none|pop|fade — optional)
 
 DO:
 1. Run the agent (it auto-uses whisperX for accuracy, small.pt fallback):
-   python3 scripts/caption.py MEDIA --lang LANG --style STYLE \
+   python3 scripts/caption.py MEDIA --lang LANG --content CONTENT --style STYLE \
      [--pos center|bottom] [--transition none|pop|fade] \
      [--font Poppins --font-file assets/fonts/poppins-700.ttf --color "#ffffff" --size 108] \
      --out projects/<name>

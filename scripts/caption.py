@@ -17,6 +17,9 @@ Usage:
   python3 scripts/caption.py <audio_or_video> --lang en [options]
 
 Options:
+  --content music|speech  CONTENT TYPE (picks the aligner automatically):
+                          music/singing -> small.pt (perfect perceived timing)
+                          speech/talking -> whisperX (far better, forced alignment)
   --lang CODE        language (en, ur, hi, es, fr, ar, zh, ...) — REQUIRED for non-English accuracy
   --style word|line  word = single centered word (IShowSpeed); line = phrase lines (default word)
   --pos center|bottom   caption position (default center for word, bottom for line)
@@ -40,13 +43,18 @@ WHISPERX_LANGS = {"ar","ca","cs","da","de","el","en","es","eu","fa","fi","fr","g
 def repo_root():
     return os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-def get_words(media, lang, aligner="auto"):
+def get_words(media, lang, aligner="auto", content="music"):
     """Return [{text,start,end}] using whisperX if possible, else small.pt."""
     root = repo_root(); tmp = "work/_caption_words.json"
     os.makedirs("work", exist_ok=True)
     venv = os.path.join(root, ".venv-whisperx/bin/python")
-    use_wx = (aligner=="whisperx") or (aligner=="auto" and lang in WHISPERX_LANGS and os.path.exists(venv))
-    if aligner=="small": use_wx=False
+    # CONTENT RULE (proven by testing): speech/talking -> whisperX (far better),
+    #                                     music/singing  -> small.pt (perceived timing).
+    if aligner=="auto":
+        want_wx = (content=="speech")
+    else:
+        want_wx = (aligner=="whisperx")
+    use_wx = want_wx and lang in WHISPERX_LANGS and os.path.exists(venv)
     if use_wx and lang in WHISPERX_LANGS and os.path.exists(venv):
         sys.stderr.write(f"[caption] aligning with whisperX ({lang})...\n")
         r = subprocess.run([venv, os.path.join(root,"scripts/align.py"), media,
@@ -155,12 +163,14 @@ def main():
     ap.add_argument("--color", default="#ffffff")
     ap.add_argument("--size", type=int, default=None)
     ap.add_argument("--maxchars", type=int, default=42)
-    ap.add_argument("--aligner", choices=["auto","whisperx","small"], default="small",
-                    help="small = Whisper small.pt (best for SUNG/music, matches perceived timing); "
-                         "whisperx = forced alignment (best for SPEECH); auto = whisperx if available")
+    ap.add_argument("--content", choices=["music","speech"], default="music",
+                    help="music/singing -> small.pt (perceived timing); speech/talking -> whisperX (forced align). "
+                         "PROVEN: whisperX is far better for speech, small.pt perfect for music.")
+    ap.add_argument("--aligner", choices=["auto","whisperx","small"], default="auto",
+                    help="auto = pick from --content (recommended); or force whisperx/small")
     ap.add_argument("--out", default=".")
     a=ap.parse_args()
-    words=get_words(a.input, a.lang, a.aligner)
+    words=get_words(a.input, a.lang, a.aligner, a.content)
     ev=build_events(words, a.style, a.maxchars)
     emit(ev, a)
 
