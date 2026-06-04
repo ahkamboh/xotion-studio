@@ -172,8 +172,15 @@ grab the frame. `scripts/thumbnail.sh` pulls a frame from any video.
 | **Thumbnail (designed)** | template | render `templates/thumbnail.html` → grab frame 1 |
 | **Animated icons** | Lottie | `templates/lottie-overlay.html` + a `.json` from lottiefiles.com |
 
-**Caption styles:** `docs/caption-styles.md` has 6 drop-in looks (house, karaoke, bold punch-in,
-typewriter, slide-up mask, word-pop). Pick to match the brief.
+**Captions — ALWAYS use the caption agent `scripts/caption.py`.** It is the canonical, tested path
+and bakes in every sync rule (whisperX forced alignment for 41 langs → exact onsets, small.pt
+fallback; no lead/lag; continuous display; collapses repeated words; z-index above the video).
+Do NOT hand-roll caption timing or re-introduce a lead offset — that's what caused repeated
+sync bugs. One command:
+`python3 scripts/caption.py MEDIA --lang xx --style word|line --out projects/<name>` → writes
+`captions.js`; in the composition add `<script src="captions.js"></script>` then
+`window.mountCaptions(tl, {suppress:[[a,b]]})`. See `prompts/captions.md`. For visual *looks*
+beyond the agent's defaults, `docs/caption-styles.md` has 6 styles.
 
 **Brand kits:** if a `brand.json` (or `brands/<name>.json`, see `brand.example.json`) exists, READ
 it first and apply its colors/fonts/logo/tone to every composition for that client.
