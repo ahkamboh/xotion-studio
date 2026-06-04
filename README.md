@@ -115,6 +115,40 @@ scenes visually verified.
 This confirms the pipeline works: art-direction style → TTS → transcription → music bed →
 auto-ducked mix → motion-graphics render → QA. Reproduce or restyle by changing the prompt.
 
+## Worked example 2 — add a female voiceover to an existing video ✅
+
+Take a finished motion-graphics video that has **only music**, and add a **female AI narration**
+on top — music auto-ducks under the voice. Source: `projects/ai-cost-explainer/`.
+▶️ **Full video (with audio):**
+[`projects/ai-cost-explainer/renders/final.mp4`](projects/ai-cost-explainer/renders/final.mp4)
+
+![AI cost explainer preview](docs/ai-cost-explainer.gif)
+
+*Silent GIF preview — download the MP4 for the female voiceover + music.*
+
+**What it is:** a 15s vertical (1080×1920) editorial piece, *"The real cost of scaling an AI"*
+(Grok $300M/qtr, Cursor 1,000× token spend, AIBridge cutting 112 features). It already had a
+music track but no narration. The engine added a **female voice** (`af_nova`) that reads:
+*"The real cost of scaling AI? Brutal. Grok burns three hundred million a quarter. Cursor's token
+spend jumped a thousand times. AIBridge cut a hundred features down to a few. The lesson from all
+three: pick fewer, and use them deeper."* — timed to start after the title, with the original
+music **ducked underneath**.
+
+```bash
+# 1. female voiceover from a script
+scripts/tts.sh work/script.txt af_nova work/vo.wav
+# 2. keep the video's existing music, delay the voice to start after the title
+ffmpeg -i assets/source.mp4 -vn work/music.wav
+ffmpeg -i work/vo.wav -af "adelay=800|800,apad=whole_dur=15" work/vo-timed.wav
+# 3. mix voice over the ducked music (-14 LUFS)
+scripts/mix-audio.sh work/vo-timed.wav work/music.wav assets/master.wav 0.6
+# 4. mux the new audio back onto the original video (no re-encode of video)
+ffmpeg -i assets/source.mp4 -i assets/master.wav -map 0:v -map 1:a -c:v copy -c:a aac \
+  -movflags +faststart -shortest renders/final.mp4
+```
+
+This shows the engine works on **footage you already made** — not just videos it builds from scratch.
+
 ## Capabilities at a glance
 
 - **Transcribe** (offline, bundled model) · **TTS voiceover** · **subtitles** (.srt/.vtt) ·
