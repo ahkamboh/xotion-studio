@@ -79,7 +79,7 @@ Type a `:name` in your prompt and the engine runs that workflow. Rules:
 | `:batch` | run an op over many files (`scripts/batch.sh`) |
 | `:preview` | live hot-reload preview before render |
 | `:qa` | run the QA acceptance loop |
-| `:help` | list commands |
+| `:help` | print this list (`scripts/help.sh [group]`) |
 
 ## ⚡ Combos (one word → full pipeline)
 | cmd | runs |
@@ -87,6 +87,10 @@ Type a `:name` in your prompt and the engine runs that workflow. Rules:
 | `:short` | `:auto` → `:caption :hormozi` → `:reel` → `:enrich` (talking clip → finished Short) |
 | `:ship` | make → `:caption` → `:enrich` → `:thumb` → `:yt` (build + finish + export) |
 | `:rich` | `:fx` (or named overlay) → `:enrich` (plain clip → graphically rich) |
+| `:ad` | hook trim → `:caption :hormozi` → CTA overlay (`docs/overlays.md`) → `:enrich` (UGC/product ad) |
+| `:teaser` | `:title` → `:atmos` → `:bed=dark` → `:enrich=cine` (cinematic teaser) |
+| `:drop` | `:app` → `:glass` → `:bed=uplift` → `:enrich` (product launch) |
+| `:quote` | `:cards` from a quotes CSV/JSON (quote / stat videos) |
 
 ---
 
@@ -98,5 +102,8 @@ Type a `:name` in your prompt and the engine runs that workflow. Rules:
 :rich :aurora @plain.mp4                 → aurora overlay + premium finish
 :cards @rows.csv                         → one card template → a video per row
 :narrate :voice=female :bed=uplift       → female-narrated explainer over an uplifting bed
+:ad @demo.mp4                            → UGC ad: hook + Hormozi caps + CTA + premium finish
+:teaser @logo.png "Launching soon"       → cinematic teaser (title + atmosphere + dark bed)
 ```
+Run `scripts/help.sh` (or just `:help`) to print this list in the terminal; `:help combo` for one group.
 Default behavior is unchanged — you can still write a normal sentence. Commands are just faster.
