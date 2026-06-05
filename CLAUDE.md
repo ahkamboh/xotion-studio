@@ -8,6 +8,14 @@ The agent already knows the full toolkit from this file — the user should NOT 
 Infer intent, pick sensible defaults, produce the result, verify with frames, iterate. Ask only
 when genuinely blocked (a real decision only the user can make).
 
+## Command shorthand (`:` tokens) — READ `COMMANDS.md`
+The user may drive the engine with short `:name` commands instead of full sentences. When a prompt
+contains `:tokens`, look them up in **`COMMANDS.md`** and run those workflows **in order**, using
+any `@file`/path as the input. `=` passes a value (`:style=noir`, `:voice=female`, `:lang=ur`).
+Combos (`:short`, `:ship`, `:rich`) expand to full pipelines — see the table. Unknown token →
+pick the closest match and confirm. A normal sentence still works; commands are just a faster alias
+for the same toolkit below. (`:` is used because `/ @ #` are reserved by Claude Code.)
+
 ---
 
 ## The three pillars
