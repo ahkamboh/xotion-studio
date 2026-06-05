@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Xotion icon">
+  <rect width="512" height="512" rx="118" fill="#0e0d0c"></rect>
+  <circle cx="256" cy="256" r="154" fill="none" stroke="#e0451f" stroke-width="30"></circle>
+  <polygon points="213,180 213,332 343,256" fill="#e0451f"></polygon>
+</svg>
