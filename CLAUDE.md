@@ -115,7 +115,7 @@ first; only hand-build when nothing fits.
   structure, and which template/example to use. Start here for any motion-graphics request.
 - `presets/motion-presets.md` — After-Effects-style GSAP animation presets (entrances, emphasis,
   exits, scene transitions, background motion). Pick one per element.
-- `docs/caption-styles.md` — 6 caption looks. `docs/voices.md` — male/female TTS voice catalog.
+- `docs/caption-styles.md` — 7 caption looks (incl. active-word karaoke pill). `docs/voices.md` — TTS voices.
 
 **Audio modes — wire these per the chosen preset:**
 - **Narrated (voice + music):** `tts.sh script.txt <voice> vo.wav` (voice from `docs/voices.md`) →
@@ -205,10 +205,14 @@ The agent also handles: no lead/lag, continuous display, collapses repeated word
 41-language whisperX + small.pt fallback.
 Do NOT hand-roll caption timing or re-introduce a lead offset — that's what caused repeated
 sync bugs. One command:
-`python3 scripts/caption.py MEDIA --lang xx --style word|line --out projects/<name>` → writes
+`python3 scripts/caption.py MEDIA --lang xx --style word|line|karaoke --out projects/<name>` → writes
 `captions.js`; in the composition add `<script src="captions.js"></script>` then
 `window.mountCaptions(tl, {suppress:[[a,b]]})`. See `prompts/captions.md`. For visual *looks*
 beyond the agent's defaults, `docs/caption-styles.md` has 6 styles.
+- **`--style karaoke`** = paginated lines with the ACTIVE word highlighted as spoken (Submagic/
+  Hormozi/TikTok). `--box "#3fa9ff"` draws a rounded pill that **springs word-to-word** (the
+  "animated background" look); without `--box`, the active word recolors to `--hl` + scales
+  (colored/scaling words). `--maxwords N` per line. Best for short-form speech (`--content speech`).
 
 **Brand kits:** if a `brand.json` (or `brands/<name>.json`, see `brand.example.json`) exists, READ
 it first and apply its colors/fonts/logo/tone to every composition for that client.

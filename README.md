@@ -174,7 +174,8 @@ Together the three examples show the full range: **build from a prompt** (female
 
 - **Transcribe** (offline, bundled model) · **TTS voiceover** · **subtitles** (.srt/.vtt) ·
   **offline translation** to any language
-- **Caption styles**: 6 looks (house, karaoke, bold punch-in, typewriter, slide-up, word-pop)
+- **Caption styles**: 7 looks (house, karaoke highlight, bold punch-in, typewriter, slide-up, word-pop,
+  **active-word karaoke pill** — Submagic/Hormozi style, built into `caption.py --style karaoke --box`)
 - **Color grades**: teal-orange, warm, moody, vintage, clean, vibrant, b&w, cine
 - **Audio**: loudness normalize (−14 LUFS), generate ambient music beds, mix/duck
 - **Auto reels**: hook detection scores the best segments for Shorts

@@ -59,10 +59,26 @@ tl.from(words,{scale:0,opacity:0,duration:.4,stagger:.07,ease:"back.out(2)"},sta
 tl.to(words,{scale:0,opacity:0,duration:.25,stagger:.03,ease:"back.in(1.6)"},end-.3);
 ```
 
+## 7. Active-word karaoke — Submagic / Hormozi / TikTok  *(short-form speech)*  — BUILT IN
+Don't hand-roll this — `caption.py` generates it directly (paginated lines, active word lit as
+spoken, using real word-level timing). Covers all three Remotion "Animated Captions" looks:
+```bash
+# springy rounded PILL that jumps word-to-word (the "animated background" look):
+python3 scripts/caption.py vo.wav --lang en --content speech --style karaoke \
+  --box "#3fa9ff" --font Poppins --font-file assets/fonts/poppins-800.ttf --maxwords 4 --out projects/<name>
+
+# no box -> active word recolors + scales (the "colored words" / "scaling words" looks):
+python3 scripts/caption.py vo.wav --lang en --content speech --style karaoke --hl "#ffd84a" --out projects/<name>
+```
+`--maxwords N` words per line · `--box HEX` pill color (omit for color highlight) · `--hl HEX`
+active-word color when no box. The pill position is measured from each word's live layout and
+animated with a `back.out` spring. Then include `captions.js` + `mountCaptions(tl)` as usual.
+
 ---
 
 ### Choosing
-- music/lyrics → House or Karaoke
+- music/lyrics → House or Karaoke highlight
+- short-form talking / UGC / reels → Active-word karaoke (#7, `caption.py --style karaoke --box`)
 - ads / shorts / hype → Bold punch-in or Word-pop
 - explainer / corporate → Slide-up mask or Typewriter
 - always: pure-white default unless brand says otherwise; legibility via shadow/stroke when the
