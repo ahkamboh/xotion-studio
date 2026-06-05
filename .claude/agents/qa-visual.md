@@ -28,3 +28,12 @@ Sample each scene mid-frame and check:
 - [ ] Legibility — smallest body ≥ 24px @1080×1920; contrast ≥ 4.5:1.
 - [ ] Two-beat — label entrance precedes value entrance by ≥ 0.3s.
 On any fail: name the rule, scene, and measured value; route back to motion-builder. Never deliver with an open richness failure.
+
+## Motion-richness gate (sample 2 frames per scene, ≥0.4s apart)
+- [ ] **Not static:** the two in-scene frames differ (content drifted/scaled). If identical → reject
+      "dead-still scene" → send back to add `Rich.idle`.
+- [ ] **Textured bg:** background is not a flat fill (dots/grain/stripes/glow present).
+- [ ] **Layered:** ≥5 distinct elements (eyebrow/counter/hero/support/sticker).
+- [ ] **Depth:** hero type/cards have stacked shadows, not flat.
+- [ ] **Hero scale:** one oversized graphic anchor per scene.
+Reject thin/flat/static scenes; route back to motion-builder with the missing rule.
