@@ -155,3 +155,15 @@ Use: founder announcements, product reveals, calm "report in numbers", talking-h
 **Routing (add to the choose table):**
 | AI cost, stat explainer, data-journalism, "the real cost of…" | **Editorial Brutalist** |
 | founder reveal, calm announcement, report-in-numbers, Cursor-style | **Warm Documentary** |
+
+---
+
+## Neo-Brutalist — electric flat colors + thick borders + hard shadows, loud & playful
+Use: bold launch/hype reels, "loud" announcements, dev / Gen-Z social, anything high-energy. Fonts: **Archivo Black** (display) + **Space Grotesk** (body) + **JetBrains/Space Mono** (labels). Palette: electric flats — yellow #FFD23F, pink #FF5DA2, cyan #4DD9FF, lime #B8F84A, purple #9B5CFF, brand-red #e0451f, black #0a0a0a, cream #F4F1E8. Layout: full-bleed color block per scene (color switches per scene), thick black borders (6–8px), **HARD offset shadows** (no blur, 14–20px), **halftone dot + grain texture**, rotated sticker badges, **giant display numbers** (240–560px) + huge headlines (130–230px), page counters ("STEP 01/06"). Motion: SNAP — back.out overshoot, snap-in, slight entry rotation, hard cuts on the beat, **continuous idle breathe** (`Rich.idle`), motion SFX (slam impacts). **MUST use `templates/lib/richness.js`** (texture/idle/furniture/stacked shadows). Ratio: 9:16 or 16:9.
+```css
+:root{ --bg:#FFD23F; --fg:#0a0a0a; --accent:#e0451f; --accent2:#FF5DA2; --cyan:#4DD9FF; --lime:#B8F84A; --purple:#9B5CFF; --cream:#F4F1E8; --mono:"JetBrains Mono"; }
+/* fonts: archivo-black-400 (display), space-grotesk-700 (body), jetbrains-500 (labels) ; .r-shadow2 stacked shadows + Rich.texture(dots+grain) on every scene */
+```
+
+**Routing (add to the choose table):**
+| bold/loud launch reel, hype, dev or Gen-Z social, neo-brutalism | **Neo-Brutalist** |
