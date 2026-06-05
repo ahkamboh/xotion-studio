@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"kicker",  "type":"string","label":"Kicker",  "default":"Xotion Studio"},
+  {"id":"title",   "type":"string","label":"Title",   "default":"Make it yours."},
+  {"id":"subtitle","type":"string","label":"Subtitle","default":"One template. Infinite videos."},
+  {"id":"accent",  "type":"color", "label":"Accent",  "default":"#3fa9ff"},
+  {"id":"accent2", "type":"color", "label":"Accent 2","default":"#7b5cff"},
+  {"id":"bg",      "type":"color", "label":"Background","default":"#0b0820"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <!--
+      DATA-DRIVEN CARD — one template, N videos from data (the Remotion-style superpower).
+      Declares variables above; reads them via window.__hyperframes.getVariables().
+      Override per render:  npx hyperframes render <proj> --variables '{"title":"Hi","accent":"#22c55e"}'
+      Batch many at once:   scripts/render-batch.py <proj> data.csv  (or data.json)
+      Use for: personalized intros, localized variants, per-product/per-customer cards, quote videos.
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family:"Sora"; font-weight:800; src:url("assets/fonts/sora-800.ttf") format("truetype"); }
+      @font-face { font-family:"Inter"; font-weight:600; src:url("assets/fonts/inter-600.ttf") format("truetype"); }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      html,body { width:1920px; height:1080px; overflow:hidden; font-family:"Inter",sans-serif; }
+      #root { position:relative; width:1920px; height:1080px; overflow:hidden; }
+      .orb { position:absolute; border-radius:50%; filter:blur(150px); opacity:.55; }
+      .orb-1 { width:820px;height:820px;top:-200px;right:-160px; }
+      .orb-2 { width:680px;height:680px;bottom:-200px;left:-140px; }
+      .wrap { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
+              justify-content:center; gap:26px; text-align:center; padding:0 200px; }
+      .kicker { font-weight:600; font-size:32px; letter-spacing:.42em; text-transform:uppercase;
+                -webkit-background-clip:text; background-clip:text; color:transparent; }
+      .title { font-family:"Sora",sans-serif; font-weight:800; font-size:140px; line-height:1.0;
+               letter-spacing:-.025em; color:#fff; }
+      .sub { font-weight:600; font-size:44px; color:rgba(255,255,255,.78); max-width:1300px; }
+      .rule { width:260px; height:5px; border-radius:3px; transform:scaleX(0); transform-origin:center; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="5" data-width="1920" data-height="1080">
+      <div class="orb orb-1" id="orb1"></div><div class="orb orb-2" id="orb2"></div>
+      <div class="wrap">
+        <div class="kicker" id="kicker"></div>
+        <div class="title"  id="title"></div>
+        <div class="rule"   id="rule"></div>
+        <div class="sub"    id="sub"></div>
+      </div>
+    </div>
+    <script>
+      const V = window.__hyperframes.getVariables();
+      const grad = `linear-gradient(135deg, ${V.accent}, ${V.accent2})`;
+
+      document.getElementById("kicker").textContent = V.kicker;
+      document.getElementById("title").textContent  = V.title;
+      document.getElementById("sub").textContent     = V.subtitle;
+      document.getElementById("root").style.background =
+        `radial-gradient(120% 120% at 70% 10%, ${V.accent2}33 0%, ${V.bg} 55%)`;
+      document.body.style.background = V.bg;
+      document.getElementById("kicker").style.backgroundImage = grad;
+      document.getElementById("rule").style.backgroundImage   = grad;
+      document.getElementById("orb1").style.background = `radial-gradient(circle, ${V.accent}, transparent 70%)`;
+      document.getElementById("orb2").style.background = `radial-gradient(circle, ${V.accent2}, transparent 70%)`;
+
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      gsap.set("#kicker", { opacity:0, y:18 });
+      gsap.set("#title",  { opacity:0, y:40, filter:"blur(14px)" });
+      gsap.set("#sub",    { opacity:0, y:18 });
+      tl.to("#kicker", { opacity:1, y:0, duration:.5, ease:"power2.out" }, .2)
+        .to("#title",  { opacity:1, y:0, filter:"blur(0px)", duration:.7, ease:"power3.out" }, .35)
+        .to("#rule",   { scaleX:1, duration:.6, ease:"power3.out" }, .6)
+        .to("#sub",    { opacity:1, y:0, duration:.5, ease:"power2.out" }, .7)
+        .to({}, { duration:2.4 })
+        .to(".wrap",   { opacity:0, y:-10, duration:.5, ease:"power2.in" }, 4.4);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

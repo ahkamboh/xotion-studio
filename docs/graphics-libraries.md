@@ -102,6 +102,7 @@ with a SEEDED PRNG** (e.g. `mulberry32(fixedSeed)`), never with `Math.random()` 
 | `templates/graphics-overlay-3d.html` | rotating wireframe globe + 3D point cloud | **three.js** (ESM, pinned) | B + A |
 | `templates/graphics-overlay-atmosphere.html` | warm light leaks + bokeh + film grain + vignette | custom canvas + GSAP | B + A |
 | `templates/graphics-overlay-title.html` | frosted-glass premium title / lower-third (sheen sweep, gradient accent) | GSAP | A |
+| `templates/graphics-overlay-aurora.html` | flowing aurora ribbons via deterministic **value noise** (organic motion) | custom canvas + GSAP | B + A |
 
 Each renders over any clip via `scripts/overlay.sh`. Edit the headline/colors/`INTENSITY`/seed at
 the top of each file. The atmosphere template is render-heavy (grain is high-entropy) — set
@@ -123,6 +124,17 @@ scripts/overlay.sh plain.mp4 projects/my-fx out-fx.mp4     # 1. add graphics (pa
 scripts/enrich.sh  out-fx.mp4 final.mp4 cine 0.6           # 2. premium finish (bloom+grade+grain+vignette)
 ```
 Keep strength subtle (0.4–0.7) — premium is restrained, not blown out.
+
+**Motion blur** (premium smoothness for fast motion) is the 5th arg:
+```bash
+scripts/enrich.sh in.mp4 out.mp4 cine 0.6 3      # blend 3 frames into a shutter trail
+```
+
+## Organic motion with noise (vs robotic tweens)
+Linear/eased tweens can feel mechanical. A deterministic **value-noise** field gives natural,
+non-repeating drift (the idea behind `@remotion/noise`). `graphics-overlay-aurora.html` ships a
+small seeded `noise2(x,y)` you can copy into any canvas/WebGL overlay to modulate position,
+opacity, rotation, or color over time — fully reproducible (the permutation table is seeded once).
 
 ## Recommended starting set (best effort-to-payoff)
 1. **GSAP free plugins** (SplitText + DrawSVG + MorphSVG) — instant pro motion, no new dependency.
