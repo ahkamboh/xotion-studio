@@ -8,6 +8,16 @@ The agent already knows the full toolkit from this file — the user should NOT 
 Infer intent, pick sensible defaults, produce the result, verify with frames, iterate. Ask only
 when genuinely blocked (a real decision only the user can make).
 
+## Operate as a TEAM OF AGENTS (prompt → finished edit, mistake-free) — READ `docs/agent-team.md`
+You (main session) are the **Director**. For any non-trivial video, run the team pipeline and
+**delegate to the specialist subagents in `.claude/agents/`** (scriptwriter, art-director,
+stock-scout, audio-engineer, sync-master, motion-builder, editor, colorist, captioner, proofreader,
+qa-audio, qa-visual, delivery). Each has one job and a strict definition of done.
+**Non-negotiable: the QA gates (`proofreader` → `qa-audio` → `qa-visual`) must ALL pass before you
+deliver.** If a gate fails, route the fix back to the owning agent, re-render, re-QA — loop until
+clean. This acceptance loop is what makes output mistake-free; never ship with an open QA failure.
+For tiny one-step edits you may act directly, but still run the relevant QA gate.
+
 ## Command shorthand (`:` tokens) — READ `COMMANDS.md`
 The user may drive the engine with short `:name` commands instead of full sentences. When a prompt
 contains `:tokens`, look them up in **`COMMANDS.md`** and run those workflows **in order**, using
@@ -205,6 +215,8 @@ grab the frame. `scripts/thumbnail.sh` pulls a frame from any video.
 | **Data-driven batch** | N videos from data | `python3 scripts/render-batch.py <project> <data.csv\|.json> [--name COL]` — one template + a CSV/JSON → one personalized MP4 per row (uses HyperFrames `--variables`; template = `data-driven-card.html`). See `docs/data-driven.md`. |
 | **Scene-sync agent** | lock graphics to VO | `python3 scripts/scene-sync.py <vo.json> <spec.json> --offset <s> --total <s> --out <proj>` → `scenes.js` (`window.__SCENES`). Derives every scene start/end + a `peak` time from the actual spoken words so graphics NEVER lead/lag the voice. The composition reads `__SCENES` and lands each climax (counter end / last bar / donut fill / line draw) on `peak`. |
 | **Stock fetch** | Pexels b-roll | `PEXELS_API_KEY=… python3 scripts/pexels.py "query" out.mp4 [--orient landscape]` — watermark-free, commercial-OK stock video. |
+| **Audio QA gate** | mix check | `scripts/qa-audio.sh <file>` → PASS/FAIL on −14 LUFS, true-peak/clipping, silences. |
+| **Visual QA gate** | frame check | `python3 scripts/qa-frames.py <video> --scenes scenes.json` → frames+manifest; the `qa-visual` agent reads them and checks each scene is correct/legible/on-time. |
 | **Thumbnail (designed)** | template | render `templates/thumbnail.html` → grab frame 1 |
 | **Animated icons** | Lottie | `templates/lottie-overlay.html` + a `.json` from lottiefiles.com |
 
