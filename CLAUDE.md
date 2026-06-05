@@ -181,6 +181,9 @@ grab the frame. `scripts/thumbnail.sh` pulls a frame from any video.
 | **Auto-pick reel hooks** | energy+keywords | `python3 scripts/find-hooks.py audio segments.json --n 12 --len 18` → segments.txt |
 | **Verify a render (QA)** | frames + inspect | `scripts/verify.sh render.mp4 [ts,ts,...]` or `scripts/verify.sh --inspect <dir>` |
 | **Concatenate clips** | ffmpeg | `scripts/concat.sh out.mp4 a.mp4 b.mp4 ...` |
+| **Multi-language subs** | offline MT | `.venv-whisperx/bin/python scripts/multilang-subs.py subs.en.srt --top 30 [--burn video.mp4]` |
+| **Batch process** | per-file | `scripts/batch.sh <grade:cine\|youtube\|reel\|thumbnail\|normalize> out_dir files...` |
+| **Live preview** | hot-reload | `scripts/preview.sh [project_dir] [port]` (tweak before render) |
 | **Thumbnail (designed)** | template | render `templates/thumbnail.html` → grab frame 1 |
 | **Animated icons** | Lottie | `templates/lottie-overlay.html` + a `.json` from lottiefiles.com |
 

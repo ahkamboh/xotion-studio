@@ -186,6 +186,8 @@ Together the three examples show the full range: **build from a prompt** (female
 - **Code videos**: animated typing in 24 editor/terminal themes (`prompts/code-video.md`)
 - **App/product showcase**: 3D device mockups + liquid-glass UI (`prompts/app-showcase.md`)
 - **Overlays**: social CTAs, logo-outro end-card, grain/vignette/light-leak (`docs/overlays.md`)
+- **Multi-language subtitles**: translate captions to 30+ languages offline (`scripts/multilang-subs.py`)
+- **Batch + live preview**: `scripts/batch.sh` (many files), `scripts/preview.sh` (hot-reload)
 
 ## Requirements
 
