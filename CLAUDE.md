@@ -99,6 +99,11 @@ first; only hand-build when nothing fits.
   - **App/product showcase** (`prompts/app-showcase.md`) — 3D device (vfx-iphone-device) + liquid-glass UI.
   - **Overlays & end-cards** (`docs/overlays.md`) — social CTAs (subscribe/follow/post), logo-outro,
     grain/vignette/light-leak atmosphere, premium text FX. Drop onto any video.
+  - **JS graphics overlays** (`docs/graphics-libraries.md`) — enrich a *plain* clip with particles,
+    kinetic type, shaders, 3D, charts via any client-side JS lib (GSAP/Pixi/three/D3/p5…). Build a
+    TRANSPARENT-bg composition from `templates/graphics-overlay.html`, then composite with
+    `scripts/overlay.sh <base> <project> <out.mp4>`. **Deterministic rule:** DOM/SVG libs → GSAP
+    timeline; canvas/WebGL libs → the `hf-seek` clock; seed any randomness once at init.
 
 **Presets (pick by the user's prompt — this is how you get pro output fast):**
 - `presets/styles.md` — **12 complete visual styles** (the art-direction system above). Start here.
@@ -184,6 +189,7 @@ grab the frame. `scripts/thumbnail.sh` pulls a frame from any video.
 | **Multi-language subs** | offline MT | `.venv-whisperx/bin/python scripts/multilang-subs.py subs.en.srt --top 30 [--burn video.mp4]` |
 | **Batch process** | per-file | `scripts/batch.sh <grade:cine\|youtube\|reel\|thumbnail\|normalize> out_dir files...` |
 | **Live preview** | hot-reload | `scripts/preview.sh [project_dir] [port]` (tweak before render) |
+| **Graphics overlay** | enrich a clip | `scripts/overlay.sh <base.mp4> <overlay_project> <out.mp4> [start] [fps]` (particles/kinetic-text/shaders → alpha → composite; see `docs/graphics-libraries.md`) |
 | **Thumbnail (designed)** | template | render `templates/thumbnail.html` → grab frame 1 |
 | **Animated icons** | Lottie | `templates/lottie-overlay.html` + a `.json` from lottiefiles.com |
 
