@@ -11,8 +11,10 @@ INPUTS:
 - MEDIA = "<audio or video path>"
 - LANG    = "en"      (en, ur, hi, es, fr, ar, zh, ... — REQUIRED for non-English)
 - CONTENT = "music"   (music/singing -> small.pt; speech/talking -> whisperX) — PROVEN, always set this
-- STYLE = "word"      (word = single centered word / IShowSpeed; line = phrase lines)
-- LOOK  = ""          (font, color, size, transition: none|pop|fade — optional)
+- STYLE = "word"      (word = single centered word / IShowSpeed; line = phrase lines;
+                       karaoke = paginated lines, ACTIVE word highlighted as spoken — short-form speech)
+- LOOK  = ""          (font, color, size, transition: none|pop|fade — optional;
+                       karaoke: --box "#3fa9ff" springy pill, or --hl "#ffd84a" color; --maxwords 4)
 
 DO:
 1. Run the agent (it auto-uses whisperX for accuracy, small.pt fallback):
