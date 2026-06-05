@@ -226,6 +226,12 @@ beyond the agent's defaults, `docs/caption-styles.md` has 6 styles.
   (black bar). Or roll your own: `--box "#hex"` (springy pill) / `--hl "#hex"` (active color),
   `--maxwords N`. Best for short-form speech (`--content speech`). See `docs/caption-styles.md`.
 
+**Charts/data-graphics — use the tested `templates/lib/charts.js` (XChart), never hand-roll.**
+`cp templates/lib/charts.js projects/<name>/charts.js`, then `XChart.counter/bar/donut/line(el, data,
+tl, scene)`. It injects its own CSS, renders correct DOM/SVG, and lands the climax on `scene.peak`.
+Every recurring chart bug (donut showing a full ring instead of N%, value labels flashing before
+bars grow, climax off the spoken word) is fixed once in the library. See `docs/charts.md`.
+
 **Narrated motion graphics — graphics MUST sync to the voice (use `scripts/scene-sync.py`).**
 Never hand-time scenes by eye — that causes graphics to appear before/after the words or climaxes
 to land off the spoken number. Instead: transcribe the VO (word level), write a scene spec (each
