@@ -203,6 +203,8 @@ grab the frame. `scripts/thumbnail.sh` pulls a frame from any video.
 | **Graphics overlay** | enrich a clip | `scripts/overlay.sh <base.mp4> <overlay_project> <out.mp4> [start] [fps]` (particles/3D/atmosphere/glass-title → alpha → composite; 4 templates `graphics-overlay*.html`) |
 | **Premium finish** | look expensive | `scripts/enrich.sh <in.mp4> <out.mp4> [cine\|teal-orange\|warm\|moody\|clean\|vibrant] [strength] [mblur]` (grade + bloom/glow + grain + vignette + sharpen + optional motion blur). Stack AFTER overlay for rich, non-amateur output. |
 | **Data-driven batch** | N videos from data | `python3 scripts/render-batch.py <project> <data.csv\|.json> [--name COL]` — one template + a CSV/JSON → one personalized MP4 per row (uses HyperFrames `--variables`; template = `data-driven-card.html`). See `docs/data-driven.md`. |
+| **Scene-sync agent** | lock graphics to VO | `python3 scripts/scene-sync.py <vo.json> <spec.json> --offset <s> --total <s> --out <proj>` → `scenes.js` (`window.__SCENES`). Derives every scene start/end + a `peak` time from the actual spoken words so graphics NEVER lead/lag the voice. The composition reads `__SCENES` and lands each climax (counter end / last bar / donut fill / line draw) on `peak`. |
+| **Stock fetch** | Pexels b-roll | `PEXELS_API_KEY=… python3 scripts/pexels.py "query" out.mp4 [--orient landscape]` — watermark-free, commercial-OK stock video. |
 | **Thumbnail (designed)** | template | render `templates/thumbnail.html` → grab frame 1 |
 | **Animated icons** | Lottie | `templates/lottie-overlay.html` + a `.json` from lottiefiles.com |
 
@@ -223,6 +225,15 @@ beyond the agent's defaults, `docs/caption-styles.md` has 6 styles.
   the benchmark), `beast`, `pill` (springy yellow pill), `neon`, `gradient`, `minimal`, `tiktok`
   (black bar). Or roll your own: `--box "#hex"` (springy pill) / `--hl "#hex"` (active color),
   `--maxwords N`. Best for short-form speech (`--content speech`). See `docs/caption-styles.md`.
+
+**Narrated motion graphics — graphics MUST sync to the voice (use `scripts/scene-sync.py`).**
+Never hand-time scenes by eye — that causes graphics to appear before/after the words or climaxes
+to land off the spoken number. Instead: transcribe the VO (word level), write a scene spec (each
+scene anchored to a spoken phrase + a `peak` word), run `scene-sync` → `scenes.js`, and have the
+composition read `window.__SCENES` and land every climax (counter end, last bar, donut fill, line
+draw) on `peak`. Scenes are auto-contiguous so nothing overlaps or gaps. This is the scene
+equivalent of the caption agent. **Progress/timeline bars are opt-in, not default** — only add a
+bottom progress bar if the user asks for one.
 
 **Brand kits:** if a `brand.json` (or `brands/<name>.json`, see `brand.example.json`) exists, READ
 it first and apply its colors/fonts/logo/tone to every composition for that client.
