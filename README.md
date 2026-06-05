@@ -183,6 +183,9 @@ Together the three examples show the full range: **build from a prompt** (female
 - **Thumbnails** & **Lottie** icon animations · **SFX pack** (whoosh/riser/impact/…)
 - **111 ready-made blocks** (`scripts/add-block.sh`): 30 shader transitions, data charts, maps, caption styles, social overlays
 - **Data videos**: CSV/numbers → animated charts/maps (`prompts/data-video.md`)
+- **Code videos**: animated typing in 24 editor/terminal themes (`prompts/code-video.md`)
+- **App/product showcase**: 3D device mockups + liquid-glass UI (`prompts/app-showcase.md`)
+- **Overlays**: social CTAs, logo-outro end-card, grain/vignette/light-leak (`docs/overlays.md`)
 
 ## Requirements
 

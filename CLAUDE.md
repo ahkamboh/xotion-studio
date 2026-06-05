@@ -95,6 +95,10 @@ add <name>`), then include the printed snippet. Catalog: **`docs/blocks.md`** (a
 **`docs/transitions-blocks.md`** (the 30 transitions by vibe). For data/charts/maps use the data
 blocks (`data-chart`, `world-map`, `us-map`…) — see `prompts/data-video.md`. Reach for a block
 first; only hand-build when nothing fits.
+  - **Code videos** (`prompts/code-video.md`) — 24 editor/terminal themes, per-char typing.
+  - **App/product showcase** (`prompts/app-showcase.md`) — 3D device (vfx-iphone-device) + liquid-glass UI.
+  - **Overlays & end-cards** (`docs/overlays.md`) — social CTAs (subscribe/follow/post), logo-outro,
+    grain/vignette/light-leak atmosphere, premium text FX. Drop onto any video.
 
 **Presets (pick by the user's prompt — this is how you get pro output fast):**
 - `presets/styles.md` — **12 complete visual styles** (the art-direction system above). Start here.
