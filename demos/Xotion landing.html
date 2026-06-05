@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Xotion — prompt your stat. download a video.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,400..900&family=Inter+Tight:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #f4f0e6;
+    --bg-ink:  #0e0d0c;
+    --ink:      #0e0d0c;
+    --ink-dim:  #6b6458;
+    --cream:    #f4f0e6;
+    --accent:   #e0451f;
+    --rule:     rgba(14,13,12,0.16);
+    --rule-on-ink: rgba(244,240,230,0.16);
+    --serif:    "Fraunces", "Times New Roman", serif;
+    --sans:     "Inter Tight", "Inter", system-ui, sans-serif;
+    --mono:     "JetBrains Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.4;
+  }
+
+  /* ── Layout helpers ────────────────────────────────────────────────────── */
+  .container { max-width: 1280px; margin: 0 auto; padding: 0 40px; }
+  .rule       { border: 0; border-top: 1px solid var(--rule); margin: 0; }
+  .rule-ink   { border: 0; border-top: 1px solid var(--rule-on-ink); margin: 0; }
+  section { position: relative; }
+  .label {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    display: inline-flex; align-items: center; gap: 10px;
+  }
+  .label::before {
+    content: '';
+    width: 10px; height: 10px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+  .label.no-bullet::before { display: none; }
+  .label.on-ink { color: rgba(244,240,230,0.55); }
+  .btn {
+    font-family: var(--mono);
+    font-size: 13px; font-weight: 700;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    padding: 14px 22px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex; align-items: center; gap: 10px;
+    transition: transform 120ms ease, background 120ms ease, color 120ms ease;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn-primary { background: var(--accent); color: var(--cream); }
+  .btn-primary:hover { background: #c93714; }
+  .btn-ghost   { background: transparent; color: var(--ink); border-color: var(--ink); }
+  .btn-ghost:hover { background: var(--ink); color: var(--cream); }
+  .btn-on-ink  { background: transparent; color: var(--cream); border-color: rgba(244,240,230,0.4); }
+  .btn-on-ink:hover { background: var(--cream); color: var(--ink); border-color: var(--cream); }
+
+  /* ── NAV ───────────────────────────────────────────────────────────────── */
+  nav.top {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(244,240,230,0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--rule);
+  }
+  nav.top .row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 0;
+  }
+  nav.top .brand {
+    font-family: var(--serif);
+    font-weight: 900; font-style: italic;
+    font-size: 28px; letter-spacing: -0.03em;
+    display: flex; align-items: baseline; gap: 8px;
+    color: var(--ink); text-decoration: none;
+  }
+  nav.top .brand .x {
+    color: var(--accent);
+    font-family: var(--sans);
+    font-style: normal;
+    font-weight: 800;
+    font-size: 22px;
+  }
+  nav.top .brand .dot {
+    width: 8px; height: 8px; background: var(--accent); border-radius: 50%;
+    transform: translateY(-6px);
+  }
+  nav.top ul {
+    list-style: none; margin: 0; padding: 0;
+    display: flex; gap: 32px;
+    font-family: var(--mono); font-size: 13px;
+    letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600;
+  }
+  nav.top ul a { color: var(--ink); text-decoration: none; opacity: 0.7; transition: opacity 120ms; }
+  nav.top ul a:hover { opacity: 1; }
+  nav.top .right { display: flex; align-items: center; gap: 16px; }
+  nav.top .signin {
+    font-family: var(--mono); font-size: 13px; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink); text-decoration: none; opacity: 0.7;
+  }
+
+  /* ── HERO ──────────────────────────────────────────────────────────────── */
+  .hero {
+    padding: 96px 0 80px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero .container {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 80px;
+    align-items: center;
+  }
+  .hero h1 {
+    font-family: var(--serif);
+    font-weight: 900;
+    font-size: clamp(64px, 8vw, 124px);
+    line-height: 0.92;
+    letter-spacing: -0.045em;
+    margin: 28px 0 0;
+    color: var(--ink);
+  }
+  .hero h1 .italic { font-style: italic; color: var(--accent); }
+  .hero .sub {
+    margin-top: 32px;
+    font-family: var(--sans);
+    font-size: clamp(20px, 1.6vw, 26px);
+    line-height: 1.4;
+    color: var(--ink-dim);
+    max-width: 580px;
+    font-weight: 500;
+  }
+  .hero .sub strong { color: var(--ink); font-weight: 700; }
+  .hero .ctas {
+    margin-top: 44px;
+    display: flex; gap: 14px; flex-wrap: wrap; align-items: center;
+  }
+  .hero .ctas .free-note {
+    font-family: var(--mono); font-size: 12px;
+    color: var(--ink-dim); letter-spacing: 0.12em;
+    text-transform: uppercase; margin-left: 6px;
+  }
+  /* Phone frame */
+  .phone-wrap {
+    display: flex; justify-content: center; align-items: center;
+    position: relative;
+  }
+  .phone {
+    width: 360px;
+    aspect-ratio: 9 / 19.5;
+    background: #0a0a0a;
+    border-radius: 44px;
+    padding: 12px;
+    box-shadow:
+      0 30px 80px rgba(14, 13, 12, 0.25),
+      0 10px 30px rgba(14, 13, 12, 0.15),
+      inset 0 0 0 1px rgba(255,255,255,0.06);
+    position: relative;
+  }
+  .phone::before {
+    content: '';
+    position: absolute;
+    top: 22px; left: 50%; transform: translateX(-50%);
+    width: 110px; height: 28px; background: #000;
+    border-radius: 16px; z-index: 2;
+  }
+  .phone iframe {
+    width: 100%; height: 100%;
+    border: 0;
+    border-radius: 34px;
+    overflow: hidden;
+    background: var(--cream);
+  }
+  /* hero badge */
+  .live-badge {
+    position: absolute;
+    top: 24px; right: 24px;
+    background: rgba(255,255,255,0.95);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 8px 14px 8px 10px;
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink);
+    display: flex; align-items: center; gap: 8px;
+    font-weight: 600;
+    z-index: 5;
+  }
+  .live-badge .pulse {
+    width: 8px; height: 8px; background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 1.4s ease-out infinite;
+  }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(224, 69, 31, 0.6); }
+    100% { box-shadow: 0 0 0 12px rgba(224, 69, 31, 0); }
+  }
+  /* logo strip */
+  .logo-strip {
+    margin-top: 84px;
+    padding: 32px 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 40px;
+    align-items: center;
+  }
+  .logo-strip .label { white-space: nowrap; }
+  .logo-strip .logos {
+    display: flex;
+    gap: 56px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    font-family: var(--serif);
+    font-weight: 800;
+    font-size: 24px;
+    letter-spacing: -0.02em;
+    color: var(--ink-dim);
+    opacity: 0.65;
+  }
+  .logo-strip .logos span { white-space: nowrap; }
+  .logo-strip .logos .small-caps { font-family: var(--mono); font-weight: 700; font-size: 16px; letter-spacing: 0.14em; text-transform: uppercase; }
+
+  /* ── PITCH BAND ────────────────────────────────────────────────────────── */
+  .pitch { padding: 140px 0 120px; }
+  .pitch h2 {
+    font-family: var(--serif);
+    font-weight: 800;
+    font-size: clamp(48px, 5vw, 88px);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    margin: 24px 0 0;
+    max-width: 1100px;
+  }
+  .pitch h2 .strike { text-decoration: line-through; text-decoration-color: var(--accent); text-decoration-thickness: 4px; opacity: 0.7; }
+  .pitch h2 em { font-style: italic; color: var(--accent); }
+  .compare {
+    margin-top: 80px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+  .compare .col {
+    border: 1px solid var(--rule);
+    padding: 28px;
+    background: var(--cream);
+  }
+  .compare .col.win {
+    background: var(--ink);
+    color: var(--cream);
+    border-color: var(--ink);
+  }
+  .compare .way {
+    font-family: var(--mono); font-size: 12px;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .compare .col.win .way { color: rgba(244,240,230,0.55); }
+  .compare .name {
+    margin-top: 14px;
+    font-family: var(--serif); font-weight: 800; font-style: italic;
+    font-size: 44px; line-height: 1; letter-spacing: -0.03em;
+  }
+  .compare .col.win .name { color: var(--cream); }
+  .compare .body {
+    margin-top: 22px;
+    font-size: 16px; color: var(--ink-dim);
+    line-height: 1.55;
+  }
+  .compare .col.win .body { color: rgba(244,240,230,0.65); }
+  .compare .stat {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--rule);
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .compare .col.win .stat { border-top-color: rgba(244,240,230,0.16); }
+  .compare .stat .v {
+    font-family: var(--serif); font-weight: 900; font-style: italic;
+    font-size: 64px; letter-spacing: -0.04em; line-height: 1;
+  }
+  .compare .col.win .stat .v { color: var(--accent); }
+  .compare .stat .u {
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .compare .col.win .stat .u { color: rgba(244,240,230,0.55); }
+
+  /* ── HOW IT WORKS ──────────────────────────────────────────────────────── */
+  .how {
+    padding: 120px 0;
+    background: var(--ink);
+    color: var(--cream);
+  }
+  .how h2 {
+    font-family: var(--serif);
+    font-weight: 800;
+    font-size: clamp(48px, 5vw, 88px);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    margin: 24px 0 70px;
+    color: var(--cream);
+  }
+  .how h2 em { font-style: italic; color: var(--accent); }
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+  }
+  .step {
+    padding: 36px 32px 0;
+    border-left: 1px solid rgba(244,240,230,0.16);
+  }
+  .step:first-child { border-left: 0; padding-left: 0; }
+  .step .n {
+    font-family: var(--mono);
+    font-size: 14px; letter-spacing: 0.22em;
+    color: var(--accent); font-weight: 700;
+  }
+  .step h3 {
+    font-family: var(--serif); font-weight: 800;
+    font-size: 38px; letter-spacing: -0.03em; line-height: 1.05;
+    margin: 18px 0 16px;
+  }
+  .step h3 em { font-style: italic; color: var(--accent); }
+  .step p {
+    margin: 0;
+    color: rgba(244,240,230,0.7);
+    font-size: 17px; line-height: 1.55;
+  }
+  .step .mock {
+    margin-top: 28px;
+    background: #1a1816;
+    border: 1px solid rgba(244,240,230,0.12);
+    border-radius: 6px;
+    padding: 18px;
+    min-height: 140px;
+    display: flex; flex-direction: column; gap: 10px;
+    font-family: var(--mono); font-size: 13px;
+    line-height: 1.5;
+    color: rgba(244,240,230,0.7);
+  }
+  .step .mock .prompt { color: rgba(244,240,230,0.5); }
+  .step .mock .you  { color: var(--accent); }
+  .step .mock .you::before { content: '> '; opacity: 0.6; }
+  .step .mock .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .step .mock .chip {
+    border: 1px solid rgba(244,240,230,0.2);
+    padding: 4px 10px; border-radius: 999px;
+    font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .step .mock .chip.on { background: var(--accent); border-color: var(--accent); color: var(--cream); }
+  .step .mock .progress {
+    height: 6px; background: rgba(244,240,230,0.1); border-radius: 3px; overflow: hidden;
+    position: relative;
+  }
+  .step .mock .progress::after {
+    content: ''; position: absolute; inset: 0;
+    background: var(--accent);
+    width: 68%;
+  }
+  .step .mock .download {
+    margin-top: 6px;
+    color: var(--accent); font-weight: 700;
+  }
+  .step .mock .download::before { content: '↓ '; }
+
+  /* ── TEMPLATES ─────────────────────────────────────────────────────────── */
+  .templates { padding: 140px 0 120px; }
+  .templates .head {
+    display: flex; justify-content: space-between; align-items: flex-end; gap: 40px;
+    margin-bottom: 60px; flex-wrap: wrap;
+  }
+  .templates h2 {
+    font-family: var(--serif);
+    font-weight: 800;
+    font-size: clamp(48px, 5vw, 84px);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    margin: 24px 0 0;
+    max-width: 800px;
+  }
+  .templates h2 em { font-style: italic; color: var(--accent); }
+  .templates .head p {
+    max-width: 380px;
+    color: var(--ink-dim);
+    font-size: 17px; line-height: 1.55;
+    margin: 0;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+  .card {
+    border: 1px solid var(--rule);
+    background: var(--cream);
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 200ms ease, box-shadow 200ms ease;
+  }
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(14,13,12,0.10);
+  }
+  .card .thumb {
+    aspect-ratio: 9 / 12;
+    background: var(--cream);
+    position: relative;
+    overflow: hidden;
+    border-bottom: 1px solid var(--rule);
+  }
+  .card .thumb.dark { background: var(--ink); color: var(--cream); }
+  .card .meta {
+    padding: 18px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card .meta .name {
+    font-family: var(--serif); font-weight: 800;
+    font-size: 22px; letter-spacing: -0.02em;
+  }
+  .card .meta .tag {
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  /* Thumbnail compositions — hand-drawn brutalist mocks */
+  .thumb-inner { position: absolute; inset: 0; padding: 24px; }
+  .thumb-inner .eyebrow {
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700;
+  }
+  .thumb-inner .big {
+    font-family: var(--serif); font-weight: 900;
+    line-height: 0.9; letter-spacing: -0.04em;
+    margin-top: 14px;
+  }
+  .thumb-inner.dark .eyebrow { color: var(--accent); }
+
+  /* Specific thumb compositions */
+  .t-stat .big        { font-size: 110px; color: var(--ink); }
+  .t-stat .big em     { font-style: italic; color: var(--accent); }
+  .t-stat .footer     { position: absolute; bottom: 24px; left: 24px; right: 24px;
+                        font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em;
+                        text-transform: uppercase; color: var(--ink-dim); display: flex; justify-content: space-between; }
+  .t-bar .big        { font-size: 38px; color: var(--ink); margin-bottom: 18px; }
+  .t-bar .bars       { display: flex; gap: 8px; align-items: flex-end; height: 60%; margin-top: 8px; }
+  .t-bar .bars div   { flex: 1; background: var(--ink); }
+  .t-bar .bars div:nth-child(2) { background: var(--accent); }
+  .t-bar .bars div:nth-child(3) { background: var(--ink); opacity: 0.4; }
+  .t-bar .bars div:nth-child(4) { background: var(--ink); opacity: 0.7; }
+  .t-bar .bars div:nth-child(5) { background: var(--accent); opacity: 0.6; }
+  .t-quote .big      { font-size: 36px; color: var(--ink); }
+  .t-quote .big em   { font-style: italic; color: var(--accent); }
+  .t-quote .attr     { position: absolute; bottom: 24px; left: 24px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-dim); }
+  .t-cmp .big        { font-size: 44px; color: var(--cream); }
+  .t-cmp .big em     { font-style: italic; color: var(--accent); }
+  .t-cmp .row        { position: absolute; bottom: 24px; left: 24px; right: 24px;
+                        display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .t-cmp .row > div  { padding: 12px; background: rgba(244,240,230,0.06); }
+  .t-cmp .row .pct   { font-family: var(--serif); font-weight: 900; font-style: italic; font-size: 36px; color: var(--accent); }
+  .t-cmp .row .lbl   { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.65; }
+  .t-hook .big       { font-size: 56px; color: var(--ink); line-height: 0.95; }
+  .t-hook .big em    { font-style: italic; color: var(--accent); }
+  .t-hook .ticker    { position: absolute; bottom: 24px; left: 24px; right: 24px;
+                        font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
+                        text-transform: uppercase; color: var(--ink-dim);
+                        border-top: 1px solid var(--rule); padding-top: 10px; }
+  .t-story .big      { font-size: 28px; color: var(--cream); }
+  .t-story .list     { position: absolute; bottom: 24px; left: 24px; right: 24px; }
+  .t-story .list > div { display: flex; justify-content: space-between; align-items: baseline;
+                          padding: 10px 0; border-top: 1px solid rgba(244,240,230,0.16);
+                          font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
+                          text-transform: uppercase; color: rgba(244,240,230,0.55); }
+  .t-story .list .v { font-family: var(--serif); font-weight: 900; font-style: italic; font-size: 22px; color: var(--accent); letter-spacing: -0.02em; }
+
+  /* ── BUILT FOR BUILDERS ────────────────────────────────────────────────── */
+  .builders {
+    padding: 120px 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+  .builders .container { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; }
+  .builders h2 {
+    font-family: var(--serif);
+    font-weight: 800;
+    font-size: clamp(40px, 4.5vw, 72px);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    margin: 24px 0 0;
+  }
+  .builders h2 em { font-style: italic; color: var(--accent); }
+  .builders p { font-size: 18px; color: var(--ink-dim); line-height: 1.55; max-width: 480px; margin-top: 28px; }
+  .builders .feats { margin-top: 32px; display: grid; gap: 14px; }
+  .builders .feat {
+    display: flex; gap: 16px; align-items: flex-start;
+    font-size: 16px; line-height: 1.5;
+  }
+  .builders .feat .check {
+    flex-shrink: 0;
+    width: 22px; height: 22px;
+    background: var(--accent); color: var(--cream);
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; font-size: 12px; font-weight: 800;
+    margin-top: 2px;
+  }
+  .builders .feat strong { color: var(--ink); }
+  .builders .feat span { color: var(--ink-dim); }
+  /* Code mock */
+  .code-mock {
+    background: var(--ink);
+    color: var(--cream);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(14,13,12,0.18);
+  }
+  .code-mock .bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 14px 18px;
+    background: #1a1816;
+    border-bottom: 1px solid rgba(244,240,230,0.10);
+  }
+  .code-mock .bar .dot { width: 11px; height: 11px; border-radius: 50%; background: rgba(244,240,230,0.18); }
+  .code-mock .bar .file {
+    margin-left: 12px;
+    font-family: var(--mono); font-size: 12px;
+    color: rgba(244,240,230,0.55); letter-spacing: 0.06em;
+  }
+  .code-mock pre {
+    margin: 0;
+    padding: 22px;
+    font-family: var(--mono); font-size: 14px; line-height: 1.7;
+    color: rgba(244,240,230,0.85);
+    white-space: pre-wrap;
+  }
+  .code-mock pre .k  { color: #d97757; }
+  .code-mock pre .s  { color: #b6c896; }
+  .code-mock pre .c  { color: rgba(244,240,230,0.4); }
+  .code-mock pre .n  { color: #e0b96f; }
+  .code-mock pre .o  { color: #e0451f; font-weight: 700; }
+
+  /* ── PRICING ───────────────────────────────────────────────────────────── */
+  .pricing { padding: 140px 0 120px; }
+  .pricing .head { text-align: center; margin-bottom: 70px; }
+  .pricing h2 {
+    font-family: var(--serif);
+    font-weight: 800;
+    font-size: clamp(48px, 5vw, 88px);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    margin: 24px 0 0;
+  }
+  .pricing h2 em { font-style: italic; color: var(--accent); }
+  .pricing .head p { max-width: 580px; margin: 24px auto 0; color: var(--ink-dim); font-size: 17px; line-height: 1.55; }
+  .tiers {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+  .tier {
+    background: var(--cream);
+    border: 1px solid var(--rule);
+    padding: 32px;
+    display: flex; flex-direction: column;
+    position: relative;
+  }
+  .tier.featured {
+    background: var(--ink);
+    color: var(--cream);
+    border-color: var(--ink);
+  }
+  .tier .ribbon {
+    position: absolute;
+    top: -1px; right: -1px;
+    background: var(--accent);
+    color: var(--cream);
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.18em; text-transform: uppercase; font-weight: 700;
+    padding: 8px 14px;
+  }
+  .tier .name {
+    font-family: var(--serif); font-weight: 800; font-style: italic;
+    font-size: 36px; letter-spacing: -0.03em; line-height: 1;
+  }
+  .tier .desc {
+    margin-top: 12px;
+    font-size: 15px;
+    color: var(--ink-dim);
+    line-height: 1.5;
+  }
+  .tier.featured .desc { color: rgba(244,240,230,0.65); }
+  .tier .price {
+    margin-top: 36px;
+    display: flex; align-items: baseline; gap: 8px;
+    border-top: 1px solid var(--rule); padding-top: 24px;
+  }
+  .tier.featured .price { border-top-color: rgba(244,240,230,0.16); }
+  .tier .price .num {
+    font-family: var(--serif); font-weight: 900;
+    font-size: 80px; letter-spacing: -0.05em; line-height: 0.85;
+  }
+  .tier .price .cur {
+    font-family: var(--serif); font-weight: 800; font-size: 32px;
+    align-self: flex-start; margin-top: 4px;
+  }
+  .tier .price .per {
+    font-family: var(--mono); font-size: 12px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-left: 6px;
+  }
+  .tier.featured .price .per { color: rgba(244,240,230,0.55); }
+  .tier ul {
+    list-style: none; margin: 28px 0 0; padding: 0;
+    display: grid; gap: 12px;
+    flex: 1;
+  }
+  .tier li {
+    font-size: 15px; line-height: 1.45;
+    display: flex; gap: 12px; align-items: flex-start;
+    color: var(--ink);
+  }
+  .tier.featured li { color: var(--cream); }
+  .tier li::before {
+    content: '✓';
+    color: var(--accent);
+    font-weight: 800; flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .tier li.no::before { content: '–'; color: var(--ink-dim); }
+  .tier .cta { margin-top: 32px; }
+  .tier .cta .btn { width: 100%; justify-content: center; }
+
+  /* ── FAQ ───────────────────────────────────────────────────────────────── */
+  .faq { padding: 100px 0 80px; }
+  .faq .container { display: grid; grid-template-columns: 1fr 2fr; gap: 80px; }
+  .faq h2 {
+    font-family: var(--serif);
+    font-weight: 800;
+    font-size: clamp(40px, 4.5vw, 72px);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    margin: 24px 0 0;
+    position: sticky; top: 100px;
+  }
+  .faq h2 em { font-style: italic; color: var(--accent); }
+  .faq .items { display: grid; gap: 0; }
+  .faq .item {
+    padding: 26px 0;
+    border-bottom: 1px solid var(--rule);
+    cursor: pointer;
+  }
+  .faq .item:first-child { border-top: 1px solid var(--rule); }
+  .faq .item summary {
+    list-style: none;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    font-family: var(--serif); font-weight: 700;
+    font-size: 22px; letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+  .faq .item summary::-webkit-details-marker { display: none; }
+  .faq .item summary .plus {
+    flex-shrink: 0; margin-left: 24px; margin-top: 6px;
+    font-family: var(--sans); font-weight: 700;
+    color: var(--accent); font-size: 22px;
+    transition: transform 200ms;
+  }
+  .faq .item[open] summary .plus { transform: rotate(45deg); }
+  .faq .item p {
+    margin: 14px 0 0;
+    font-size: 16px; line-height: 1.55;
+    color: var(--ink-dim);
+    max-width: 640px;
+  }
+
+  /* ── BIG CTA ───────────────────────────────────────────────────────────── */
+  .big-cta {
+    padding: 140px 0;
+    background: var(--ink);
+    color: var(--cream);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .big-cta h2 {
+    font-family: var(--serif);
+    font-weight: 900;
+    font-size: clamp(64px, 9vw, 168px);
+    line-height: 0.92;
+    letter-spacing: -0.05em;
+    margin: 0;
+  }
+  .big-cta h2 em { font-style: italic; color: var(--accent); }
+  .big-cta p {
+    max-width: 600px; margin: 40px auto 0;
+    color: rgba(244,240,230,0.7);
+    font-size: 18px; line-height: 1.55;
+  }
+  .big-cta .ctas {
+    margin-top: 48px;
+    display: flex; gap: 14px; justify-content: center; align-items: center; flex-wrap: wrap;
+  }
+
+  /* ── FOOTER ────────────────────────────────────────────────────────────── */
+  footer {
+    padding: 60px 0 40px;
+    background: var(--ink);
+    color: rgba(244,240,230,0.55);
+    border-top: 1px solid rgba(244,240,230,0.10);
+  }
+  footer .row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 40px;
+    padding-bottom: 40px;
+    border-bottom: 1px solid rgba(244,240,230,0.10);
+  }
+  footer .brand {
+    font-family: var(--serif);
+    font-weight: 900; font-style: italic;
+    font-size: 38px; letter-spacing: -0.03em;
+    color: var(--cream);
+  }
+  footer .brand .x { color: var(--accent); font-family: var(--sans); font-style: normal; font-weight: 800; font-size: 30px; }
+  footer .brand small {
+    display: block;
+    font-family: var(--sans); font-style: normal; font-weight: 500;
+    font-size: 15px; letter-spacing: 0;
+    color: rgba(244,240,230,0.55);
+    margin-top: 8px; max-width: 340px;
+    line-height: 1.5;
+  }
+  footer h4 {
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: rgba(244,240,230,0.4); font-weight: 700;
+    margin: 0 0 18px;
+  }
+  footer ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+  footer ul a {
+    color: var(--cream);
+    opacity: 0.7; text-decoration: none;
+    font-size: 14px;
+  }
+  footer ul a:hover { opacity: 1; }
+  footer .legal {
+    padding-top: 30px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: rgba(244,240,230,0.4);
+  }
+
+  /* ── Responsive ────────────────────────────────────────────────────────── */
+  @media (max-width: 960px) {
+    .container { padding: 0 24px; }
+    .hero { padding: 60px 0 50px; }
+    .hero .container { grid-template-columns: 1fr; gap: 60px; }
+    .phone-wrap { order: -1; }
+    .phone { width: 280px; }
+    .compare, .grid, .tiers, .steps { grid-template-columns: 1fr; gap: 18px; }
+    .step { padding: 28px 0; border-left: 0; border-top: 1px solid rgba(244,240,230,0.16); }
+    .step:first-child { border-top: 0; padding-top: 0; }
+    .builders .container, .faq .container { grid-template-columns: 1fr; gap: 50px; }
+    .faq h2 { position: static; }
+    nav.top ul { display: none; }
+    .logo-strip { grid-template-columns: 1fr; gap: 18px; }
+    .logo-strip .logos { justify-content: flex-start; gap: 32px; font-size: 18px; }
+  }
+  nav.top .brand, footer .brand, .brand { align-items: center; }
+  .brand .mark { width: 30px; height: 30px; display: block; flex: 0 0 auto; }
+</style>
+</head>
+<body>
+
+<!-- ═══ NAV ═══ -->
+<nav class="top" data-screen-label="01 Nav">
+  <div class="container row">
+    <a href="#" class="brand">
+      <svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="#e0451f"/><path d="M9.5 7 L18 12 L9.5 17 Z" fill="#f4f0e6"/></svg>
+      <span class="wm">Xotion</span>
+    </a>
+    <ul>
+      <li><a href="#templates">Examples</a></li>
+      <li><a href="#pricing">Pricing</a></li>
+      <li><a href="#builders">For Builders</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ul>
+    <div class="right">
+      <a href="#" class="signin">Sign in</a>
+      <a href="#" class="btn btn-primary">Start free →</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero" data-screen-label="02 Hero">
+  <div class="container">
+    <div class="hero-copy">
+      <div class="label">Prompt → Motion · No designer needed</div>
+      <h1>
+        Stat videos.<br/>
+        <span class="italic">Without</span> a designer.
+      </h1>
+      <p class="sub">
+        Type the story. Drop your numbers.<br/>
+        <strong>Xotion</strong> writes the motion graphics. Download an MP4
+        you can post the same day — for the price of a coffee.
+      </p>
+      <div class="ctas">
+        <a href="#" class="btn btn-primary">Start free →</a>
+        <a href="#templates" class="btn btn-ghost">See examples</a>
+        <span class="free-note">No card · 3 free videos</span>
+      </div>
+    </div>
+    <div class="phone-wrap">
+      <div class="live-badge">
+        <span class="pulse"></span>
+        Live render
+      </div>
+      <div class="phone">
+        <iframe src="demo-preview.html" title="Xotion demo" loading="lazy" scrolling="no"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <div class="container logo-strip">
+    <div class="label no-bullet">Built by &amp; for</div>
+    <div class="logos">
+      <span>vibe&nbsp;coders</span>
+      <span class="small-caps">Indie&nbsp;Hackers</span>
+      <span>AI&nbsp;founders</span>
+      <span class="small-caps">Growth&nbsp;teams</span>
+      <span>Newsletter&nbsp;writers</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ PITCH BAND ═══ -->
+<section class="pitch" data-screen-label="03 Pitch">
+  <div class="container">
+    <div class="label">The math</div>
+    <h2>
+      You have <em>three stats.</em> You need a video by Tuesday.<br/>
+      <span class="strike">Hire a motion designer.</span> Open After Effects.
+    </h2>
+
+    <div class="compare">
+      <div class="col">
+        <div class="way">The old way · 01</div>
+        <div class="name">Hire it out.</div>
+        <p class="body">Brief a freelance motion designer. Two rounds of revisions. Wait three days. Hope they get the brand right.</p>
+        <div class="stat"><span class="v">$400</span><span class="u">PER&nbsp;VIDEO</span></div>
+      </div>
+      <div class="col">
+        <div class="way">The slow way · 02</div>
+        <div class="name">DIY it.</div>
+        <p class="body">Open Figma. Animate in After Effects. Export. Re-export when the kerning is wrong. Lose an afternoon.</p>
+        <div class="stat"><span class="v">4&nbsp;hrs</span><span class="u">PER&nbsp;VIDEO</span></div>
+      </div>
+      <div class="col win">
+        <div class="way">Xotion · 03</div>
+        <div class="name">Just prompt.</div>
+        <p class="body">Type the headline. Drop the numbers. Pick a template. Download the MP4 while your coffee's still warm.</p>
+        <div class="stat"><span class="v">60 sec</span><span class="u">PER&nbsp;VIDEO</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ HOW IT WORKS ═══ -->
+<section class="how" data-screen-label="04 How it works">
+  <div class="container">
+    <div class="label on-ink">The flow</div>
+    <h2>Three steps. <em>One minute.</em></h2>
+
+    <div class="steps">
+      <div class="step">
+        <div class="n">01</div>
+        <h3>Type the <em>story.</em></h3>
+        <p>One sentence is enough. Or paste a tweet, a PRD, a CSV. The agent figures out the headline, the stats, and the takeaway.</p>
+        <div class="mock">
+          <div class="prompt">// What do you want to say?</div>
+          <div class="you">make a 15s video about how Grok cost $300M to ship, Cursor's token spend is up 1,000×, and AIbridge cut 55% of their features. takeaway: pick fewer, use deeper.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">02</div>
+        <h3>Pick a <em>template.</em></h3>
+        <p>Or let the agent choose. Editorial, brutalist, neon, minimal — every template ships as a real motion graphic with sound design baked in.</p>
+        <div class="mock">
+          <div class="prompt">// Pick a style</div>
+          <div class="chips">
+            <span class="chip on">Editorial</span>
+            <span class="chip">Brutalist</span>
+            <span class="chip">Neon</span>
+            <span class="chip">Minimal</span>
+            <span class="chip">Bloomberg</span>
+          </div>
+          <div class="prompt" style="margin-top:8px;">// Vertical 9:16 · 15s · Soundtrack: cinematic</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">03</div>
+        <h3>Download. <em>Post.</em></h3>
+        <p>MP4 for Instagram, WebM for the web, GIF for Slack. Branded, watermark-free, and exactly the same every time.</p>
+        <div class="mock">
+          <div class="prompt">// Rendering on HyperFrames</div>
+          <div class="progress"></div>
+          <div class="prompt">// 14.7s · 1080×1920 · VP9 + Opus</div>
+          <div class="download">real-cost-of-scaling-ai.mp4</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ TEMPLATES ═══ -->
+<section class="templates" id="templates" data-screen-label="05 Templates">
+  <div class="container">
+    <div class="head">
+      <div>
+        <div class="label">The library</div>
+        <h2>30+ templates. <em>Every format</em> that scrolls.</h2>
+      </div>
+      <p>Every template is a real HyperFrames composition — fully editable in code, or just tweak via prompt. Templates ship with motion + sound + responsive layouts.</p>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="thumb">
+          <div class="thumb-inner t-stat">
+            <div class="eyebrow">▸ One Big Stat</div>
+            <div class="big">$<em>1,247</em></div>
+            <div class="footer"><span>Per support ticket</span><span>2026</span></div>
+          </div>
+        </div>
+        <div class="meta"><div class="name">Stat Drop</div><div class="tag">15s · 9:16</div></div>
+      </div>
+
+      <div class="card">
+        <div class="thumb">
+          <div class="thumb-inner t-bar">
+            <div class="eyebrow">▸ Bar Chart Race</div>
+            <div class="big">Q1 → Q4</div>
+            <div class="bars">
+              <div style="height:30%"></div>
+              <div style="height:78%"></div>
+              <div style="height:45%"></div>
+              <div style="height:60%"></div>
+              <div style="height:38%"></div>
+            </div>
+          </div>
+        </div>
+        <div class="meta"><div class="name">Bar Race</div><div class="tag">20s · 1:1</div></div>
+      </div>
+
+      <div class="card">
+        <div class="thumb">
+          <div class="thumb-inner t-quote">
+            <div class="eyebrow">▸ Pull Quote</div>
+            <div class="big">"AI doesn't <em>replace</em> writers. It replaces <em>excuses.</em>"</div>
+            <div class="attr">— A founder, mid-revision</div>
+          </div>
+        </div>
+        <div class="meta"><div class="name">Quote Card</div><div class="tag">10s · 4:5</div></div>
+      </div>
+
+      <div class="card">
+        <div class="thumb dark">
+          <div class="thumb-inner t-cmp">
+            <div class="eyebrow">▸ Before / After</div>
+            <div class="big">The <em>cut.</em></div>
+            <div class="row">
+              <div><div class="lbl">Before</div><div class="pct">112</div></div>
+              <div><div class="lbl">After</div><div class="pct">50</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="meta"><div class="name">Before / After</div><div class="tag">12s · 9:16</div></div>
+      </div>
+
+      <div class="card">
+        <div class="thumb">
+          <div class="thumb-inner t-hook">
+            <div class="eyebrow">▸ Headline Hook</div>
+            <div class="big">The real cost of <em>scaling</em> an AI product.</div>
+            <div class="ticker">FIELD NOTES · ISSUE 014 · 2026</div>
+          </div>
+        </div>
+        <div class="meta"><div class="name">Hook</div><div class="tag">8s · 9:16</div></div>
+      </div>
+
+      <div class="card">
+        <div class="thumb dark">
+          <div class="thumb-inner t-story">
+            <div class="eyebrow">▸ Data Story</div>
+            <div class="big">Three numbers.<br/>One lesson.</div>
+            <div class="list">
+              <div><span>01 · Grok Build</span><span class="v">$300M</span></div>
+              <div><span>02 · Cursor Ops</span><span class="v">1,000×</span></div>
+              <div><span>03 · AIbridge</span><span class="v">−55%</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="meta"><div class="name">Data Story</div><div class="tag">15s · 9:16</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ BUILT FOR BUILDERS ═══ -->
+<section class="builders" id="builders" data-screen-label="06 Builders">
+  <div class="container">
+    <div>
+      <div class="label">For vibe coders</div>
+      <h2>Built like a <em>library</em>, not a SaaS.</h2>
+      <p>If you live in Cursor or Claude Code, you don't need another GUI. Xotion ships as an API and a HyperFrames-compatible skill. Pipe it into your agent. Render server-side. Stream the MP4.</p>
+      <div class="feats">
+        <div class="feat">
+          <div class="check">✓</div>
+          <div><strong>REST API</strong> <span>— one POST, one MP4. JSON in, video out.</span></div>
+        </div>
+        <div class="feat">
+          <div class="check">✓</div>
+          <div><strong>Agent skill</strong> <span>— drop into Claude Code, Cursor, Codex, Gemini CLI.</span></div>
+        </div>
+        <div class="feat">
+          <div class="check">✓</div>
+          <div><strong>HyperFrames native</strong> <span>— compositions are plain HTML; eject anytime.</span></div>
+        </div>
+        <div class="feat">
+          <div class="check">✓</div>
+          <div><strong>Deterministic renders</strong> <span>— same input, same MP4. Test it in CI.</span></div>
+        </div>
+        <div class="feat">
+          <div class="check">✓</div>
+          <div><strong>Webhook delivery</strong> <span>— ping when ready, S3 / R2 / your bucket.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="code-mock">
+      <div class="bar">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="file">render.ts</div>
+      </div>
+<pre><span class="c">// One call. One video. Done.</span>
+<span class="k">const</span> r <span class="o">=</span> <span class="k">await</span> tenx<span class="o">.</span>render({
+  template<span class="o">:</span> <span class="s">'stat-drop'</span>,
+  duration<span class="o">:</span> <span class="n">15</span>,
+  aspect<span class="o">:</span> <span class="s">'9:16'</span>,
+  data<span class="o">:</span> {
+    headline<span class="o">:</span> <span class="s">'The real cost of scaling AI.'</span>,
+    stats<span class="o">:</span> [
+      { label<span class="o">:</span> <span class="s">'Grok'</span>,    value<span class="o">:</span> <span class="s">'$300M'</span> },
+      { label<span class="o">:</span> <span class="s">'Cursor'</span>,  value<span class="o">:</span> <span class="s">'1,000×'</span> },
+      { label<span class="o">:</span> <span class="s">'AIbridge'</span>,value<span class="o">:</span> <span class="s">'−55%'</span> }
+    ],
+    takeaway<span class="o">:</span> <span class="s">'Pick fewer. Use deeper.'</span>
+  },
+  soundtrack<span class="o">:</span> <span class="s">'cinematic'</span>
+});
+
+console<span class="o">.</span>log(r<span class="o">.</span>url); <span class="c">// → https://xotion.studio/v/Xq7…mp4</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ PRICING ═══ -->
+<section class="pricing" id="pricing" data-screen-label="07 Pricing">
+  <div class="container">
+    <div class="head">
+      <div class="label" style="justify-content:center;">Pricing</div>
+      <h2>Cheap enough to <em>post daily.</em></h2>
+      <p>No render minutes. No seat fees. No "contact sales." Cancel from the dashboard in two clicks.</p>
+    </div>
+
+    <div class="tiers">
+      <div class="tier">
+        <div class="name">Free</div>
+        <div class="desc">For your first stat video. No card required.</div>
+        <div class="price"><span class="cur">$</span><span class="num">0</span><span class="per">/mo</span></div>
+        <ul>
+          <li>3 videos / month</li>
+          <li>720p · WebM + MP4</li>
+          <li>Xotion watermark</li>
+          <li>5 templates</li>
+          <li class="no">No API / brand kit</li>
+        </ul>
+        <div class="cta"><a class="btn btn-ghost" href="#">Get started</a></div>
+      </div>
+
+      <div class="tier featured">
+        <div class="ribbon">Most popular</div>
+        <div class="name">Pro</div>
+        <div class="desc">For founders &amp; creators shipping content every week.</div>
+        <div class="price"><span class="cur">$</span><span class="num">19</span><span class="per">/mo</span></div>
+        <ul>
+          <li>Unlimited videos</li>
+          <li>1080p · MP4 + WebM + GIF</li>
+          <li>No watermark</li>
+          <li>All 30+ templates</li>
+          <li>Custom fonts &amp; colors</li>
+          <li>Soundtrack library</li>
+        </ul>
+        <div class="cta"><a class="btn btn-primary" href="#">Start 7-day trial →</a></div>
+      </div>
+
+      <div class="tier">
+        <div class="name">Studio</div>
+        <div class="desc">For agencies and teams renderng at scale.</div>
+        <div class="price"><span class="cur">$</span><span class="num">99</span><span class="per">/mo</span></div>
+        <ul>
+          <li>Everything in Pro</li>
+          <li>4K renders</li>
+          <li>API + webhooks · 1,000 calls / mo</li>
+          <li>Brand kit (logo, fonts, palette)</li>
+          <li>Priority queue · 4× faster</li>
+          <li>Custom templates on request</li>
+        </ul>
+        <div class="cta"><a class="btn btn-ghost" href="#">Start Studio</a></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FAQ ═══ -->
+<section class="faq" id="faq" data-screen-label="08 FAQ">
+  <div class="container">
+    <div>
+      <div class="label">Questions</div>
+      <h2>You're <em>wondering.</em></h2>
+    </div>
+    <div class="items">
+      <details class="item" open>
+        <summary>How fast is a render? <span class="plus">+</span></summary>
+        <p>A 15-second 1080p video takes about 45–60 seconds on the Pro queue. Studio plans get a 4× faster priority queue (around 12–15s per render). Free tier renders queue behind paid traffic and can take 2–5 minutes at busy hours.</p>
+      </details>
+      <details class="item">
+        <summary>What formats do I get? <span class="plus">+</span></summary>
+        <p>MP4 (H.264, posts everywhere), WebM (best for the web), and a GIF preview for Slack &amp; email. 4K is a Studio-tier add-on. Aspect ratios: 9:16, 1:1, 4:5, and 16:9. You can render any composition at any aspect.</p>
+      </details>
+      <details class="item">
+        <summary>Can I bring my own brand fonts &amp; colors? <span class="plus">+</span></summary>
+        <p>Yes — Pro and Studio both let you upload a brand kit (logo, hex palette, custom .woff2 fonts) and templates inherit it automatically. Free tier locks you to our six built-in palettes.</p>
+      </details>
+      <details class="item">
+        <summary>Is the music actually licensed? <span class="plus">+</span></summary>
+        <p>All soundtracks are either procedurally generated (we own them; you get a perpetual commercial license) or licensed from our partners for unlimited social use. Nothing in Xotion will get your post flagged.</p>
+      </details>
+      <details class="item">
+        <summary>Can I edit the output in Premiere / CapCut? <span class="plus">+</span></summary>
+        <p>The MP4 is a standard H.264 file — drop it into any editor. We also export a HyperFrames source folder (HTML + assets) on Studio so you can fork the composition entirely.</p>
+      </details>
+      <details class="item">
+        <summary>Do you watermark Pro / Studio renders? <span class="plus">+</span></summary>
+        <p>No. Pro and Studio renders are clean. Free renders get a small "Made with Xotion" mark in the bottom corner.</p>
+      </details>
+      <details class="item">
+        <summary>Refunds? <span class="plus">+</span></summary>
+        <p>30 days, no questions. Reply to any onboarding email or hit the button in your dashboard. Pro-rated for unused months on annual plans.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ BIG CTA ═══ -->
+<section class="big-cta" data-screen-label="09 CTA">
+  <div class="container">
+    <h2>Stop dragging clips.<br/><em>Start posting stats.</em></h2>
+    <p>Three free videos. Two minutes to set up. Zero designers needed.</p>
+    <div class="ctas">
+      <a href="#" class="btn btn-primary">Start free →</a>
+      <a href="#templates" class="btn btn-on-ink">Browse templates</a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer data-screen-label="10 Footer">
+  <div class="container">
+    <div class="row">
+      <div>
+        <div class="brand"><svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="#e0451f"/><path d="M9.5 7 L18 12 L9.5 17 Z" fill="#f4f0e6"/></svg><span class="wm">Xotion</span></div>
+        <small>Prompt-driven motion graphics for founders, marketers &amp; vibe coders. Built on HyperFrames. Open by default.</small>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="#templates">Templates</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="#builders">API</a></li>
+          <li><a href="#">Changelog</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Resources</h4>
+        <ul>
+          <li><a href="#">Docs</a></li>
+          <li><a href="#faq">FAQ</a></li>
+          <li><a href="#">Brand kit</a></li>
+          <li><a href="#">Open source</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="#">About</a></li>
+          <li><a href="#">Twitter / X</a></li>
+          <li><a href="#">GitHub</a></li>
+          <li><a href="mailto:hi@xotion.studio">hi@xotion.studio</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <span>© 2026 Xotion · All renders deterministic</span>
+      <span>Made in a browser. Rendered in another browser.</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

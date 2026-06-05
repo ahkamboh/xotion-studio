@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Xotion — what it is (16:9)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,400..900&family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #0a0a0a; overflow: hidden; }
+  #root { position: fixed; inset: 0; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/html-to-image@1.11.13/dist/html-to-image.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/webm-muxer@3.0.2/build/webm-muxer.js"></script>
+<script src="xotion-explainer-audio.jsx" type="text/babel"></script>
+</head>
+<body>
+  <div id="root" data-screen-label="t=0s"></div>
+  <div id="record-ui"></div>
+
+  <script type="text/babel" src="animations.jsx"></script>
+  <script type="text/babel" src="xotion-explainer-scenes.jsx"></script>
+
+  <script type="text/babel">
+    // ─── Voice-over ────────────────────────────────────────────────────────
+    const VO = [
+      // Scene 1 (0–5)
+      { t: 1.40, text: 'This is Xotion — the prompt-native video editor.',     rate: 0.96, pitch: 0.95 },
+      { t: 4.00, text: 'Describe the edit. Get the video.',                    rate: 0.94, pitch: 0.93 },
+      // Scene 2 (5–10)
+      { t: 5.60, text: 'Editing is slow.',                                     rate: 0.96, pitch: 0.92 },
+      { t: 6.80, text: 'Timeline scrubbing. Keyframing. Per-render fees.',     rate: 1.02, pitch: 0.93 },
+      // Scene 3 (10–16.5)
+      { t: 10.50,text: 'With Xotion, you just prompt.',                        rate: 0.96, pitch: 0.94 },
+      { t: 13.30,text: 'It writes the script, voices it, pulls the footage, and animates the graphics.', rate: 1.04, pitch: 0.93 },
+      // Scene 4 (16.5–22)
+      { t: 17.00,text: "It's not one model winging it.",                       rate: 0.96, pitch: 0.92 },
+      { t: 18.60,text: "It's a team of agents, with QA gates. Nothing ships until it passes.", rate: 1.02, pitch: 0.93 },
+      // Scene 5 (22–27)
+      { t: 22.60,text: 'One prompt. Any format.',                             rate: 0.96, pitch: 0.94 },
+      { t: 23.90,text: 'Motion graphics, video editing, image editing.',      rate: 1.00, pitch: 0.93 },
+      // Scene 6 (27–32)
+      { t: 27.70,text: 'Xotion. Cursor for editors.',                         rate: 0.90, pitch: 0.90 },
+      { t: 29.60,text: 'Offline. No per-render fees.',                        rate: 0.90, pitch: 0.89 },
+    ];
+
+    function pickVoice() {
+      try {
+        const voices = window.speechSynthesis.getVoices();
+        const order = [/Google US English/i, /Samantha/i, /Daniel/i, /Alex/i, /Microsoft.*Aria/i, /Natural/i, /Neural/i];
+        for (const re of order) { const v = voices.find(vc => re.test(vc.name) && /en/i.test(vc.lang)); if (v) return v; }
+        return voices.find(v => v.lang && v.lang.startsWith('en')) || voices[0] || null;
+      } catch { return null; }
+    }
+
+    function VoiceController() {
+      const tl = useTimeline();
+      const ref = React.useRef({ last: -1, lt: 0 });
+      React.useEffect(() => () => { try { window.speechSynthesis.cancel(); } catch (_) {} }, []);
+      React.useEffect(() => {
+        if (!window.__voiceEnabled || !tl.playing) {
+          try { window.speechSynthesis.cancel(); } catch (_) {}
+          ref.current.last = -1; ref.current.lt = tl.time; return;
+        }
+        if (tl.time < ref.current.lt - 0.3) { try { window.speechSynthesis.cancel(); } catch (_) {} ref.current.last = -1; }
+        ref.current.lt = tl.time;
+        for (let i = ref.current.last + 1; i < VO.length; i++) {
+          if (tl.time >= VO[i].t) {
+            ref.current.last = i;
+            const u = new SpeechSynthesisUtterance(VO[i].text);
+            u.rate = VO[i].rate; u.pitch = VO[i].pitch; u.volume = 1.0;
+            const v = pickVoice(); if (v) u.voice = v;
+            try { window.speechSynthesis.speak(u); } catch (_) {}
+          } else break;
+        }
+      }, [tl.time, tl.playing]);
+      return null;
+    }
+
+    function ExposeStage() {
+      const tl = useTimeline();
+      const prev = React.useRef(false);
+      React.useEffect(() => { window.__stage = tl; }, [tl]);
+      React.useEffect(() => {
+        if (tl.playing && !prev.current) { if (window.__musicEnabled) window.__sound.start(tl.time); }
+        else if (!tl.playing && prev.current) { window.__sound.stop(); }
+        prev.current = tl.playing;
+      }, [tl.playing]);
+      return null;
+    }
+
+    if (!window.__sound) window.__sound = new ExplainerSound();
+    if (window.__voiceEnabled === undefined) window.__voiceEnabled = true;
+    if (window.__musicEnabled === undefined) window.__musicEnabled = true;
+    try { window.speechSynthesis.getVoices(); } catch (_) {}
+    if (window.speechSynthesis && 'onvoiceschanged' in window.speechSynthesis) window.speechSynthesis.onvoiceschanged = () => {};
+
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      <Stage width={XW} height={XH} duration={32} background="#f4f0e6" persistKey="xotionexplainer" autoplay={false}>
+        <XotionExplainer />
+        <ExposeStage />
+        <VoiceController />
+      </Stage>
+    );
+  </script>
+
+  <script type="text/babel">
+    // ─── Export (16:9 WebM, VP9 + Opus) ────────────────────────────────────
+    const DURATION_S = 32, FPS = 20, EW = 1920, EH = 1080;
+    function findCanvas() {
+      for (const el of document.querySelectorAll('#root div'))
+        if (el.style && el.style.width === EW + 'px' && el.style.height === EH + 'px') return el;
+      return null;
+    }
+    async function encAudio(buf, muxer, onErr) {
+      const SR = buf.sampleRate, ch = Math.min(2, buf.numberOfChannels), tot = buf.length;
+      const enc = new AudioEncoder({ output: (c, m) => muxer.addAudioChunk(c, m), error: onErr });
+      enc.configure({ codec: 'opus', sampleRate: SR, numberOfChannels: ch, bitrate: 128000 });
+      const c0 = buf.getChannelData(0), c1 = ch > 1 ? buf.getChannelData(1) : c0, CH = 1024;
+      for (let i = 0; i < tot; i += CH) {
+        const n = Math.min(CH, tot - i), inter = new Float32Array(n * ch);
+        for (let j = 0; j < n; j++) { inter[j * ch] = c0[i + j]; if (ch > 1) inter[j * ch + 1] = c1[i + j]; }
+        const ad = new AudioData({ format: 'f32', sampleRate: SR, numberOfFrames: n, numberOfChannels: ch, timestamp: Math.floor(i / SR * 1e6), data: inter });
+        enc.encode(ad); ad.close();
+      }
+      await enc.flush(); enc.close();
+    }
+    async function render({ onProgress, onMsg, withAudio }) {
+      if (typeof VideoEncoder === 'undefined') throw new Error('Use Chrome or Edge (WebCodecs needed).');
+      if (withAudio && typeof AudioEncoder === 'undefined') withAudio = false;
+      const inner = findCanvas(); if (!inner) throw new Error('Canvas not found');
+      onMsg('Embedding fonts…'); await document.fonts.ready;
+      const fontEmbedCSS = await window.htmlToImage.getFontEmbedCSS(inner).catch(() => '');
+      await new Promise(r => setTimeout(r, 200));
+      let audio = null;
+      if (withAudio) { onMsg('Rendering audio…'); audio = await window.__sound.renderOffline(DURATION_S, 48000); }
+      const TOTAL = Math.round(DURATION_S * FPS);
+      window.__stage.setPlaying(false); window.__stage.setTime(0);
+      const ot = inner.style.transform; inner.style.transform = 'none';
+      const muxer = new WebMMuxer.Muxer({ target: new WebMMuxer.ArrayBufferTarget(),
+        video: { codec: 'V_VP9', width: EW, height: EH, frameRate: FPS },
+        ...(withAudio && audio ? { audio: { codec: 'A_OPUS', sampleRate: 48000, numberOfChannels: 2 } } : {}) });
+      let err = null;
+      const enc = new VideoEncoder({ output: (c, m) => muxer.addVideoChunk(c, m), error: e => { err = e; } });
+      enc.configure({ codec: 'vp09.00.10.08', width: EW, height: EH, framerate: FPS, bitrate: 12000000 });
+      const off = document.createElement('canvas'); off.width = EW; off.height = EH;
+      const ctx = off.getContext('2d'); const t0 = performance.now();
+      try {
+        for (let i = 0; i < TOTAL; i++) {
+          if (err) throw err; onProgress(i / TOTAL);
+          const el = (performance.now() - t0) / 1000, pf = i > 0 ? el / i : 0;
+          onMsg(`Frame ${i + 1}/${TOTAL} · ~${Math.max(0, Math.round(pf * (TOTAL - i)))}s left`);
+          window.__stage.setTime(i / FPS);
+          await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+          const fc = await window.htmlToImage.toCanvas(inner, { width: EW, height: EH, pixelRatio: 1, cacheBust: false, fontEmbedCSS, skipFonts: true });
+          ctx.clearRect(0, 0, EW, EH); ctx.drawImage(fc, 0, 0, EW, EH);
+          const vf = new VideoFrame(off, { timestamp: Math.floor(i * 1e6 / FPS), duration: Math.floor(1e6 / FPS) });
+          enc.encode(vf, { keyFrame: i % FPS === 0 }); vf.close();
+          if (enc.encodeQueueSize > 4) await new Promise(r => setTimeout(r, 20));
+        }
+      } finally { inner.style.transform = ot; }
+      onMsg('Encoding audio + finalizing…'); await enc.flush(); enc.close();
+      if (withAudio && audio) { await encAudio(audio, muxer, e => { err = e; }); if (err) throw err; }
+      muxer.finalize(); return new Blob([muxer.target.buffer], { type: 'video/webm' });
+    }
+    function Recorder() {
+      const [state, setState] = React.useState('idle');
+      const [msg, setMsg] = React.useState(''); const [pr, setPr] = React.useState(0);
+      const [music, setMusic] = React.useState(true); const [voice, setVoice] = React.useState(true);
+      React.useEffect(() => { window.__musicEnabled = music; if (!music) window.__sound.stop(); }, [music]);
+      React.useEffect(() => { window.__voiceEnabled = voice; if (!voice) { try { window.speechSynthesis.cancel(); } catch (_) {} } }, [voice]);
+      const play = () => { if (window.__stage) { window.__stage.setTime(0); window.__stage.setPlaying(true); } };
+      const rec = async () => {
+        setState('recording'); setPr(0);
+        try {
+          const blob = await render({ onProgress: setPr, onMsg: setMsg, withAudio: music });
+          const url = URL.createObjectURL(blob); const a = document.createElement('a');
+          a.href = url; a.download = 'xotion-explainer-16x9.webm'; document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 4000);
+          setState('done'); setMsg('Saved xotion-explainer-16x9.webm · convert to .mp4 at cloudconvert.com');
+        } catch (e) { console.error(e); setState('error'); setMsg(e.message || 'Render failed'); }
+      };
+      const rg = state === 'recording';
+      const b = { background: 'rgba(14,13,12,0.06)', border: '1px solid rgba(14,13,12,0.15)', color: '#0e0d0c',
+        fontFamily: '"JetBrains Mono", monospace', fontSize: 12, letterSpacing: '0.16em', textTransform: 'uppercase',
+        padding: '10px 14px', borderRadius: 6, cursor: rg ? 'wait' : 'pointer', userSelect: 'none', opacity: rg ? 0.8 : 1 };
+      return (
+        <div style={{ position: 'fixed', top: 18, right: 18, zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button style={{ ...b, background: music ? 'rgba(14,13,12,0.10)' : 'rgba(14,13,12,0.03)', color: music ? '#0e0d0c' : 'rgba(14,13,12,0.4)' }} onClick={() => setMusic(s => !s)} disabled={rg}>{music ? '🔊 Music' : '🔈 Music'}</button>
+            <button style={{ ...b, background: voice ? 'rgba(14,13,12,0.10)' : 'rgba(14,13,12,0.03)', color: voice ? '#0e0d0c' : 'rgba(14,13,12,0.4)' }} onClick={() => setVoice(v => !v)} disabled={rg}>🎙 Voice</button>
+            <button style={b} onClick={play} disabled={rg}>▶ Play</button>
+            <button style={{ ...b, background: rg ? '#e0451f' : 'rgba(224,69,31,0.16)', borderColor: rg ? '#e0451f' : 'rgba(224,69,31,0.6)', color: rg ? '#fff' : '#b3300f', fontWeight: 700 }} onClick={rec} disabled={rg}>{rg ? `● Rendering ${Math.round(pr * 100)}%` : '↓ Download (YT)'}</button>
+          </div>
+          {rg && <div style={{ width: 300, height: 6, background: 'rgba(14,13,12,0.1)', borderRadius: 3, overflow: 'hidden' }}><div style={{ width: `${pr * 100}%`, height: '100%', background: '#e0451f' }}/></div>}
+          {msg && <div style={{ maxWidth: 360, padding: '8px 12px', background: 'rgba(14,13,12,0.85)', borderRadius: 6, color: state === 'error' ? '#ff9a85' : '#e8e3d8', fontFamily: 'system-ui', fontSize: 12, lineHeight: 1.4, textAlign: 'right' }}>{msg}</div>}
+          {state === 'idle' && <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 10, letterSpacing: '0.1em', color: 'rgba(14,13,12,0.4)', textAlign: 'right' }}>1920×1080 · 32s · webm (vp9+opus)</div>}
+        </div>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById('record-ui')).render(<Recorder/>);
+  </script>
+</body>
+</html>
