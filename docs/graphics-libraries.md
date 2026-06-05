@@ -101,11 +101,28 @@ with a SEEDED PRNG** (e.g. `mulberry32(fixedSeed)`), never with `Math.random()` 
 | `templates/graphics-overlay.html` | drifting glow particles + kinetic word-split headline + accent bar | custom canvas + GSAP | B + A |
 | `templates/graphics-overlay-3d.html` | rotating wireframe globe + 3D point cloud | **three.js** (ESM, pinned) | B + A |
 | `templates/graphics-overlay-atmosphere.html` | warm light leaks + bokeh + film grain + vignette | custom canvas + GSAP | B + A |
+| `templates/graphics-overlay-title.html` | frosted-glass premium title / lower-third (sheen sweep, gradient accent) | GSAP | A |
 
 Each renders over any clip via `scripts/overlay.sh`. Edit the headline/colors/`INTENSITY`/seed at
 the top of each file. The atmosphere template is render-heavy (grain is high-entropy) — set
 `GRAIN = 0` to speed it up, or keep it for the cinematic look. three.js needs WebGL (Chrome GPU,
-or SwiftShader software fallback — both work in the renderer).
+or SwiftShader software fallback — both work in the renderer). The glass title fakes frosting
+(translucent fill + gradient border + highlight + glow) because real `backdrop-filter` can't see
+the underlying video — compositing is downstream.
+
+## The premium finish — `scripts/enrich.sh`
+Overlays add graphics; **`enrich.sh` makes the whole frame look expensive.** One ffmpeg pass:
+cohesive grade + **bloom/glow** (blur highlights, screen-blend back) + film grain + vignette +
+subtle sharpen — the difference between a flat edit and a cinematic one.
+```bash
+scripts/enrich.sh <in.mp4> <out.mp4> [cine|teal-orange|warm|moody|clean|vibrant] [strength 0..1.5]
+```
+**Recommended stack for "graphically rich, not low-graphic":**
+```bash
+scripts/overlay.sh plain.mp4 projects/my-fx out-fx.mp4     # 1. add graphics (particles/3D/atmosphere/title)
+scripts/enrich.sh  out-fx.mp4 final.mp4 cine 0.6           # 2. premium finish (bloom+grade+grain+vignette)
+```
+Keep strength subtle (0.4–0.7) — premium is restrained, not blown out.
 
 ## Recommended starting set (best effort-to-payoff)
 1. **GSAP free plugins** (SplitText + DrawSVG + MorphSVG) — instant pro motion, no new dependency.

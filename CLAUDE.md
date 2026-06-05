@@ -191,7 +191,8 @@ grab the frame. `scripts/thumbnail.sh` pulls a frame from any video.
 | **Multi-language subs** | offline MT | `.venv-whisperx/bin/python scripts/multilang-subs.py subs.en.srt --top 30 [--burn video.mp4]` |
 | **Batch process** | per-file | `scripts/batch.sh <grade:cine\|youtube\|reel\|thumbnail\|normalize> out_dir files...` |
 | **Live preview** | hot-reload | `scripts/preview.sh [project_dir] [port]` (tweak before render) |
-| **Graphics overlay** | enrich a clip | `scripts/overlay.sh <base.mp4> <overlay_project> <out.mp4> [start] [fps]` (particles/kinetic-text/shaders → alpha → composite; see `docs/graphics-libraries.md`) |
+| **Graphics overlay** | enrich a clip | `scripts/overlay.sh <base.mp4> <overlay_project> <out.mp4> [start] [fps]` (particles/3D/atmosphere/glass-title → alpha → composite; 4 templates `graphics-overlay*.html`) |
+| **Premium finish** | look expensive | `scripts/enrich.sh <in.mp4> <out.mp4> [cine\|teal-orange\|warm\|moody\|clean\|vibrant] [strength]` (grade + bloom/glow + grain + vignette + sharpen). Stack AFTER overlay for rich, non-amateur output. |
 | **Thumbnail (designed)** | template | render `templates/thumbnail.html` → grab frame 1 |
 | **Animated icons** | Lottie | `templates/lottie-overlay.html` + a `.json` from lottiefiles.com |
 
