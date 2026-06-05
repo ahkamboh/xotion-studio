@@ -95,11 +95,24 @@ with a SEEDED PRNG** (e.g. `mulberry32(fixedSeed)`), never with `Math.random()` 
 
 ---
 
+## Ready-made overlay templates (all transparent-bg, deterministic, tested)
+| Template | Effect | Library | Pattern |
+|---|---|---|---|
+| `templates/graphics-overlay.html` | drifting glow particles + kinetic word-split headline + accent bar | custom canvas + GSAP | B + A |
+| `templates/graphics-overlay-3d.html` | rotating wireframe globe + 3D point cloud | **three.js** (ESM, pinned) | B + A |
+| `templates/graphics-overlay-atmosphere.html` | warm light leaks + bokeh + film grain + vignette | custom canvas + GSAP | B + A |
+
+Each renders over any clip via `scripts/overlay.sh`. Edit the headline/colors/`INTENSITY`/seed at
+the top of each file. The atmosphere template is render-heavy (grain is high-entropy) — set
+`GRAIN = 0` to speed it up, or keep it for the cinematic look. three.js needs WebGL (Chrome GPU,
+or SwiftShader software fallback — both work in the renderer).
+
 ## Recommended starting set (best effort-to-payoff)
 1. **GSAP free plugins** (SplitText + DrawSVG + MorphSVG) — instant pro motion, no new dependency.
-2. **Custom canvas particles** — `templates/graphics-overlay.html` (proven, deterministic).
-3. **Pixi.js / GLSL** — glow, displacement, light leaks over footage.
-4. **ECharts / D3** — premium data scenes.
+2. **Custom canvas particles / atmosphere** — the templates above (proven, deterministic).
+3. **three.js** — 3D depth (template above); extend with GLTF models, shaders, more geometry.
+4. **Pixi.js / GLSL** — glow, displacement, light leaks over footage.
+5. **ECharts / D3** — premium data scenes.
 
 ## How to add graphics to a plain video (proven pipeline)
 ```bash

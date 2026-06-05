@@ -100,10 +100,12 @@ first; only hand-build when nothing fits.
   - **Overlays & end-cards** (`docs/overlays.md`) — social CTAs (subscribe/follow/post), logo-outro,
     grain/vignette/light-leak atmosphere, premium text FX. Drop onto any video.
   - **JS graphics overlays** (`docs/graphics-libraries.md`) — enrich a *plain* clip with particles,
-    kinetic type, shaders, 3D, charts via any client-side JS lib (GSAP/Pixi/three/D3/p5…). Build a
-    TRANSPARENT-bg composition from `templates/graphics-overlay.html`, then composite with
-    `scripts/overlay.sh <base> <project> <out.mp4>`. **Deterministic rule:** DOM/SVG libs → GSAP
-    timeline; canvas/WebGL libs → the `hf-seek` clock; seed any randomness once at init.
+    kinetic type, shaders, 3D, charts via any client-side JS lib (GSAP/Pixi/three/D3/p5…). Three
+    ready-made transparent-bg templates: `graphics-overlay.html` (particles + kinetic text),
+    `graphics-overlay-3d.html` (three.js globe + point cloud), `graphics-overlay-atmosphere.html`
+    (light leaks + bokeh + grain). Composite with `scripts/overlay.sh <base> <project> <out.mp4>`.
+    **Deterministic rule:** DOM/SVG libs → GSAP timeline; canvas/WebGL libs → the `hf-seek` clock;
+    seed any randomness once at init.
 
 **Presets (pick by the user's prompt — this is how you get pro output fast):**
 - `presets/styles.md` — **12 complete visual styles** (the art-direction system above). Start here.
