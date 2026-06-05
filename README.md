@@ -189,10 +189,12 @@ Together the three examples show the full range: **build from a prompt** (female
 - **Multi-language subtitles**: translate captions to 30+ languages offline (`scripts/multilang-subs.py`)
 - **Batch + live preview**: `scripts/batch.sh` (many files), `scripts/preview.sh` (hot-reload)
 - **JS graphics overlays**: enrich a plain clip with particles / kinetic type / 3D / light-leaks /
-  glass titles — 4 ready templates (`graphics-overlay`, `-3d` three.js, `-atmosphere`, `-title`)
-  + `scripts/overlay.sh` (`docs/graphics-libraries.md`)
-- **Premium finish**: `scripts/enrich.sh` — grade + bloom/glow + grain + vignette + sharpen, so
-  output looks cinematic, not like a low-graphic edit (stack after an overlay)
+  glass titles / noise-aurora — 5 ready templates (`graphics-overlay`, `-3d` three.js, `-atmosphere`,
+  `-title`, `-aurora`) + `scripts/overlay.sh` (`docs/graphics-libraries.md`)
+- **Premium finish**: `scripts/enrich.sh` — grade + bloom/glow + grain + vignette + sharpen +
+  optional motion blur, so output looks cinematic, not like a low-graphic edit (stack after an overlay)
+- **Data-driven batch**: one template + a CSV/JSON → N personalized videos —
+  `scripts/render-batch.py` + `templates/data-driven-card.html` (`docs/data-driven.md`)
 
 ## Requirements
 

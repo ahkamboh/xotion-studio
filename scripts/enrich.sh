@@ -3,19 +3,22 @@
 # Applies a cohesive premium grade + bloom/glow + film grain + vignette + subtle sharpen
 # in a single ffmpeg pass. This is what separates a flat edit from a cinematic one.
 #
-#   scripts/enrich.sh <in.mp4> <out.mp4> [look] [strength]
+#   scripts/enrich.sh <in.mp4> <out.mp4> [look] [strength] [mblur]
 #
 #   look      cine | teal-orange | warm | moody | clean | vibrant   (default: cine)
 #   strength  0.0 .. 1.5  — scales bloom + grain (default: 0.6; keep subtle)
+#   mblur     0|off, or 2..4 — motion blur: blends that many consecutive frames into a
+#             smooth shutter trail (premium for fast motion). Default: 0 (off).
 #
 # Tip: stack with graphics overlays — run overlay.sh first (particles/3D/atmosphere),
 # then enrich.sh on the result for the final premium finish.
 set -euo pipefail
 
-IN="${1:?usage: enrich.sh <in.mp4> <out.mp4> [look] [strength]}"
+IN="${1:?usage: enrich.sh <in.mp4> <out.mp4> [look] [strength] [mblur]}"
 OUT="${2:?need output path}"
 LOOK="${3:-cine}"
 STR="${4:-0.6}"
+MBLUR="${5:-0}"
 
 [ -f "$IN" ] || { echo "input not found: $IN" >&2; exit 1; }
 
@@ -40,11 +43,17 @@ esac
 BLOOM=$(awk "BEGIN{printf \"%.3f\", 0.45*$STR}")
 GRAIN=$(awk "BEGIN{printf \"%d\", 9*$STR}")
 
-echo "[enrich] look=$LOOK strength=$STR bloom=$BLOOM grain=$GRAIN"
+echo "[enrich] look=$LOOK strength=$STR bloom=$BLOOM grain=$GRAIN mblur=$MBLUR"
 
-# Single pass: grade -> bloom (blur bright + screen) -> vignette -> grain -> sharpen
+# optional motion blur: average MBLUR consecutive frames into a shutter trail (equal weights)
+MB=""
+if [ "$MBLUR" != "0" ] && [ "$MBLUR" != "off" ]; then
+  MB="tmix=frames=${MBLUR},"
+fi
+
+# Single pass: [motion blur] -> grade -> bloom (blur bright + screen) -> vignette -> grain -> sharpen
 ffmpeg -y -i "$IN" -filter_complex "
-  [0:v]$EQ,$CURVE,format=gbrp[g];
+  [0:v]${MB}$EQ,$CURVE,format=gbrp[g];
   [g]split[a][b];
   [b]gblur=sigma=22[bl];
   [a][bl]blend=all_mode=screen:all_opacity=$BLOOM[bloomed];

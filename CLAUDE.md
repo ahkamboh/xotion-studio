@@ -192,7 +192,8 @@ grab the frame. `scripts/thumbnail.sh` pulls a frame from any video.
 | **Batch process** | per-file | `scripts/batch.sh <grade:cine\|youtube\|reel\|thumbnail\|normalize> out_dir files...` |
 | **Live preview** | hot-reload | `scripts/preview.sh [project_dir] [port]` (tweak before render) |
 | **Graphics overlay** | enrich a clip | `scripts/overlay.sh <base.mp4> <overlay_project> <out.mp4> [start] [fps]` (particles/3D/atmosphere/glass-title → alpha → composite; 4 templates `graphics-overlay*.html`) |
-| **Premium finish** | look expensive | `scripts/enrich.sh <in.mp4> <out.mp4> [cine\|teal-orange\|warm\|moody\|clean\|vibrant] [strength]` (grade + bloom/glow + grain + vignette + sharpen). Stack AFTER overlay for rich, non-amateur output. |
+| **Premium finish** | look expensive | `scripts/enrich.sh <in.mp4> <out.mp4> [cine\|teal-orange\|warm\|moody\|clean\|vibrant] [strength] [mblur]` (grade + bloom/glow + grain + vignette + sharpen + optional motion blur). Stack AFTER overlay for rich, non-amateur output. |
+| **Data-driven batch** | N videos from data | `python3 scripts/render-batch.py <project> <data.csv\|.json> [--name COL]` — one template + a CSV/JSON → one personalized MP4 per row (uses HyperFrames `--variables`; template = `data-driven-card.html`). See `docs/data-driven.md`. |
 | **Thumbnail (designed)** | template | render `templates/thumbnail.html` → grab frame 1 |
 | **Animated icons** | Lottie | `templates/lottie-overlay.html` + a `.json` from lottiefiles.com |
 
