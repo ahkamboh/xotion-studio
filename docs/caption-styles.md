@@ -74,6 +74,25 @@ python3 scripts/caption.py vo.wav --lang en --content speech --style karaoke --h
 active-word color when no box. The pill position is measured from each word's live layout and
 animated with a `back.out` spring. Then include `captions.js` + `mountCaptions(tl)` as usual.
 
+### Famous presets — `--preset` (CapCut / Submagic / Hormozi / Opus / Captions.ai)
+One flag = a complete trending look (verified on render). CLI flags still override.
+```bash
+python3 scripts/caption.py vo.wav --content speech --style karaoke --preset hormozi \
+  --font Montserrat --font-file assets/fonts/montserrat-900.ttf --out projects/<name>
+```
+| `--preset` | Look |
+|---|---|
+| `hormozi` | all-caps, thick black stroke, **green** active word + pop — the business benchmark |
+| `beast`   | MrBeast: huge all-caps, heavy stroke, **yellow** active, big pop |
+| `pill`    | white caps in a springy **yellow pill** (active text dark) |
+| `neon`    | glowing text, **cyan** active word with a bigger glow |
+| `gradient`| teal→blue→violet **gradient fill**, active pops + brightens |
+| `minimal` | small clean white, no stroke/animation (lower-third) |
+| `tiktok`  | white text on a rounded translucent **black bar** (classic) |
+| `default` | white text, yellow active word + scale |
+
+Hormozi/beast read best with Montserrat/Anton (heavy). For dark text on bright pills use `pill`.
+
 ---
 
 ### Choosing

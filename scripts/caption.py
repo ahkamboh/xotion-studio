@@ -34,6 +34,15 @@ Options:
   --hl HEX           karaoke (no --box): color the active word turns (default #ffd84a)
   --box HEX          karaoke: draw a rounded pill of this color that springs word-to-word
                      (the "animated background" look). When set, active text stays --color.
+  --preset NAME      karaoke famous look (CapCut/Submagic/Hormozi/etc.):
+                       hormozi  = all-caps, thick black stroke, green active word + pop (business benchmark)
+                       beast    = MrBeast: huge all-caps, heavy stroke, yellow active, big pop
+                       pill     = white caps in a springy yellow pill (active text dark)
+                       neon     = glowing text, cyan active word with bigger glow
+                       gradient = teal->blue->violet gradient fill, active pops + brightens
+                       minimal  = small clean white, no stroke/animation (lower-third)
+                       tiktok   = white text on a rounded translucent black bar (classic)
+                     CLI flags (--box/--hl/--color/--font/--size) override the preset.
   --out DIR          project dir to write captions.js/.json (default: cwd)
 
 Then in your composition's <script> (after building tl, before registering):
@@ -45,6 +54,20 @@ import sys, json, argparse, subprocess, os, re
 WHISPERX_LANGS = {"ar","ca","cs","da","de","el","en","es","eu","fa","fi","fr","gl","he","hi",
 "hr","hu","id","it","ja","ka","ko","lv","ml","nl","nn","no","pl","pt","ro","ru","sk","sl",
 "sv","te","tl","tr","uk","ur","vi","zh"}
+
+# Famous caption looks (CapCut / Submagic / Hormozi / Opus / Captions.ai), for --style karaoke.
+# Each is a full look; CLI flags (--box/--hl/--color/--font/--size) still override.
+KARAOKE_PRESETS = {
+  # name        weight upper stroke strokeCol  glow  grad  base       active     activeTxt  scale  box        bar
+  "default":  dict(weight=800, upper=False, stroke=0, strokeCol="#000", glow=False, grad=False, base="#ffffff", active="#ffd84a", activeTxt=None,    scale=1.12, box=None,      bar=None),
+  "hormozi":  dict(weight=900, upper=True,  stroke=8, strokeCol="#000", glow=False, grad=False, base="#ffffff", active="#3bff6a", activeTxt=None,    scale=1.14, box=None,      bar=None),
+  "beast":    dict(weight=900, upper=True,  stroke=9, strokeCol="#000", glow=False, grad=False, base="#ffffff", active="#ffd60a", activeTxt=None,    scale=1.18, box=None,      bar=None),
+  "pill":     dict(weight=800, upper=True,  stroke=0, strokeCol="#000", glow=False, grad=False, base="#ffffff", active=None,      activeTxt="#0b0b0b",scale=1.08, box="#ffd60a", bar=None),
+  "neon":     dict(weight=800, upper=False, stroke=0, strokeCol="#000", glow=True,  grad=False, base="#eafcff", active="#39e6ff", activeTxt=None,    scale=1.12, box=None,      bar=None),
+  "gradient": dict(weight=800, upper=False, stroke=0, strokeCol="#000", glow=False, grad=True,  base="#ffffff", active=None,      activeTxt=None,    scale=1.14, box=None,      bar=None),
+  "minimal":  dict(weight=600, upper=False, stroke=0, strokeCol="#000", glow=False, grad=False, base="#ffffff", active="#ffffff", activeTxt=None,    scale=1.0,  box=None,      bar=None),
+  "tiktok":   dict(weight=700, upper=False, stroke=0, strokeCol="#000", glow=False, grad=False, base="#ffffff", active="#ffffff", activeTxt=None,    scale=1.0,  box=None,      bar="rgba(0,0,0,.55)"),
+}
 
 def repo_root():
     return os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -127,16 +150,40 @@ def build_events(words, style, maxchars, maxwords=4):
 def emit_karaoke(ev, args):
     os.makedirs(args.out, exist_ok=True)
     json.dump(ev, open(os.path.join(args.out,"captions.json"),"w"), ensure_ascii=False, indent=2)
+    P = dict(KARAOKE_PRESETS["default"]); P.update(KARAOKE_PRESETS.get(args.preset, {}))
+    # CLI overrides (only when explicitly different from the shared defaults)
+    base   = args.color if args.color != "#ffffff" else P["base"]
+    active = args.hl    if args.hl    != "#ffd84a" else (P["active"] or "#ffd84a")
+    box    = args.box   if args.box   else P["box"]
+    bar    = P["bar"]
+    act_txt= P["activeTxt"]
     pos = args.pos or "center"
     size = args.size or 96
+    GRAD = "linear-gradient(135deg,#5cffd0,#3fa9ff 55%,#7b5cff)"
     fontface = ""
     if args.font_file:
-        fontface = f'@font-face{{font-family:"{args.font}";font-weight:800;src:url("{args.font_file}") format("truetype");}}'
+        fontface = f'@font-face{{font-family:"{args.font}";font-weight:{P["weight"]};src:url("{args.font_file}") format("truetype");}}'
     posrule = ("top:50%;transform:translateY(-50%);" if pos=="center" else "bottom:150px;")
-    has_box = "true" if args.box else "false"
-    box_color = args.box or "#3fa9ff"
+
+    # active emphasis mode
+    mode = "pill" if box else ("scale" if P["grad"] else ("glow" if P["glow"] else "color"))
+
+    # ---- word CSS (built from the preset) ----
+    wcss = "display:inline-block;position:relative;z-index:1;margin:0 .16em;"
+    wcss += f'font-weight:{P["weight"]};'
+    if P["upper"]: wcss += "text-transform:uppercase;"
+    if P["grad"]:  wcss += f"background-image:{GRAD};-webkit-background-clip:text;background-clip:text;color:transparent;"
+    else:          wcss += f"color:{base};"
+    if P["stroke"]>0: wcss += f'-webkit-text-stroke:{P["stroke"]}px {P["strokeCol"]};paint-order:stroke fill;'
+    shadow = "0 4px 18px rgba(0,0,0,.6),0 2px 5px rgba(0,0,0,.55)"
+    if P["glow"]: shadow = f"0 0 14px {base},0 0 34px {active}"
+    if bar:       shadow = "none"
+    wcss += f"text-shadow:{shadow};will-change:transform,color,filter;"
+
+    has_box = "true" if box else "false"
+    has_bar = "true" if bar else "false"
     data = json.dumps(ev, ensure_ascii=False)
-    js = """/* captions.js — karaoke style (active-word highlight + optional springy pill). caption.py */
+    js = """/* captions.js — karaoke style, preset=%PRESET% (active-word highlight). caption.py */
 window.__CAPTIONS = %DATA%;
 window.mountCaptions = function(tl, opts){
   opts = opts || {};
@@ -144,58 +191,77 @@ window.mountCaptions = function(tl, opts){
   var sup = opts.suppress || [];
   var root = document.querySelector('[data-composition-id="'+compId+'"]');
   if(!root){ console.warn("captions: root not found"); return; }
-  var HASBOX = %HASBOX%;
+  var HASBOX=%HASBOX%, HASBAR=%HASBAR%, MODE="%MODE%";
   var st = document.createElement("style");
   st.textContent = `%FONTFACE%
   .xcap-k{position:absolute;left:0;right:0;%POS%text-align:center;opacity:0;z-index:45;padding:0 70px;}
   .xcap-k .ln{position:relative;display:inline-block;max-width:100%;
-    font-family:"%FONT%",sans-serif;font-weight:800;font-size:%SIZEpx;line-height:1.18;letter-spacing:-.01em;}
-  .xcap-k .w{display:inline-block;position:relative;z-index:1;margin:0 .14em;color:%COLOR%;
-    text-shadow:0 4px 18px rgba(0,0,0,.6),0 2px 5px rgba(0,0,0,.55);will-change:transform,color;}
+    font-family:"%FONT%",sans-serif;font-size:%SIZEpx;line-height:1.18;letter-spacing:-.01em;}
+  .xcap-k .w{%WCSS%}
   .xcap-k .bx{position:absolute;z-index:0;border-radius:.26em;background:%BOXCOLOR%;
-    left:0;top:0;width:0;height:0;opacity:0;box-shadow:0 8px 30px rgba(0,0,0,.30);}`;
+    left:0;top:0;width:0;height:0;opacity:0;box-shadow:0 8px 30px rgba(0,0,0,.30);}
+  .xcap-k .bar{position:absolute;z-index:0;border-radius:.34em;background:%BARCOLOR%;
+    left:0;top:0;width:0;height:0;opacity:0;}`;
   document.head.appendChild(st);
   function hidden(s){ for(var i=0;i<sup.length;i++){ if(s>=sup[i][0]&&s<=sup[i][1]) return true; } return false; }
+  var BASE="%BASE%", ACTIVE="%ACTIVE%", ACTTXT="%ACTTXT%", SC=%SCALE%;
 
   window.__CAPTIONS.forEach(function(c){
     if(hidden(c.s)) return;
     var d=document.createElement("div"); d.className="xcap-k";
     var ln=document.createElement("span"); ln.className="ln"; d.appendChild(ln);
-    var box=null;
+    var bar=null, box=null;
+    if(HASBAR){ bar=document.createElement("span"); bar.className="bar"; ln.appendChild(bar); }
     if(HASBOX){ box=document.createElement("span"); box.className="bx"; ln.appendChild(box); }
     var spans=c.words.map(function(wd){
       var s=document.createElement("span"); s.className="w"; s.textContent=wd.w; ln.appendChild(s); return s;
     });
     root.appendChild(d);
-
     tl.set(d,{opacity:1},c.s);
     tl.set(d,{opacity:0},c.e);
 
     var PADX=14, PADY=8;
+    if(bar && spans.length){                       // one rounded bar behind the whole line (TikTok)
+      var f=spans[0], l=spans[spans.length-1];
+      var L=f.offsetLeft-PADX, T=f.offsetTop-PADY;
+      var Wd=(l.offsetLeft+l.offsetWidth)-f.offsetLeft+PADX*2, Hd=f.offsetHeight+PADY*2;
+      tl.set(bar,{left:L,top:T,width:Wd,height:Hd,opacity:1},c.s);
+    }
     c.words.forEach(function(wd,wi){
       var sp=spans[wi];
-      if(HASBOX){
-        // move the pill to this word's box (offsets relative to .ln) — springy
-        var L=sp.offsetLeft-PADX, T=sp.offsetTop-PADY, Wd=sp.offsetWidth+PADX*2, Hd=sp.offsetHeight+PADY*2;
+      if(MODE==="pill"){
+        var L=sp.offsetLeft-PADX,T=sp.offsetTop-PADY,Wd=sp.offsetWidth+PADX*2,Hd=sp.offsetHeight+PADY*2;
         if(wi===0){ tl.set(box,{left:L,top:T,width:Wd,height:Hd,opacity:1},wd.s); }
         else { tl.to(box,{left:L,top:T,width:Wd,height:Hd,duration:.22,ease:"back.out(1.5)"},wd.s); }
-        tl.to(sp,{scale:1.08,duration:.12,ease:"back.out(2)"},wd.s);
+        if(ACTTXT){ tl.set(sp,{color:ACTTXT},wd.s); tl.set(sp,{color:BASE},wd.e); }
+        tl.to(sp,{scale:SC,duration:.12,ease:"back.out(2)"},wd.s);
         tl.to(sp,{scale:1,duration:.18,ease:"power2.out"},wd.e);
-      } else {
-        tl.to(sp,{color:"%HL%",scale:1.12,duration:.12,ease:"back.out(2)"},wd.s);
-        tl.to(sp,{color:"%COLOR%",scale:1,duration:.18,ease:"power2.out"},wd.e);
+      } else if(MODE==="scale"){                    // gradient: pop + brighten
+        tl.to(sp,{scale:SC,filter:"brightness(1.3)",duration:.12,ease:"back.out(2)"},wd.s);
+        tl.to(sp,{scale:1,filter:"brightness(1)",duration:.18,ease:"power2.out"},wd.e);
+      } else if(MODE==="glow"){                      // neon: recolor + bigger glow
+        tl.to(sp,{color:ACTIVE,scale:SC,textShadow:"0 0 18px "+ACTIVE+",0 0 46px "+ACTIVE,duration:.12,ease:"back.out(2)"},wd.s);
+        tl.to(sp,{color:BASE,scale:1,duration:.2,ease:"power2.out"},wd.e);
+      } else {                                       // color: recolor + scale
+        if(SC>1.0){ tl.to(sp,{color:ACTIVE,scale:SC,duration:.12,ease:"back.out(2)"},wd.s);
+                    tl.to(sp,{color:BASE,scale:1,duration:.18,ease:"power2.out"},wd.e); }
+        else { tl.set(sp,{color:ACTIVE},wd.s); tl.set(sp,{color:BASE},wd.e); }
       }
     });
     if(box){ tl.to(box,{opacity:0,duration:.12},c.e-0.05); }
+    if(bar){ tl.to(bar,{opacity:0,duration:.12},c.e-0.05); }
   });
 };
 """
-    js = (js.replace("%DATA%",data).replace("%FONTFACE%",fontface).replace("%POS%",posrule)
-            .replace("%FONT%",args.font).replace("%SIZE",str(size)).replace("%COLOR%",args.color)
-            .replace("%HASBOX%",has_box).replace("%BOXCOLOR%",box_color).replace("%HL%",args.hl))
+    repl = {"%DATA%":data,"%FONTFACE%":fontface,"%POS%":posrule,"%FONT%":args.font,
+            "%SIZE":str(size),"%WCSS%":wcss,"%HASBOX%":has_box,"%HASBAR%":has_bar,"%MODE%":mode,
+            "%BOXCOLOR%":(box or "#3fa9ff"),"%BARCOLOR%":(bar or "transparent"),
+            "%BASE%":base,"%ACTIVE%":active,"%ACTTXT%":(act_txt or ""),"%SCALE%":str(P["scale"]),
+            "%PRESET%":args.preset}
+    for k,v in repl.items(): js = js.replace(k, v)
     open(os.path.join(args.out,"captions.js"),"w").write(js)
     n=sum(len(e["words"]) for e in ev)
-    print(f"[caption] {len(ev)} karaoke lines ({n} words) -> {args.out}/captions.js (+ captions.json)")
+    print(f"[caption] {len(ev)} karaoke lines ({n} words), preset={args.preset} -> {args.out}/captions.js")
     print(f"[caption] in composition: <script src=\"captions.js\"></script> then window.mountCaptions(tl, {{suppress:[]}});")
 
 def emit(ev, args):
@@ -268,6 +334,8 @@ def main():
     ap.add_argument("--maxwords", type=int, default=4, help="karaoke: max words per line/page")
     ap.add_argument("--hl", default="#ffd84a", help="karaoke (no --box): active-word color")
     ap.add_argument("--box", default=None, help="karaoke: pill color that springs word-to-word")
+    ap.add_argument("--preset", choices=list(KARAOKE_PRESETS.keys()), default="default",
+                    help="karaoke famous look: hormozi|beast|pill|neon|gradient|minimal|tiktok|default")
     ap.add_argument("--content", choices=["music","speech"], default="music",
                     help="music/singing -> small.pt (perceived timing); speech/talking -> whisperX (forced align). "
                          "PROVEN: whisperX is far better for speech, small.pt perfect for music.")

@@ -14,7 +14,8 @@ INPUTS:
 - STYLE = "word"      (word = single centered word / IShowSpeed; line = phrase lines;
                        karaoke = paginated lines, ACTIVE word highlighted as spoken — short-form speech)
 - LOOK  = ""          (font, color, size, transition: none|pop|fade — optional;
-                       karaoke: --box "#3fa9ff" springy pill, or --hl "#ffd84a" color; --maxwords 4)
+                       karaoke: --preset hormozi|beast|pill|neon|gradient|minimal|tiktok (famous looks),
+                       or --box "#3fa9ff" springy pill / --hl "#ffd84a" color; --maxwords 4)
 
 DO:
 1. Run the agent (it auto-uses whisperX for accuracy, small.pt fallback):
