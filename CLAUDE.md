@@ -210,9 +210,10 @@ sync bugs. One command:
 `window.mountCaptions(tl, {suppress:[[a,b]]})`. See `prompts/captions.md`. For visual *looks*
 beyond the agent's defaults, `docs/caption-styles.md` has 6 styles.
 - **`--style karaoke`** = paginated lines with the ACTIVE word highlighted as spoken (Submagic/
-  Hormozi/TikTok). `--box "#3fa9ff"` draws a rounded pill that **springs word-to-word** (the
-  "animated background" look); without `--box`, the active word recolors to `--hl` + scales
-  (colored/scaling words). `--maxwords N` per line. Best for short-form speech (`--content speech`).
+  Hormozi/TikTok). Use **`--preset`** for famous looks: `hormozi` (green active + black stroke,
+  the benchmark), `beast`, `pill` (springy yellow pill), `neon`, `gradient`, `minimal`, `tiktok`
+  (black bar). Or roll your own: `--box "#hex"` (springy pill) / `--hl "#hex"` (active color),
+  `--maxwords N`. Best for short-form speech (`--content speech`). See `docs/caption-styles.md`.
 
 **Brand kits:** if a `brand.json` (or `brands/<name>.json`, see `brand.example.json`) exists, READ
 it first and apply its colors/fonts/logo/tone to every composition for that client.
