@@ -42,6 +42,18 @@ automatically and follows the full toolkit — you just provide files.
 
 Most jobs combine pillars (e.g. grade footage + overlay an animated title).
 
+## Command shorthand (`:`)
+
+Drive the engine with short `:name` commands instead of full sentences — `@file` is the input,
+`:cmd` is the action, and they chain. Full registry in **[COMMANDS.md](COMMANDS.md)**.
+
+```
+:short @podcast.mp4              # autocut + Hormozi captions + reels + premium finish
+:lyric @song.mp3 :style=noir     # noir lyric video
+:caption :neon :lang=ur @reel.mp4  # Urdu neon captions
+:rich :aurora @plain.mp4         # aurora overlay + premium finish
+```
+
 ## Prompts
 
 | Prompt | Use |
