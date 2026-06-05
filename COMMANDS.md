@@ -26,6 +26,7 @@ Type a `:name` in your prompt and the engine runs that workflow. Rules:
 | `:title` | title card / intro | `templates/title-card.html` |
 | `:ugc` | UGC ad (vertical) | `templates/ugc-ad-vertical.html` |
 | `:cards` | one template + CSV → N videos | `scripts/render-batch.py` |
+| `:stat` | rich editorial stat-explainer on ANY topic (6-scene, Editorial-Brutalist / Warm-Documentary) — `prompts/stat-explainer.md` + `templates/stat-explainer-vertical.html` |
 
 ## 💬 Captions (`:caption` + a preset)
 | cmd | look |

@@ -133,3 +133,25 @@ If the user names a platform, use its ratio. If not and it's social → default 
    matching motion presets (`presets/motion-presets.md`) and caption style (`docs/caption-styles.md`).
 6. State the style chosen in your reply ("Going with **Luxe Noir** — dark + gold, Playfair") so the
    user can redirect in one word.
+
+---
+
+## Editorial Brutalist — cream + ink + arrest-red, data-journalism
+Use: AI/tech stat videos, "the real cost of X", op-ed explainers, numbers-driven social. Fonts: **Fraunces** (head, 900 + italic for emphasis) + **Inter** (body) + **JetBrains Mono** (labels/page-chrome). Layout: magazine furniture — mono label top-left, page counter "01/06" top-right, hairline + year bottom; giant italic serif numbers, tabular-nums; ONE ink-black tension scene mid-video. Motion: punchy (.4–.6s), back.out letter-cascade, count-up, rotated -8° stamps, hard-cut + whoosh. Ratio: 9:16.
+```css
+:root{ --bg:#f4f0e6; --fg:#0e0d0c; --muted:rgba(14,13,12,.42); --accent:#e0451f; --accent2:#0e0d0c;
+  --bg-dark:#0e0d0c; --rule:rgba(14,13,12,.16); }
+/* fonts: fraunces-900 (italic accent), inter-500, jetbrains-500 ; tracking head -0.04em / labels +0.18em */
+```
+
+## Warm Documentary — bookshelf-dark + lamp-amber + coral, Cursor-style
+Use: founder announcements, product reveals, calm "report in numbers", talking-head + screen-recording explainers. Fonts: **Instrument Serif** (head, italic for emphasis) + **Inter** (body / lower-thirds) + **JetBrains Mono** (annotations/chrome). Layout: full-bleed warm interior (bookshelf bars + lamp glow + grain + vignette) OR IDE-editor mock for b-roll; clean no-box lower-thirds; italic-green "// code-comment" annotations. Motion: calm (.6s), power2.out soft fade-up 12–24px, NO overshoot, NO letter stagger, crossfade, slow ken-burns. Ratio: 9:16 / 16:9.
+```css
+:root{ --bg:#1a120c; --fg:#f6f1e8; --muted:rgba(246,241,232,.65); --accent:#f4c47a; --accent-warm:#d97757;
+  --anno:#7fbfa4; --bg-dark:#120c07; --rule:rgba(246,241,232,.14); }
+/* fonts: instrument-serif-400 (italic accent), inter-400/500, jetbrains-500 ; tracking head -0.035em / labels +0.22em */
+```
+
+**Routing (add to the choose table):**
+| AI cost, stat explainer, data-journalism, "the real cost of…" | **Editorial Brutalist** |
+| founder reveal, calm announcement, report-in-numbers, Cursor-style | **Warm Documentary** |

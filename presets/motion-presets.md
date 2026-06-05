@@ -84,3 +84,22 @@ const o={v:0}; tl.to(o,{v:target,duration:1.2,ease:"power2.out",
 
 > Rule of thumb per scene: 1 background motion + staggered entrances + 1 emphasis + decisive exit.
 > Don't reuse the same ease/speed/direction across a scene. See docs/qa-protocol.md before delivery.
+
+---
+
+## Editorial / stat-explainer recipes (for the :stat template)
+
+**soft-fade-up** (Warm Documentary house) — calm, no overshoot
+`tl.from(el,{y:18,opacity:0,duration:.6,ease:"power2.out"},t)`
+
+**letter-slam** (Editorial Brutalist house) — per-letter punch with settle
+`tl.from(letters,{y:40,opacity:0,duration:.42,stagger:.025,ease:"back.out(1.9)"},t)`
+
+**stamp-in** — rotated label/seal (Editorial Brutalist; set transform-origin)
+`tl.from(el,{scale:.8,rotation:-8,opacity:0,duration:.4,ease:"back.out(2)"},t)`
+
+**anno-reveal** — italic "// code comment" callout with dotted leader (Warm Documentary)
+`tl.from(el,{x:-16,opacity:0,duration:.5,ease:"power2.out"},t); tl.from(leader,{scaleX:0,duration:.4,ease:"power2.out"},t)`
+
+**bar-shrink** — before/after comparison ("after" collapses by N%; transform-origin:bottom)
+`tl.fromTo(barAfter,{scaleY:1},{scaleY:1-pct,duration:1.4,ease:"power3.inOut"},t)`
