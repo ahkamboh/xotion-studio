@@ -1,15 +1,15 @@
-# Xotion brand assets
+# Xotion brand assets (official)
 
-**Logo: "Play-O"** — the wordmark **Xotion** (capital X) where the first **o is a play button**,
-plus a matching app-icon (play button on a dark rounded tile). The play mark = video; the gradient = motion.
+**Logo:** Play-O — ink tile + red ring/▶ play icon, with the wordmark **X◉tion** (Fraunces 900,
+the first "o" is the play mark). Brand: cream `#f4f0e6` · ink `#0e0d0c` · accent red `#e0451f`.
 
 | File | Use |
 |---|---|
-| `xotion-logo.png` | full lockup (icon + wordmark + tagline) on dark — README / hero |
-| `xotion-icon.png` | app icon (glowing play button, dark tile), transparent |
-| `xotion-mark.svg` | scalable app-icon mark (tile + play) |
-| `xotion-mark-flat.svg` | scalable play mark, transparent |
+| `xotion-logo.svg` / `-dark` | full lockup, ink text — light backgrounds |
+| `xotion-logo-white.*` | full lockup, cream text — **dark** backgrounds |
+| `xotion-logo-cream-bg.*` | lockup on a cream card — README hero / social |
+| `xotion-logo-transparent.png` | lockup, transparent (ink) |
+| `xotion-icon.*` / `-dark` | app icon (ink tile) |
+| `xotion-icon-white.*` | app icon (cream tile) |
 
-**Colors:** gradient `#5cffd0 → #3fa9ff → #7b5cff` on near-black `#080b18` (tile `#0a0f22→#16203f`).
-**Type:** Sora 800 (wordmark), Inter 500 (tagline).
-PNGs are rendered from HTML via HyperFrames — re-render to restyle.
+SVG + PNG for each. SVG wordmark uses Fraunces; PNGs are pre-rendered (font baked in).
