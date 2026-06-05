@@ -1,6 +1,6 @@
 <div align="center">
 
-# xotion
+<img src="assets/brand/xotion-logo.png" alt="xotion — prompt-native video editor" width="640"/>
 
 ### The prompt-native video editor — **Cursor for editors.**
 
