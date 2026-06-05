@@ -77,6 +77,8 @@ Type a `:name` in your prompt and the engine runs that workflow. Rules:
 | `:style=<name>` | apply a visual style (`presets/styles.md`: noir, tech, editorial…) |
 | `:brand` | apply `brand.json` (colors/fonts/logo) |
 | `:batch` | run an op over many files (`scripts/batch.sh`) |
+| `:sync` | lock motion-graphic scenes to the voiceover (`scripts/scene-sync.py`) — graphics never drift |
+| `:stock` | fetch watermark-free Pexels b-roll (`scripts/pexels.py`) |
 | `:preview` | live hot-reload preview before render |
 | `:qa` | run the QA acceptance loop |
 | `:help` | print this list (`scripts/help.sh [group]`) |
