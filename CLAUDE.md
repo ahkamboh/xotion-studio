@@ -116,6 +116,7 @@ blocks (`data-chart`, `world-map`, `us-map`…) — see `prompts/data-video.md`.
 first; only hand-build when nothing fits.
   - **Code videos** (`prompts/code-video.md`) — 24 editor/terminal themes, per-char typing.
   - **App/product showcase** (`prompts/app-showcase.md`) — 3D device (vfx-iphone-device) + liquid-glass UI.
+  - **Stat explainer** (`prompts/stat-explainer.md`, `:stat`) — rich editorial data-journalism on ANY topic (6 scenes): styles **Editorial Brutalist** / **Warm Documentary** from `presets/styles.md`; enforce the art-director **Richness checklist** + qa-visual **Richness gate**. Template `templates/stat-explainer-vertical.html` (fill the DATA object only).
   - **Overlays & end-cards** (`docs/overlays.md`) — social CTAs (subscribe/follow/post), logo-outro,
     grain/vignette/light-leak atmosphere, premium text FX. Drop onto any video.
   - **JS graphics overlays** (`docs/graphics-libraries.md`) — enrich a *plain* clip with particles,

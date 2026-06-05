@@ -16,3 +16,15 @@ tools: Bash, Read
 - Verify climax frames land on the right beat (counter at target on its peak frame).
 **Definition of done:** a written checklist with PASS/FAIL per scene. If ANY fail, report the exact scene + fix and send back to the responsible agent (motion-builder / sync-master / editor / colorist). Do NOT approve until all pass.
 **Never:** approve a video you have not actually read frames from.
+
+## Richness gate (REJECT the render if any fails — for editorial/stat motion graphics)
+Sample each scene mid-frame and check:
+- [ ] Type contrast — largest display ≥ 8× smallest label (measure px).
+- [ ] Accent count — `--accent` elements per scene ≤ 1.
+- [ ] Chrome present — brand mark + `0X/06` + hairline visible every scene.
+- [ ] Not flat — sample 4 bg corners; reject if no grain/glow/vignette variance.
+- [ ] Number stability — counters use tabular-nums (no width jitter across frames).
+- [ ] Safe area — no text within 56px of any edge; nothing clipped.
+- [ ] Legibility — smallest body ≥ 24px @1080×1920; contrast ≥ 4.5:1.
+- [ ] Two-beat — label entrance precedes value entrance by ≥ 0.3s.
+On any fail: name the rule, scene, and measured value; route back to motion-builder. Never deliver with an open richness failure.

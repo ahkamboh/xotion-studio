@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+  stat-explainer-vertical.html — xotion / HyperFrames template
+  ────────────────────────────────────────────────────────────────────────
+  A 6-scene vertical (1080×1920) data-journalism explainer with the "rich"
+  editorial motion language. Slot-driven: fill the DATA object (or have the
+  agent inject it) — never edit layout per topic.
+
+  TWO THEMES via <body data-theme="...">:
+    • "editorial-brutalist"  — cream + ink + arrest-red, Fraunces
+    • "warm-documentary"     — bookshelf-dark + lamp-amber + coral, Instrument Serif
+
+  RICHNESS RULES baked in (see art-director checklist):
+    1. type contrast ≥ 8:1   2. accent on ≤1 element/scene   3. magazine chrome
+    4. tabular-nums + italic accent word   5. textured bg   6. two-beat reveals
+    7. ease discipline (one personality per video, varied within scene)
+
+  HyperFrames convention:
+    • Composition root carries data-composition-id="main"
+    • A PAUSED GSAP master timeline on window.__timeline (HyperFrames seeks it)
+    • Total duration in seconds on <meta name="hf-duration">
+    • Fonts @font-face'd from assets/fonts/ (copied per-project by new-project.sh)
+-->
+<head>
+<meta charset="UTF-8" />
+<meta name="hf-duration" content="28" />
+<meta name="hf-fps" content="30" />
+<meta name="hf-width" content="1080" />
+<meta name="hf-height" content="1920" />
+<style>
+  /* ─── FONTS (from assets/fonts/) ─────────────────────────────────────── */
+  @font-face { font-family:"Fraunces"; font-weight:900; font-style:normal;
+    src:url("assets/fonts/fraunces-900.ttf") format("truetype"); }
+  @font-face { font-family:"Fraunces"; font-weight:900; font-style:italic;
+    src:url("assets/fonts/fraunces-900-italic.ttf") format("truetype"); }
+  @font-face { font-family:"Instrument Serif"; font-weight:400; font-style:normal;
+    src:url("assets/fonts/instrument-serif-400.ttf") format("truetype"); }
+  @font-face { font-family:"Instrument Serif"; font-weight:400; font-style:italic;
+    src:url("assets/fonts/instrument-serif-400-italic.ttf") format("truetype"); }
+  @font-face { font-family:"Inter"; font-weight:400;
+    src:url("assets/fonts/inter-400.ttf") format("truetype"); }
+  @font-face { font-family:"Inter"; font-weight:500;
+    src:url("assets/fonts/inter-500.ttf") format("truetype"); }
+  @font-face { font-family:"JetBrains Mono"; font-weight:500;
+    src:url("assets/fonts/jetbrains-500.ttf") format("truetype"); }
+  @font-face { font-family:"JetBrains Mono"; font-weight:600;
+    src:url("assets/fonts/jetbrains-500.ttf") format("truetype"); }
+
+  /* ─── THEME TOKENS ───────────────────────────────────────────────────── */
+  body[data-theme="editorial-brutalist"]{
+    --bg:#f4f0e6; --bg-dark:#0e0d0c; --fg:#0e0d0c; --fg-on-dark:#f4f0e6;
+    --muted:rgba(14,13,12,.42); --muted-on-dark:rgba(244,240,230,.55);
+    --accent:#e0451f; --rule:rgba(14,13,12,.16); --rule-on-dark:rgba(244,240,230,.16);
+    --display:"Fraunces"; --display-w:900; --body:"Inter"; --mono:"JetBrains Mono";
+    --display-ls:-0.04em; --label-ls:0.18em;
+    --grain-blend:multiply;
+  }
+  body[data-theme="warm-documentary"]{
+    --bg:#1a120c; --bg-dark:#120c07; --fg:#f6f1e8; --fg-on-dark:#f6f1e8;
+    --muted:rgba(246,241,232,.65); --muted-on-dark:rgba(246,241,232,.55);
+    --accent:#f4c47a; --accent-warm:#d97757; --anno:#7fbfa4;
+    --rule:rgba(246,241,232,.14); --rule-on-dark:rgba(246,241,232,.14);
+    --display:"Instrument Serif"; --display-w:400; --body:"Inter"; --mono:"JetBrains Mono";
+    --display-ls:-0.035em; --label-ls:0.22em;
+    --grain-blend:screen;
+  }
+
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html,body{ width:1080px; height:1920px; overflow:hidden; background:#000; }
+
+  #main{
+    position:relative; width:1080px; height:1920px;
+    background:var(--bg); color:var(--fg);
+    font-family:var(--body); overflow:hidden;
+  }
+
+  /* ─── SCENES stack; visibility driven by timeline ───────────────────── */
+  .scene{ position:absolute; inset:0; opacity:0; }
+  .scene .layer{ position:absolute; inset:0; }
+
+  /* ─── BACKGROUND TEXTURE (rule 5: never flat) ───────────────────────── */
+  .bg{ position:absolute; inset:0; overflow:hidden; background:var(--bg); }
+  .bg.dark{ background:var(--bg-dark); }
+  .bg .glow{ position:absolute; width:1200px; height:1200px; left:50%; top:18%;
+    transform:translate(-50%,-30%);
+    background:radial-gradient(circle, color-mix(in srgb, var(--accent) 16%, transparent) 0%, transparent 62%); }
+  body[data-theme="warm-documentary"] .bg .glow{
+    background:radial-gradient(ellipse 60% 50% at 70% 22%, rgba(244,196,122,.22) 0%, transparent 65%); }
+  body[data-theme="warm-documentary"] .bg .shelf{ position:absolute; inset:0; opacity:.5;
+    background:repeating-linear-gradient(90deg,
+      rgba(74,50,33,.55) 0 14px, rgba(43,31,21,.85) 14px 26px,
+      rgba(90,60,38,.6) 26px 42px, rgba(26,18,12,.9) 42px 54px);
+    filter:blur(20px); }
+  body[data-theme="warm-documentary"] .bg .desk{ position:absolute; left:0; right:0; bottom:0; height:40%;
+    background:linear-gradient(180deg, transparent, rgba(43,28,17,.6) 35%, rgba(74,50,33,.85) 75%, #2a1b10); }
+  .bg .grain{ position:absolute; inset:0; opacity:.07; mix-blend-mode:var(--grain-blend);
+    background-image:repeating-linear-gradient(0deg, rgba(255,255,255,.5) 0 1px, transparent 1px 3px); }
+  .bg .vignette{ position:absolute; inset:0;
+    background:radial-gradient(ellipse at 50% 55%, transparent 38%, rgba(0,0,0,.5) 100%); }
+
+  /* ─── MAGAZINE CHROME (rule 3) ──────────────────────────────────────── */
+  .chrome{ position:absolute; inset:0; font-family:var(--mono); pointer-events:none; }
+  .chrome .mark{ position:absolute; top:64px; left:64px; display:flex; align-items:center; gap:14px;
+    font-size:20px; font-weight:600; letter-spacing:0.20em; text-transform:uppercase; color:var(--muted); }
+  .chrome .mark .dot{ width:10px; height:10px; background:var(--accent); border-radius:2px; }
+  .chrome .count{ position:absolute; top:64px; right:64px; font-size:20px; font-weight:600;
+    letter-spacing:0.20em; text-transform:uppercase; color:var(--muted); }
+  .chrome .count b{ color:var(--fg); font-weight:700; }
+  .chrome .hr{ position:absolute; left:64px; right:64px; bottom:104px; height:1px; background:var(--rule);
+    transform-origin:left; }
+  .chrome .foot{ position:absolute; left:64px; right:64px; bottom:60px; display:flex;
+    justify-content:space-between; font-size:18px; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); }
+  .chrome.on-dark .mark, .chrome.on-dark .count, .chrome.on-dark .foot{ color:var(--muted-on-dark); }
+  .chrome.on-dark .count b{ color:var(--fg-on-dark); }
+  .chrome.on-dark .hr{ background:var(--rule-on-dark); }
+
+  /* ─── TYPE (rule 1: extreme contrast; rule 4: tabular + italic accent) ─ */
+  .eyebrow{ font-family:var(--mono); font-size:24px; font-weight:600; letter-spacing:var(--label-ls);
+    text-transform:uppercase; color:var(--accent); display:flex; align-items:center; gap:16px; }
+  .eyebrow .tick{ width:26px; height:1px; background:var(--accent); display:inline-block; }
+  body[data-theme="warm-documentary"] .eyebrow{ color:var(--accent-warm); }
+  body[data-theme="warm-documentary"] .eyebrow .tick{ background:var(--accent-warm); }
+
+  .display{ font-family:var(--display); font-weight:var(--display-w); letter-spacing:var(--display-ls);
+    line-height:0.92; color:var(--fg); }
+  .display .it{ font-style:italic; color:var(--accent); }
+  body[data-theme="warm-documentary"] .display .it{ color:var(--accent); }
+
+  .num{ font-family:var(--display); font-weight:var(--display-w); font-style:italic;
+    font-size:300px; line-height:0.85; letter-spacing:-0.05em; color:var(--accent);
+    font-variant-numeric:tabular-nums; }
+  body[data-theme="editorial-brutalist"] .num{ color:var(--fg); }
+
+  .label-xl{ font-family:var(--display); font-weight:var(--display-w); font-style:italic;
+    font-size:150px; line-height:0.95; letter-spacing:var(--display-ls); color:var(--fg); }
+
+  .caption{ font-family:var(--body); font-weight:400; font-size:36px; line-height:1.4;
+    color:var(--muted); max-width:840px; }
+  .caption b{ color:var(--fg); font-weight:500; }
+  .on-dark .caption, .scene.dark .caption{ color:var(--muted-on-dark); }
+  .on-dark .caption b{ color:var(--fg-on-dark); }
+  .on-dark .label-xl, .on-dark .display{ color:var(--fg-on-dark); }
+
+  /* stamp (Editorial Brutalist only) */
+  .stamp{ position:absolute; border:4px solid var(--accent); color:var(--accent);
+    font-family:var(--mono); font-size:22px; font-weight:700; letter-spacing:0.18em;
+    text-transform:uppercase; padding:12px 18px; transform-origin:center; }
+  body[data-theme="warm-documentary"] .stamp{ display:none; }
+
+  /* annotation (Warm Documentary code-comment style) */
+  .anno{ font-family:var(--mono); font-style:italic; font-size:26px; color:var(--anno);
+    white-space:nowrap; }
+  body[data-theme="editorial-brutalist"] .anno{ color:var(--muted); }
+
+  /* comparison bars */
+  .bars{ display:flex; align-items:flex-end; gap:36px; }
+  .bar{ position:relative; flex:1; }
+  .bar .cap{ position:absolute; top:24px; left:24px; font-family:var(--mono); font-size:22px;
+    font-weight:600; letter-spacing:0.16em; text-transform:uppercase; }
+  .bar .val{ position:absolute; bottom:24px; left:24px; font-family:var(--display);
+    font-weight:var(--display-w); font-size:84px; line-height:1; letter-spacing:-0.03em;
+    font-variant-numeric:tabular-nums; }
+  .bar.before{ border:1px solid var(--rule-on-dark); }
+  .bar.before .cap{ color:var(--muted-on-dark); } .bar.before .val{ color:var(--fg-on-dark); }
+  .bar.after{ background:var(--accent); transform-origin:bottom; }
+  body[data-theme="warm-documentary"] .bar.after{ background:var(--accent-warm); }
+  .bar.after .cap{ color:#fff; } .bar.after .val{ color:#fff; }
+  .pct{ font-family:var(--display); font-weight:var(--display-w); font-style:italic;
+    font-size:190px; letter-spacing:-0.05em; line-height:0.9; color:var(--accent); }
+  body[data-theme="warm-documentary"] .pct{ color:var(--accent-warm); }
+
+  /* stack table */
+  .row{ display:grid; grid-template-columns:64px 1fr auto; align-items:baseline; gap:24px;
+    padding:24px 0; border-bottom:1px solid var(--rule); }
+  .row .ri{ font-family:var(--mono); font-size:20px; color:var(--muted); letter-spacing:0.12em; }
+  .row .rn{ font-family:var(--display); font-weight:var(--display-w); font-size:76px;
+    line-height:1; letter-spacing:-0.03em; color:var(--fg); }
+  .row .rt{ font-family:var(--mono); font-size:18px; color:var(--muted); letter-spacing:0.16em;
+    text-transform:uppercase; margin-top:6px; }
+  .row .rv{ font-family:var(--display); font-weight:var(--display-w); font-style:italic;
+    font-size:92px; letter-spacing:-0.04em; line-height:1; color:var(--accent);
+    font-variant-numeric:tabular-nums; }
+
+  /* word/letter spans for animation */
+  .ln{ display:block; overflow:hidden; }
+  .lt,.wd{ display:inline-block; }
+</style>
+</head>
+
+<body data-theme="editorial-brutalist">
+  <div id="main" data-composition-id="main" data-start="0" data-duration="30" data-width="1080" data-height="1920">
+    <!-- scenes injected by build() from DATA -->
+  </div>
+
+  <!-- GSAP (vendored by HyperFrames; path per your setup) -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script src="charts.js"></script>
+  <script>
+  /* ════════════════════════════════════════════════════════════════════
+     DATA — the ONLY thing the agent fills. Works for ANY topic.
+     ════════════════════════════════════════════════════════════════════ */
+  const DATA = {
+    theme: "editorial-brutalist",          // or "warm-documentary"
+    brand: "FIELD NOTES",
+    issue: "015",
+    year:  "2026",
+
+    title: {
+      eyebrow: "A report in numbers",
+      lines: ["The real cost", "of scaling", "an AI product."],   // last line gets italic accent
+      subtitle: "Three numbers from the last quarter that changed how we ship."
+    },
+
+    // scenes 2 & 3 — one big stat each
+    stats: [
+      { eyebrow:"x · 2026 launch costs", label:"Grok Build.", prefix:"$", from:0, to:300, suffix:"M",
+        caption:"Compute, talent, & the long tail <b>of demos that never shipped.</b>",
+        stamp:"per quarter" },
+      { eyebrow:"y · token spend, vs last year", label:"Cursor Ops.", prefix:"", from:0, to:1000, suffix:"×",
+        caption:"Token burn, <b>up a thousand times</b> in twelve months.", stamp:null }
+    ],
+
+    // scene 4 — dark tension / comparison
+    comparison: {
+      eyebrow:"z · feature surface, q2 → q3", label:"AIbridge.",
+      beforeCap:"Before", beforeVal:"112", afterCap:"After", afterFrom:112, afterTo:50,
+      pct:"−55%", shrink:0.55, caption:"Surface area, knocked back<br/>to what users actually use."
+    },
+
+    // scene 5 — the synthesis stack
+    stack: {
+      eyebrow:"The pattern", head:["Three teams.", "One lesson."],
+      rows:[
+        { name:"Grok Build", tag:"Per quarter", value:"$300M" },
+        { name:"Cursor Ops", tag:"Token burn", value:"1,000×" },
+        { name:"AIbridge",   tag:"Feature cut", value:"−55%" }
+      ]
+    },
+
+    // scene 6 — takeaway
+    takeaway: { lineA:"Pick fewer.", lineB:"Use deeper.", signoff:"FIELD NOTES · ISSUE 015" }
+  };
+
+  /* ════════════════════════════════════════════════════════════════════
+     SCENE TIMING (6 scenes). Adjust to VO length; keep ~4–6s each.
+     ════════════════════════════════════════════════════════════════════ */
+  const SCENES = [
+    { id:"s1", start:0.0,  end:4.5  },
+    { id:"s2", start:4.5,  end:9.0  },
+    { id:"s3", start:9.0,  end:13.5 },
+    { id:"s4", start:13.5, end:18.0 },  // dark
+    { id:"s5", start:18.0, end:22.5 },
+    { id:"s6", start:22.5, end:28.0 }
+  ];
+
+  const Q = s => document.querySelector('[data-composition-id="main"] ' + s);
+  const QA = s => Array.from(document.querySelectorAll('[data-composition-id="main"] ' + s));
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  // split text into per-letter spans (for letter-slam)
+  const letters = (t, cls='') =>
+    `<span class="ln"><span class="lt-wrap">` +
+    String(t).split('').map(c => `<span class="lt ${cls}">${c===' '?'&nbsp;':esc(c)}</span>`).join('') +
+    `</span></span>`;
+
+  /* ─── BUILD DOM from DATA ──────────────────────────────────────────── */
+  function chrome(idx, onDark){
+    const n = String(idx).padStart(2,'0');
+    return `<div class="chrome ${onDark?'on-dark':''} layer">
+      <div class="mark"><span class="dot"></span>${esc(DATA.brand)} · ${esc(DATA.issue)}</div>
+      <div class="count"><b>${n}</b> / 06</div>
+      <div class="hr"></div>
+      <div class="foot"><span>${esc(DATA.title.lines.join(' '))}</span><span>${esc(DATA.year)}</span></div>
+    </div>`;
+  }
+  function bg(dark){
+    return `<div class="bg ${dark?'dark':''} layer">
+      <div class="shelf"></div><div class="glow"></div><div class="desk"></div>
+      <div class="grain"></div><div class="vignette"></div></div>`;
+  }
+
+  function build(){
+    document.body.setAttribute('data-theme', DATA.theme);
+    const m = Q('') || document.getElementById('main');
+    const T = DATA.title, c = DATA.comparison, st = DATA.stack, tk = DATA.takeaway;
+
+    // Scene 1 — title
+    let s1 = `<div class="scene" id="s1">${bg(false)}${chrome(0,false)}
+      <div class="layer" style="left:64px; right:64px; top:470px;">
+        <div class="eyebrow" data-a="eyebrow"><span class="tick"></span>${esc(T.eyebrow)}</div>
+        <div class="display" style="font-size:180px; margin-top:28px;">
+          ${T.lines.map((l,i)=>`<div data-a="title-line">${i===T.lines.length-1?`<span class="it">${esc(l)}</span>`:esc(l)}</div>`).join('')}
+        </div>
+        <div class="caption" data-a="subtitle" style="margin-top:40px;">${T.subtitle}</div>
+      </div></div>`;
+
+    // Scenes 2 & 3 — big stats
+    const statScene = (s, idx) => `<div class="scene" id="s${idx+1}">${bg(false)}${chrome(idx,false)}
+      <div class="layer" style="left:64px; right:64px; top:430px;">
+        <div class="eyebrow" data-a="eyebrow"><span class="tick"></span>${esc(s.eyebrow)}</div>
+        <div class="label-xl" data-a="label" style="margin-top:22px;">${esc(s.label)}</div>
+      </div>
+      <div class="layer" style="left:64px; right:64px; top:980px; display:flex; align-items:baseline; gap:20px;">
+        <div class="num" data-a="num" data-from="${s.from}" data-to="${s.to}" data-prefix="${s.prefix}" data-suffix="${s.suffix}">${s.prefix}0${s.suffix}</div>
+      </div>
+      ${s.stamp?`<div class="stamp" data-a="stamp" style="right:110px; top:960px;">${esc(s.stamp)}</div>`:''}
+      <div class="layer caption" data-a="caption" style="left:64px; right:64px; bottom:200px;">${s.caption}</div>
+    </div>`;
+    let s2 = statScene(DATA.stats[0], 1);
+    let s3 = statScene(DATA.stats[1], 2);
+
+    // Scene 4 — dark comparison
+    let s4 = `<div class="scene dark" id="s4">${bg(true)}${chrome(3,true)}
+      <div class="layer" style="left:64px; right:64px; top:430px;">
+        <div class="eyebrow" data-a="eyebrow"><span class="tick"></span>${esc(c.eyebrow)}</div>
+        <div class="label-xl on-dark" data-a="label" style="margin-top:22px;">${esc(c.label)}</div>
+      </div>
+      <div class="layer bars" style="left:64px; right:64px; top:1010px; height:540px;">
+        <div class="bar before" style="height:100%;"><div class="cap">${esc(c.beforeCap)}</div><div class="val">${esc(c.beforeVal)}</div></div>
+        <div class="bar after" data-a="bar-after" data-shrink="${c.shrink}" style="height:100%;">
+          <div class="cap">${esc(c.afterCap)}</div>
+          <div class="val"><span data-a="after-num" data-from="${c.afterFrom}" data-to="${c.afterTo}">${c.afterFrom}</span></div>
+        </div>
+      </div>
+      <div class="pct" data-a="pct" style="position:absolute; right:100px; top:1600px;">${esc(c.pct)}</div>
+      <div class="layer caption" data-a="caption" style="left:64px; bottom:240px; max-width:540px;">${c.caption}</div>
+    </div>`;
+
+    // Scene 5 — stack
+    let rows = st.rows.map((r,i)=>`<div class="row" data-a="row">
+        <div class="ri">0${i+1}</div>
+        <div><div class="rn">${esc(r.name)}</div><div class="rt">${esc(r.tag)}</div></div>
+        <div class="rv">${esc(r.value)}</div></div>`).join('');
+    let s5 = `<div class="scene" id="s5">${bg(false)}${chrome(4,false)}
+      <div class="layer" style="left:64px; right:64px; top:430px;">
+        <div class="eyebrow" data-a="eyebrow"><span class="tick"></span>${esc(st.eyebrow)}</div>
+        <div class="display" data-a="stack-head" style="font-size:120px; margin-top:22px;">
+          ${st.head.map((l,i)=>`<div>${i===st.head.length-1?`<span class="it">${esc(l)}</span>`:esc(l)}</div>`).join('')}
+        </div>
+      </div>
+      <div class="layer" style="left:64px; right:64px; top:920px;">${rows}</div>
+    </div>`;
+
+    // Scene 6 — takeaway (on dark for Editorial; warm for Documentary)
+    let s6 = `<div class="scene dark" id="s6">${bg(true)}${chrome(5,true)}
+      <div class="layer" style="left:0; right:0; top:640px; text-align:center;">
+        <div class="display on-dark" data-a="take-a" style="font-size:200px;">${esc(tk.lineA)}</div>
+        <div class="display" data-a="take-b" style="font-size:200px; margin-top:24px;"><span class="it">${esc(tk.lineB)}</span></div>
+      </div>
+      <div class="layer" data-a="signoff" style="left:0; right:0; bottom:240px; text-align:center;
+        font-family:var(--mono); font-size:24px; letter-spacing:0.24em; text-transform:uppercase;
+        color:var(--accent); font-weight:600;">${esc(tk.signoff)}</div>
+    </div>`;
+
+    m.innerHTML = s1 + s2 + s3 + s4 + s5 + s6;
+  }
+
+  /* ─── ANIMATE: build the paused master timeline ─────────────────────── */
+  function animate(){
+    const isDoc = DATA.theme === "warm-documentary";
+    // ease personality per theme (rule 7)
+    const E = isDoc
+      ? { in:"power2.out", line:"power2.out", num:"power1.out", dist:18, stagger:0.02 }
+      : { in:"back.out(1.8)", line:"back.out(1.9)", num:"power2.out", dist:40, stagger:0.025 };
+
+    const tl = gsap.timeline({ paused:true });
+    window.__timelines = window.__timelines || {}; window.__timelines["main"] = tl; window.__timeline = tl;          // HyperFrames seeks this
+    window.tl = tl;
+
+    SCENES.forEach((sc, i) => {
+      const root = '#' + sc.id + ' ';
+      const at = sc.start;
+      const dur = sc.end - sc.start;
+
+      // scene visibility + 1 background motion (ken-burns, rule: never static)
+      tl.set(Q(root), { opacity:1 }, at);
+      if (i>0) tl.set(QA('.scene')[i-1], { opacity:0 }, at);     // hard cut prev off
+      tl.fromTo(Q(root+'.bg'), { scale:1 }, { scale:1.05, duration:dur, ease:"none" }, at);
+
+      // chrome fade + hairline draw
+      tl.from(Q(root+'.chrome .mark'), { opacity:0, duration:.5, ease:"power2.out" }, at+.1);
+      tl.from(Q(root+'.chrome .count'), { opacity:0, duration:.5, ease:"power2.out" }, at+.1);
+      tl.from(Q(root+'.chrome .hr'), { scaleX:0, duration:.6, ease:"power2.out" }, at+.2);
+      tl.from(Q(root+'.chrome .foot'), { opacity:0, duration:.5 }, at+.3);
+
+      // eyebrow
+      const eb = Q(root+'[data-a="eyebrow"]');
+      if (eb) tl.from(eb, { x:-20, opacity:0, duration:.5, ease:"power2.out" }, at+.2);
+
+      // ── per-scene content ──
+      if (i===0){  // TITLE — two-beat: lines then subtitle
+        QA(root+'[data-a="title-line"]').forEach((l,k)=>
+          tl.from(l, { y:E.dist, opacity:0, duration:.55, ease:E.line }, at+.4+k*.18));
+        tl.from(Q(root+'[data-a="subtitle"]'), { y:16, opacity:0, duration:.6, ease:"power2.out" }, at+1.3);
+      }
+      else if (i===1 || i===2){  // BIG STAT — two-beat: label, then number
+        tl.from(Q(root+'[data-a="label"]'), { y:E.dist, opacity:0, duration:.5, ease:E.line }, at+.4);
+        const num = Q(root+'[data-a="num"]');
+        countUp(tl, num, +num.dataset.from, +num.dataset.to, num.dataset.prefix, num.dataset.suffix, at+.9, 1.2, E.num);
+        tl.from(num, { y:30, opacity:0, duration:.5, ease:E.in }, at+.9);
+        const stamp = Q(root+'[data-a="stamp"]');
+        if (stamp) tl.from(stamp, { scale:.8, rotation:-8, opacity:0, duration:.4, ease:"back.out(2)" }, at+1.6);
+        tl.from(Q(root+'[data-a="caption"]'), { y:16, opacity:0, duration:.6, ease:"power2.out" }, at+1.5);
+      }
+      else if (i===3){  // DARK COMPARISON — bar shrink
+        tl.from(Q(root+'[data-a="label"]'), { y:E.dist, opacity:0, duration:.5, ease:E.line }, at+.4);
+        const after = Q(root+'[data-a="bar-after"]');
+        tl.fromTo(after, { scaleY:1 }, { scaleY:1-(+after.dataset.shrink), duration:1.4, ease:"power3.inOut" }, at+.7);
+        const an = Q(root+'[data-a="after-num"]');
+        countUp(tl, an, +an.dataset.from, +an.dataset.to, "", "", at+.9, 1.4, "power2.out");
+        tl.from(Q(root+'[data-a="pct"]'), { x:40, opacity:0, duration:.5, ease:E.in }, at+1.6);
+        tl.from(Q(root+'[data-a="caption"]'), { y:16, opacity:0, duration:.6, ease:"power2.out" }, at+1.6);
+      }
+      else if (i===4){  // STACK — rows slide up, staggered
+        QA(root+'[data-a="stack-head"] > div').forEach((l,k)=>
+          tl.from(l, { y:E.dist, opacity:0, duration:.5, ease:E.line }, at+.3+k*.12));
+        QA(root+'[data-a="row"]').forEach((r,k)=>
+          tl.from(r, { x:-40, opacity:0, duration:.5, ease:"power3.out" }, at+.7+k*.16));
+      }
+      else if (i===5){  // TAKEAWAY — two big lines + signoff
+        tl.from(Q(root+'[data-a="take-a"]'), { y:30, opacity:0, duration:.7, ease:E.line }, at+.3);
+        tl.from(Q(root+'[data-a="take-b"]'), { y:30, opacity:0, duration:.7, ease:E.line }, at+1.1);
+        tl.from(Q(root+'[data-a="signoff"]'), { opacity:0, duration:.6 }, at+2.2);
+      }
+    });
+
+    tl.set({}, {}, DATA && SCENES[SCENES.length-1].end); // pad to full duration
+    return tl;
+  }
+
+  // count-up helper (rule 4: tabular). Uses XChart if present, else inline.
+  function countUp(tl, el, from, to, prefix, suffix, at, dur, ease){
+    const o = { v: from };
+    const dec = (to % 1 !== 0) ? 1 : 0;
+    tl.to(o, { v:to, duration:dur, ease:ease||"power2.out",
+      onUpdate:()=>{ el.textContent = (prefix||'') + (dec? o.v.toFixed(1) : Math.round(o.v).toLocaleString()) + (suffix||''); } }, at);
+  }
+
+  /* ─── BOOT ──────────────────────────────────────────────────────────── */
+  build();
+  const master = animate();
+  // HyperFrames drives master via seek(time). For local preview, uncomment:
+  // master.play();
+  </script>
+</body>
+</html>

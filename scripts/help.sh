@@ -12,7 +12,7 @@ b "🎬 MAKE"; cat <<'E'
   :explain  explainer                         :app      3D device / glass showcase
   :promo    promo / hype edit                 :title    title card / intro
   :music    music visualizer                  :ugc      UGC ad (vertical)
-  :cards    one template + CSV -> N videos
+  :cards    one template + CSV -> N videos     :stat     rich editorial stat-explainer (any topic)
 E
 }
 [ "$G" = all ] || [ "$G" = caption ] && {
