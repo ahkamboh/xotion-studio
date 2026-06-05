@@ -181,6 +181,8 @@ Together the three examples show the full range: **build from a prompt** (female
 - **Brand kits**: `brand.json` auto-applies colors/fonts/logo
 - **QA**: `verify.sh` frame-extraction + HyperFrames visual inspect
 - **Thumbnails** & **Lottie** icon animations · **SFX pack** (whoosh/riser/impact/…)
+- **111 ready-made blocks** (`scripts/add-block.sh`): 30 shader transitions, data charts, maps, caption styles, social overlays
+- **Data videos**: CSV/numbers → animated charts/maps (`prompts/data-video.md`)
 
 ## Requirements
 

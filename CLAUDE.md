@@ -88,6 +88,14 @@ platform (16:9 YouTube · 9:16 Shorts/Reels/TikTok · 4:5 or 1:1 IG). Then state
 your reply so the user can redirect in one word. This makes color/font/layout/motion a deliberate
 system, not a per-element guess.
 
+**Block registry — use ready-made blocks BEFORE hand-building.** HyperFrames ships **111 blocks**:
+30 shader scene-transitions, data charts, maps, 15 caption styles, social overlays, effects,
+textures, showcases. Install: `scripts/add-block.sh <name> projects/<name>` (= `npx hyperframes
+add <name>`), then include the printed snippet. Catalog: **`docs/blocks.md`** (all 111) ·
+**`docs/transitions-blocks.md`** (the 30 transitions by vibe). For data/charts/maps use the data
+blocks (`data-chart`, `world-map`, `us-map`…) — see `prompts/data-video.md`. Reach for a block
+first; only hand-build when nothing fits.
+
 **Presets (pick by the user's prompt — this is how you get pro output fast):**
 - `presets/styles.md` — **12 complete visual styles** (the art-direction system above). Start here.
 - `presets/video-presets.md` — 9 named video formats (narrated explainer, promo/hype, music
