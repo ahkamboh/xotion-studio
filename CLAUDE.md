@@ -12,9 +12,10 @@ when genuinely blocked (a real decision only the user can make).
 The user may drive the engine with short `:name` commands instead of full sentences. When a prompt
 contains `:tokens`, look them up in **`COMMANDS.md`** and run those workflows **in order**, using
 any `@file`/path as the input. `=` passes a value (`:style=noir`, `:voice=female`, `:lang=ur`).
-Combos (`:short`, `:ship`, `:rich`) expand to full pipelines — see the table. Unknown token →
-pick the closest match and confirm. A normal sentence still works; commands are just a faster alias
-for the same toolkit below. (`:` is used because `/ @ #` are reserved by Claude Code.)
+Combos (`:short`, `:ship`, `:rich`, `:ad`, `:teaser`, `:drop`, `:quote`) expand to full pipelines —
+see the table. `:help` prints the registry (`scripts/help.sh [group]`). Unknown token → pick the
+closest match and confirm. A normal sentence still works; commands are just a faster alias for the
+same toolkit below. (`:` is used because `/ @ #` are reserved by Claude Code.)
 
 ---
 
