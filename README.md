@@ -188,9 +188,11 @@ Together the three examples show the full range: **build from a prompt** (female
 - **Overlays**: social CTAs, logo-outro end-card, grain/vignette/light-leak (`docs/overlays.md`)
 - **Multi-language subtitles**: translate captions to 30+ languages offline (`scripts/multilang-subs.py`)
 - **Batch + live preview**: `scripts/batch.sh` (many files), `scripts/preview.sh` (hot-reload)
-- **JS graphics overlays**: enrich a plain clip with particles / kinetic type / 3D / light-leaks
-  via any client-side JS lib — 3 ready templates (`graphics-overlay`, `-3d` three.js, `-atmosphere`)
+- **JS graphics overlays**: enrich a plain clip with particles / kinetic type / 3D / light-leaks /
+  glass titles — 4 ready templates (`graphics-overlay`, `-3d` three.js, `-atmosphere`, `-title`)
   + `scripts/overlay.sh` (`docs/graphics-libraries.md`)
+- **Premium finish**: `scripts/enrich.sh` — grade + bloom/glow + grain + vignette + sharpen, so
+  output looks cinematic, not like a low-graphic edit (stack after an overlay)
 
 ## Requirements
 

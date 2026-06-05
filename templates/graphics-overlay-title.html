@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <!--
+      GRAPHICS OVERLAY (PREMIUM TITLE) — frosted-glass title / lower-third for any clip.
+      Transparent background; composite with:  scripts/overlay.sh base.mp4 projects/<name> out.mp4
+
+      NOTE: real CSS backdrop-filter can't blur the underlying video (compositing is downstream),
+      so this fakes premium glass: translucent fill + gradient hairline border + top inner
+      highlight + soft outer glow + drop shadow. Reads as high-end over any footage.
+      Edit KICKER / TITLE / SUB and the accent gradient below. Pattern A (GSAP timeline only).
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family:"Sora"; font-weight:800; src:url("assets/fonts/sora-800.ttf") format("truetype"); }
+      @font-face { font-family:"Inter"; font-weight:600; src:url("assets/fonts/inter-600.ttf") format("truetype"); }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      html,body { width:1920px; height:1080px; overflow:hidden; background:transparent; font-family:"Inter",sans-serif; }
+      #root { position:relative; width:1920px; height:1080px; overflow:hidden; background:transparent; }
+
+      /* position: centered. For a lower-third, change .wrap bottom/left and text-align. */
+      .wrap { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+              display:flex; flex-direction:column; align-items:center; gap:26px; text-align:center; }
+
+      .card {
+        position:relative; padding:54px 84px; border-radius:28px;
+        background:linear-gradient(135deg, rgba(255,255,255,.14), rgba(255,255,255,.05));
+        border:1.5px solid rgba(255,255,255,.28);
+        box-shadow:0 30px 90px rgba(0,0,0,.45), 0 0 60px rgba(92,180,255,.18);
+        overflow:hidden;
+      }
+      /* top inner highlight — the "glass" sheen */
+      .card::before { content:""; position:absolute; inset:0 0 auto 0; height:48%;
+        background:linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,0));
+        pointer-events:none; }
+      /* moving specular sweep */
+      .sheen { position:absolute; top:0; left:-40%; width:40%; height:100%;
+        background:linear-gradient(105deg, transparent, rgba(255,255,255,.35), transparent);
+        transform:skewX(-18deg); pointer-events:none; }
+
+      .kicker { font-family:"Inter",sans-serif; font-weight:600; font-size:30px; letter-spacing:.4em;
+                text-transform:uppercase;
+                background:linear-gradient(135deg,#5cffd0,#3fa9ff 60%,#7b5cff);
+                -webkit-background-clip:text; background-clip:text; color:transparent; }
+      .title { font-family:"Sora",sans-serif; font-weight:800; font-size:120px; line-height:1.0;
+               letter-spacing:-.02em; color:#fff; text-shadow:0 6px 40px rgba(0,0,0,.5);
+               margin-top:14px; display:flex; gap:0 30px; justify-content:center; flex-wrap:wrap; }
+      .title .w { display:inline-block; will-change:transform,opacity,filter; }
+      .title .w em { font-style:normal;
+                     background:linear-gradient(135deg,#5cffd0,#3fa9ff 60%,#7b5cff);
+                     -webkit-background-clip:text; background-clip:text; color:transparent; }
+      .sub { font-family:"Inter",sans-serif; font-weight:600; font-size:38px; color:rgba(255,255,255,.82);
+             text-shadow:0 4px 24px rgba(0,0,0,.5); }
+      .rule { width:240px; height:4px; border-radius:3px; transform:scaleX(0); transform-origin:center;
+              background:linear-gradient(90deg,#5cffd0,#3fa9ff,#7b5cff);
+              box-shadow:0 0 18px rgba(63,169,255,.7); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="5" data-width="1920" data-height="1080">
+      <div class="wrap" id="wrap">
+        <div class="card" id="card">
+          <div class="kicker" id="kicker">Xotion Studio</div>
+          <!-- EDIT: wrap an accent word in <em>…</em> -->
+          <div class="title" id="title"><span class="w">Premium</span><span class="w"><em>titles.</em></span></div>
+        </div>
+        <div class="sub" id="sub">No template look. Just expensive.</div>
+        <div class="rule" id="rule"></div>
+        <span class="sheen" id="sheen" style="display:none"></span>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      const words = gsap.utils.toArray("#title .w");
+
+      // place the sheen inside the card
+      const card = document.getElementById("card");
+      const sheen = document.getElementById("sheen");
+      card.appendChild(sheen); sheen.style.display = "block";
+
+      gsap.set("#card", { scale: .9, opacity: 0, y: 24, transformOrigin:"50% 50%" });
+      gsap.set("#kicker", { opacity: 0, y: 14 });
+      gsap.set(words, { yPercent: 120, opacity: 0, filter:"blur(12px)" });
+      gsap.set("#sub", { opacity: 0, y: 16 });
+      gsap.set(sheen, { x: -260 });
+
+      tl.to("#card",   { scale: 1, opacity: 1, y: 0, duration: .7, ease:"power3.out" }, 0)
+        .to("#kicker", { opacity: 1, y: 0, duration: .5, ease:"power2.out" }, .25)
+        .to(words,     { yPercent: 0, opacity: 1, filter:"blur(0px)", duration: .6,
+                         ease:"back.out(1.6)", stagger:.1 }, .35)
+        .to("#rule",   { scaleX: 1, duration: .6, ease:"power3.out" }, .6)
+        .to("#sub",    { opacity: 1, y: 0, duration: .5, ease:"power2.out" }, .7)
+        .fromTo(sheen, { x: -260 }, { x: card.offsetWidth + 120, duration: .9, ease:"power2.inOut" }, .9)
+        .to({}, { duration: 2.2 })                                   // hold
+        .to("#wrap",   { opacity: 0, y: -10, duration: .5, ease:"power2.in" }, 4.4);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
