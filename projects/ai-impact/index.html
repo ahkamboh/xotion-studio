@@ -4,6 +4,7 @@
     <meta charset="UTF-8" /><meta name="viewport" content="width=1920, height=1080" />
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
     <script src="scenes.js"></script>
+    <script src="charts.js"></script>
     <style>
       @font-face{font-family:"Sora";font-weight:800;src:url("assets/fonts/sora-800.ttf") format("truetype");}
       @font-face{font-family:"Sora";font-weight:700;src:url("assets/fonts/sora-700.ttf") format("truetype");}
@@ -105,70 +106,16 @@
           tl.to(kids,{y:0,opacity:1,filter:"blur(0px)",duration:.7,ease:"power3.out",stagger:.12},c.s+.08);
 
         } else if(c.k==='stat'){
-          el.innerHTML='<div class="num">0</div><div class="rule"></div><div class="label">'+c.label+'</div>';
-          var num=el.querySelector(".num"),rule=el.querySelector(".rule"),lab=el.querySelector(".label");
-          var cd=1.3, cs=clamp((c.peak||c.s+1.5)-cd, c.s+0.2, c.e-0.5);   // counter ENDS on the spoken number
-          gsap.set(num,{scale:.7,opacity:0});gsap.set(lab,{y:24,opacity:0});
-          tl.to(num,{scale:1,opacity:1,duration:.5,ease:"back.out(1.8)"},cs-.25);
-          tl.to(rule,{scaleX:1,duration:.6,ease:"power3.out"},cs-.05);
-          tl.to(lab,{y:0,opacity:1,duration:.5,ease:"power2.out"},cs-.05);
-          var px={v:0};tl.to(px,{v:c.to,duration:cd,ease:"power2.out",
-            onUpdate:function(){num.textContent=c.pre+Math.round(px.v)+c.suf;}},cs);
+          XChart.counter(el,{to:c.to,dec:c.dec,pre:c.pre,suf:c.suf,label:c.label},tl,c);
 
         } else if(c.k==='bar'){
-          var mx=Math.max.apply(null,c.vals),HH=380;
-          var cols='',yrs='';
-          c.vals.forEach(function(v,i){cols+='<div class="col"><div class="bval" data-v="'+v+'"></div>'
-            +'<div class="bar" style="height:'+(v/mx*HH)+'px"></div></div>';yrs+='<div class="yr">'+c.years[i]+'</div>';});
-          el.innerHTML='<div class="ctitle">'+c.title+'</div><div class="bars">'+cols+'</div><div class="years">'+yrs+'</div>';
-          var tt=el.querySelector(".ctitle"),bars=el.querySelectorAll(".bar"),vals=el.querySelectorAll(".bval"),yy=el.querySelectorAll(".yr");
-          gsap.set(tt,{y:24,opacity:0});gsap.set([yy],{opacity:0});gsap.set(vals,{opacity:0});
-          tl.to(tt,{y:0,opacity:1,duration:.5,ease:"power2.out"},c.s+.1);
-          // last bar lands EXACTLY on the spoken peak word ("trillion"); others step back from it
-          var pd=0.7, gap=0.6, n=c.vals.length;
-          var lastStart=clamp((c.peak||c.e-1)-pd, c.s+0.4+(n-1)*gap, c.e-pd-0.2);
-          c.vals.forEach(function(v,i){
-            var st=lastStart-(n-1-i)*gap;
-            tl.to(bars[i],{scaleY:1,duration:pd*1.05,ease:"power3.out"},st);
-            tl.to(yy[i],{opacity:1,duration:.3},st);
-            tl.to(vals[i],{opacity:1,duration:.3},st);
-            var p={v:0};tl.to(p,{v:v,duration:pd*1.05,ease:"power2.out",
-              onUpdate:function(){vals[i].textContent=fmtT(p.v);}},st);
-          });
+          XChart.bar(el,{title:c.title,years:c.years,vals:c.vals,fmt:function(v){return '$'+v.toFixed(1)+'T';}},tl,c);
 
         } else if(c.k==='donut'){
-          el.innerHTML='<div class="ringwrap"><svg class="ring" viewBox="0 0 200 200">'
-            +'<defs><linearGradient id="gr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5cffd0"/><stop offset="0.6" stop-color="#3fa9ff"/><stop offset="1" stop-color="#7b5cff"/></linearGradient></defs>'
-            +'<circle class="track" cx="100" cy="100" r="84"/>'
-            +'<circle class="prog" cx="100" cy="100" r="84" pathLength="1"/></svg>'
-            +'<div class="rnum">0%</div></div><div class="label">'+c.label+'</div>';
-          var prog=el.querySelector(".prog"),rn=el.querySelector(".rnum"),lab2=el.querySelector(".label");
-          var dcd=1.3, dcs=clamp((c.peak||c.s+1.5)-dcd, c.s+0.2, c.e-0.5);  // ring fills to the spoken word
-          gsap.set(prog,{strokeDasharray:1,strokeDashoffset:1});
-          gsap.set([rn,lab2],{opacity:0,y:18});
-          tl.to([rn,lab2],{opacity:1,y:0,duration:.5,ease:"power2.out"},dcs-.25);
-          var pp={v:0};
-          tl.to(prog,{strokeDashoffset:1-c.to/100,duration:dcd,ease:"power2.out"},dcs);
-          tl.to(pp,{v:c.to,duration:dcd,ease:"power2.out",onUpdate:function(){rn.textContent=Math.round(pp.v)+'%';}},dcs);
+          XChart.donut(el,{to:c.to,label:c.label},tl,c);
 
         } else if(c.k==='line'){
-          el.innerHTML='<div class="ctitle">'+c.title+'</div>'
-            +'<svg class="lc" viewBox="0 0 1000 400">'
-            +'<defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5cffd0"/><stop offset="0.6" stop-color="#3fa9ff"/><stop offset="1" stop-color="#a98bff"/></linearGradient>'
-            +'<linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3fa9ff" stop-opacity="0.45"/><stop offset="1" stop-color="#3fa9ff" stop-opacity="0"/></linearGradient></defs>'
-            +'<path class="area" d="M0,400 L0,360 L200,330 L400,278 L600,210 L800,120 L1000,32 L1000,400 Z"/>'
-            +'<path class="lpath" pathLength="1" d="M0,360 L200,330 L400,278 L600,210 L800,120 L1000,32"/>'
-            +'<circle class="dot" cx="0" cy="360" r="9"/><circle class="dot" cx="200" cy="330" r="9"/><circle class="dot" cx="400" cy="278" r="9"/><circle class="dot" cx="600" cy="210" r="9"/><circle class="dot" cx="800" cy="120" r="9"/><circle class="dot" cx="1000" cy="32" r="9"/>'
-            +'</svg><div class="sub">'+c.sub+'</div>';
-          var tt2=el.querySelector(".ctitle"),lp=el.querySelector(".lpath"),ar=el.querySelector(".area"),dots=el.querySelectorAll(".dot"),sb=el.querySelector(".sub");
-          gsap.set(tt2,{y:24,opacity:0});gsap.set(sb,{y:20,opacity:0});
-          gsap.set(lp,{strokeDasharray:1,strokeDashoffset:1});gsap.set(dots,{scale:0,transformOrigin:"center"});
-          var lcd=clamp((c.peak||c.e-0.6)-(c.s+0.4),1.5,3.2), lcs=clamp((c.peak||c.e-0.6)-lcd,c.s+0.3,c.e-0.6);
-          tl.to(tt2,{y:0,opacity:1,duration:.5,ease:"power2.out"},c.s+.1);
-          tl.to(lp,{strokeDashoffset:0,duration:lcd,ease:"power1.inOut"},lcs);
-          tl.to(ar,{opacity:1,duration:lcd*0.8,ease:"power1.out"},lcs+.2);
-          tl.to(dots,{scale:1,duration:.3,ease:"back.out(2)",stagger:lcd/6},lcs);
-          tl.to(sb,{y:0,opacity:1,duration:.5,ease:"power2.out"},lcs+lcd-0.5);
+          XChart.line(el,{title:c.title,sub:c.sub},tl,c);
 
         } else if(c.k==='outro'){
           var ch=c.chips.map(function(x){return '<div class="chip">'+x+'</div>';}).join('');
