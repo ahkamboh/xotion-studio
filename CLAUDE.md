@@ -239,6 +239,17 @@ beyond the agent's defaults, `docs/caption-styles.md` has 6 styles.
   (black bar). Or roll your own: `--box "#hex"` (springy pill) / `--hl "#hex"` (active color),
   `--maxwords N`. Best for short-form speech (`--content speech`). See `docs/caption-styles.md`.
 
+**RICHNESS — every motion-graphics video MUST use `templates/lib/richness.js` (`Rich`). READ `docs/richness.md`.**
+The difference between "rich" and "AI-template" is density + motion + texture, NOT the engine. The
+style (`presets/styles.md`) sets color/font; **Rich sets density/motion/texture** — use both, always.
+`cp templates/lib/richness.js projects/<name>/richness.js`, `Rich.css()` once, then per scene:
+**(1) NEVER STATIC** — `Rich.idle(wrap, tl, s, e)` keeps content breathing (GSAP's default is pop-then-
+freeze; a dead-still frame reads as broken). **(2) TEXTURE** every bg — `Rich.texture(scene,'dots'|'grain'|
+'stripes'|'glow')`, never a flat fill. **(3) LAYER ≥5** — eyebrow + counter + hero + support + sticker
+(`Rich.eyebrow/counter/sticker/stamp`). **(4) DEPTH** — `.r-shadow2` stacked shadows. **(5) CHOREOGRAPH** —
+`Rich.cascade`/`Rich.enter` (per-element delay+ease+rotation, not pop-all-together). **(6) HERO SCALE** —
+one oversized number/headline per scene. This applies to ALL 12 styles and every video type.
+
 **Charts/data-graphics — use the tested `templates/lib/charts.js` (XChart), never hand-roll.**
 `cp templates/lib/charts.js projects/<name>/charts.js`, then `XChart.counter/bar/donut/line(el, data,
 tl, scene)`. It injects its own CSS, renders correct DOM/SVG, and lands the climax on `scene.peak`.

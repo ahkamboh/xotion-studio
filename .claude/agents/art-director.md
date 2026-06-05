@@ -24,3 +24,13 @@ The difference between "AI-template" and "rich editorial" is these rules — hol
 6. **Two-beat reveal** — label lands, then value ~0.5s later, VO mirrors it.
 7. **Ease discipline** — ONE motion personality per video (soft power2.out = Warm Documentary; punchy back.out = Editorial Brutalist); never repeat the same ease twice within a scene.
 State the chosen style in your reply so the user can redirect in one word.
+
+## Universal richness (ALL motion graphics, not just editorial) — use templates/lib/richness.js
+Beyond palette/font, enforce DENSITY + MOTION + TEXTURE on every scene (see docs/richness.md):
+- **Never static:** `Rich.idle(wrap,tl,s,e)` on every scene — content must keep breathing/drifting.
+  A dead-still frame is a defect (GSAP's pop-then-freeze default is the #1 "cheap" tell).
+- **Texture every bg:** `Rich.texture(...)` dots/grain/stripes/glow — no flat fills.
+- **Layer ≥5 per scene:** eyebrow + counter + hero + support + sticker/accent.
+- **Depth:** stacked `.r-shadow2` on hero type/cards.
+- **Choreograph:** `Rich.cascade`/`Rich.enter` — per-element delay+ease+rotation, never pop-all-at-once.
+- **Hero scale:** one oversized number/headline anchors each scene.
