@@ -1,0 +1,5 @@
+{
+  "name": "xotion-psychedelic",
+  "private": true, "type": "module",
+  "scripts": { "render": "npx --yes hyperframes@0.6.70 render" }
+}
