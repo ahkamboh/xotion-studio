@@ -1,5 +1,7 @@
 # xotion-studio — Creative Engine (video · image · motion graphics)
 
+> New here? Read **HANDOFF.md** first — it summarizes the whole system, state, and decisions.
+
 A **clone-and-go general-purpose creative engine**. On any machine: clone, run
 `./scripts/setup.sh`, open Claude Code here, give a prompt + files, get a polished result.
 The agent already knows the full toolkit from this file — the user should NOT re-explain.
