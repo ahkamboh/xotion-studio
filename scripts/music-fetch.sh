@@ -37,6 +37,27 @@ URL="https://pixabay.com/api/music/?key=${PIXABAY_API_KEY}&q=${QENC}&per_page=20
 
 JSON=$(curl -sS -H "User-Agent: xotion-studio/1.0" "$URL") || { echo "[music-fetch] API request failed" >&2; exit 3; }
 
+# Pixabay's /api/music/ endpoint is NOT a JSON API — it returns HTML.
+# Detect this and tell the user to download manually OR use Jamendo.
+if echo "$JSON" | head -c 200 | grep -qi '<!doctype html\|<html'; then
+  cat <<EOF >&2
+[music-fetch] Pixabay's music search is web-only (no public JSON API).
+              Your API key is fine — it works for photos/videos endpoints,
+              but pixabay.com/api/music/ returns HTML, not JSON.
+
+Workarounds:
+  1. MANUAL — browse https://pixabay.com/music/search/${QENC}/ , click
+              "Download" on a track, then:
+                  cp ~/Downloads/track.mp3 $OUT
+              The rest of the pipeline (bpm-detect → beat-align → mix-ducked)
+              works on the resulting MP3 regardless of source.
+  2. JAMENDO — use scripts/music-fetch-jamendo.sh if added (Jamendo has a
+              real JSON API).
+  3. SYNTH FALLBACK — scripts/music-bed.sh <out.wav> <duration> <mood>
+EOF
+  exit 5
+fi
+
 # Pick the longest track that's at least MINDUR seconds and has a usable audio URL.
 PICK=$(python3 - "$JSON" "$MINDUR" <<'PY'
 import sys, json
