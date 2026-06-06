@@ -50,6 +50,7 @@
         text-transform:uppercase;color:var(--cream);opacity:.85;}
       .bubble{font-family:"TitanOne","Archivo",sans-serif;font-weight:400;color:var(--pink);
         line-height:.88;letter-spacing:-.01em;text-transform:uppercase;text-align:center;
+        max-width:920px;margin:0 auto;
         text-shadow:
           0 8px 0 #C13F8C,      /* mid-tone pink shadow */
           0 16px 0 var(--ink),  /* hard ink shadow */
@@ -61,13 +62,13 @@
         font-family:"Mono",monospace;font-size:46px;letter-spacing:.18em;text-transform:uppercase;
         color:var(--cream);text-shadow:0 4px 0 var(--ink);}
 
-      /* per-scene sizes */
-      .s1 .bubble{font-size:340px;}
-      .s2 .bubble{font-size:280px;}
-      .s3 .bubble{font-size:330px;}
-      .s4 .bubble{font-size:260px;}
-      .s5 .bubble{font-size:240px;}
-      .s6 .bubble{font-size:300px;}
+      /* per-scene sizes — sized so AT PEAK entrance scale (1.04×) widest word still fits safe area (≤920px) */
+      .s1 .bubble{font-size:280px;}  /* DON'T / DRAG */
+      .s2 .bubble{font-size:240px;}  /* JUST / PROMPT */
+      .s3 .bubble{font-size:230px;}  /* WATCH / IT MOVE */
+      .s4 .bubble{font-size:220px;}  /* ANY / FORMAT — F-O-R-M-A-T is widest */
+      .s5 .bubble{font-size:200px;}  /* DON'T / BE BITTER */
+      .s6 .bubble{font-size:250px;}  /* START / FREE */
 
       /* format chips for S4 */
       .chips{position:absolute;bottom:240px;left:0;right:0;display:flex;justify-content:center;gap:28px;}
@@ -227,11 +228,11 @@
           Rich.idle(kicker, tl, start + 0.55, end - 0.3, {scale:.02, x:5, y:3, rot:.6});
         }
         if (bubble) {
-          /* squash-stretch: scaleY 0.55 → overshoot → settle */
-          gsap.set(bubble, {scale:.35, opacity:0, rotation:-3, transformOrigin:"50% 50%"});
-          tl.to(bubble, {scale:1.08, opacity:1, rotation:0, duration:.4, ease:"back.out(3)"}, start + 0.18);
-          tl.to(bubble, {scale:1, duration:.18, ease:"back.out(2)"}, start + 0.58);
-          Rich.idle(bubble, tl, start + 0.85, end - 0.3, {scale:.03, x:8, y:6, rot:2});
+          /* squash-stretch: smaller overshoot (1.04 instead of 1.08) — keeps text inside safe area at peak scale */
+          gsap.set(bubble, {scale:.45, opacity:0, rotation:-2, transformOrigin:"50% 50%"});
+          tl.to(bubble, {scale:1.04, opacity:1, rotation:0, duration:.4, ease:"back.out(2.2)"}, start + 0.18);
+          tl.to(bubble, {scale:1, duration:.18, ease:"back.out(1.8)"}, start + 0.58);
+          Rich.idle(bubble, tl, start + 0.85, end - 0.3, {scale:.018, x:6, y:5, rot:1.5});
         }
         if (sub) {
           Rich.enter(sub, tl, start + 0.7, 'rise');

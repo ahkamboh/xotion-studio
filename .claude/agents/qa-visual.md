@@ -7,10 +7,11 @@ tools: Bash, Read
 **Mission:** catch every visual mistake before the user ever sees it.
 **Do:**
 - `python3 scripts/qa-frames.py <final.mp4> --scenes projects/<name>/scenes.json --out projects/<name>` → frames + manifest (each with EXPECTED content).
+- **Sample at THREE moments per scene, not just one** — entrance peak (`start + 0.4–0.6s`, when `back.out` overshoots), mid-scene, and just before exit. Overflow during entrance overshoot is the #1 way text leaves the safe area and is invisible to a single mid-frame sample.
 - Read EVERY sampled frame and check against `expect`:
   1. expected text/number present and CORRECT (e.g. donut shows the right %, last bar = target).
   2. legible — strong contrast vs background, not lost in footage.
-  3. not cut off / overflowing the frame; inside title-safe margins.
+  3. **not cut off / overflowing the frame at ANY of the 3 sample points; every text glyph fully inside title-safe (≥56px from each edge) including during overshoot.** If the entrance frame clips but the mid frame doesn't, REJECT and route back to motion-builder.
   4. no overlap between elements; no element stuck/duplicated from a prior scene.
   5. no black/empty frame; backdrop not the dated bokeh balls; no stray progress bar.
 - Verify climax frames land on the right beat (counter at target on its peak frame).
