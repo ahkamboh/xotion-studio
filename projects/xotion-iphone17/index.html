@@ -44,34 +44,42 @@
       .credit{position:absolute;left:0;right:0;bottom:55px;text-align:center;z-index:50;
         font-family:"BebasNeue",sans-serif;font-size:26px;letter-spacing:.4em;color:var(--cream);opacity:.55;}
 
-      /* ============ scene + types ============ */
-      .scene{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;
-        align-items:center;justify-content:center;padding:120px 60px;text-align:center;
-        visibility:hidden;opacity:0;}
+      /* ============ scene + types ============
+         PRECISE CENTERING RULE (motion-builder agent):
+         Every centered element uses left:50% + translateX(-50%) — NEVER left:0+right:0+text-align:center,
+         because animating scale on a full-width box drifts the visual center off the frame midpoint.
+         Scene container is a plain block (no flex centering) so child positioning is purely explicit. */
+      .scene{position:absolute;inset:0;z-index:30;visibility:hidden;opacity:0;}
+
+      /* generic precision-centered absolute helper */
+      .ctr{position:absolute;left:50%;transform:translateX(-50%);transform-origin:50% 50%;text-align:center;}
 
       .kicker{font-family:"BebasNeue",sans-serif;font-size:46px;letter-spacing:.4em;
-        text-transform:uppercase;color:var(--orange);
+        text-transform:uppercase;color:var(--orange);white-space:nowrap;
         text-shadow:0 0 14px rgba(229,85,43,.45);}
 
       .display{font-family:"Anton",sans-serif;color:var(--cream);line-height:.82;letter-spacing:-.02em;
-        text-transform:uppercase;text-align:center;max-width:960px;
+        text-transform:uppercase;
         text-shadow:0 8px 30px rgba(0,0,0,.7), 0 0 60px rgba(229,85,43,.15);}
       .display .accent{color:var(--orange);}
-      .display .line{display:block;}
+      .display .line{display:block;white-space:nowrap;}
 
       .sub{font-family:"BebasNeue",sans-serif;font-size:52px;letter-spacing:.18em;
-        text-transform:uppercase;color:var(--cream);opacity:.92;}
+        text-transform:uppercase;color:var(--cream);opacity:.92;white-space:nowrap;}
 
       .pricetag{display:inline-flex;align-items:baseline;gap:14px;
         font-family:"Archivo",sans-serif;font-weight:900;font-size:120px;color:var(--ink);
         background:var(--orange);padding:18px 38px;border:5px solid var(--ink);
-        box-shadow:14px 14px 0 var(--ink);transform:rotate(-2deg);}
+        box-shadow:14px 14px 0 var(--ink);transform-origin:50% 50%;}
       .pricetag small{font-family:"BebasNeue",sans-serif;font-size:42px;letter-spacing:.2em;}
 
-      /* ============ iPhone media holder ============ */
-      .phone{position:absolute;left:0;right:0;width:100%;z-index:20;display:flex;justify-content:center;align-items:center;
-        will-change:transform,opacity;}
-      .phone img{display:block;width:100%;height:auto;}
+      /* ============ iPhone media holder — precise centering via translateX ============ */
+      .phone{position:absolute;left:50%;transform:translateX(-50%);transform-origin:50% 50%;
+        z-index:20;will-change:transform,opacity;display:block;}
+      .phone img{display:block;height:auto;}
+      /* per-scene image sizes */
+      .s1 .phone img{width:900px;}
+      .s3 .phone img{width:780px;}
 
       /* per-scene sizes */
       .s1 .display{font-size:300px;}
@@ -111,99 +119,87 @@
       <div class="stepper" id="stepper">01 / 06</div>
       <div class="credit" id="credit">iPHONE 17 PRO · COSMIC ORANGE · 2026</div>
 
-      <!-- S1 HERO: iPhone 17 Pro reveal -->
+      <!-- ALIGNMENT RULE (motion-builder agent): outer `.ctr` is the centering wrapper
+           (position:absolute + left:50% + translateX(-50%) + transform-origin:50% 50%).
+           INNER element gets the typography + animations. This separation guarantees that
+           any transform tween on the inner element (x/y/scale/rotation) composes WITH the
+           parent's centering rather than overwriting it. Result: perfect center, no drift. -->
+
+      <!-- S1 HERO -->
       <div class="scene s1" id="s1">
-        <div class="phone" id="phone1" style="top:200px;">
-          <img src="assets/img/hero__bsveixlwbms2_xlarge.jpg" alt="iPhone 17 Pro" />
-        </div>
-        <div class="display" style="position:absolute;bottom:280px;left:0;right:0;">
-          <span class="line">BUILT TO</span>
-          <span class="line accent">DAZZLE.</span>
+        <div class="ctr" style="top:180px;"><div class="phone"><img src="assets/img/hero.png" alt="iPhone 17 Pro" /></div></div>
+        <div class="ctr" style="bottom:280px;">
+          <div class="display" style="font-size:300px;">
+            <span class="line">BUILT TO</span>
+            <span class="line accent">DAZZLE.</span>
+          </div>
         </div>
       </div>
 
-      <!-- S2 CHIP: A19 Pro -->
+      <!-- S2 CHIP -->
       <div class="scene s2" id="s2">
-        <div style="position:absolute;top:280px;left:0;right:0;text-align:center;">
-          <div class="kicker">The Engine</div>
+        <div class="ctr" style="top:280px;"><div class="kicker">The Engine</div></div>
+        <div class="ctr" style="top:420px;">
+          <div class="display" style="font-size:280px;">
+            <span class="line accent">A19</span>
+            <span class="line">PRO</span>
+          </div>
         </div>
-        <div class="display" style="position:absolute;top:420px;left:0;right:0;">
-          <span class="line accent">A19</span>
-          <span class="line">PRO</span>
-        </div>
-        <div class="sub" style="position:absolute;bottom:340px;left:0;right:0;">
-          Fastest iPhone. Ever.
-        </div>
-        <div style="position:absolute;bottom:200px;left:0;right:0;text-align:center;">
-          <span class="badge orange">6-CORE GPU · NEURAL</span>
-        </div>
+        <div class="ctr" style="bottom:340px;"><div class="sub">Fastest iPhone. Ever.</div></div>
+        <div class="ctr" style="bottom:200px;"><span class="badge orange">6-CORE GPU · NEURAL</span></div>
       </div>
 
-      <!-- S3 CAMERA: triple 48MP -->
+      <!-- S3 CAMERA -->
       <div class="scene s3" id="s3">
-        <div class="phone" id="phone3" style="top:120px;">
-          <img src="assets/img/colors_orange__cr2oq3n1dwk2_large.jpg" alt="iPhone 17 Pro camera" />
+        <div class="ctr" style="top:200px;"><div class="phone"><img src="assets/img/camera.png" alt="iPhone 17 Pro camera" /></div></div>
+        <div class="ctr" style="top:80px;"><div class="kicker">The Camera</div></div>
+        <div class="ctr" style="bottom:300px;">
+          <div class="display" style="font-size:260px;">
+            <span class="line">TRIPLE</span>
+            <span class="line accent">48MP.</span>
+          </div>
         </div>
-        <div style="position:absolute;top:60px;left:0;right:0;text-align:center;">
-          <div class="kicker">The Camera</div>
-        </div>
-        <div class="display" style="position:absolute;bottom:300px;left:0;right:0;">
-          <span class="line">TRIPLE</span>
-          <span class="line accent">48MP.</span>
-        </div>
-        <div class="sub" style="position:absolute;bottom:180px;left:0;right:0;">
-          8× OPTICAL · 16× ZOOM
-        </div>
+        <div class="ctr" style="bottom:180px;"><div class="sub">8× OPTICAL · 16× ZOOM</div></div>
       </div>
 
-      <!-- S4 DISPLAY: 120Hz ProMotion -->
+      <!-- S4 DISPLAY -->
       <div class="scene s4" id="s4">
-        <div style="position:absolute;top:280px;left:0;right:0;text-align:center;">
-          <div class="kicker">The Display</div>
+        <div class="ctr" style="top:280px;"><div class="kicker">The Display</div></div>
+        <div class="ctr" style="top:420px;">
+          <div class="display" style="font-size:230px;">
+            <span class="line">PRO</span>
+            <span class="line accent">MOTION</span>
+            <span class="line">120Hz.</span>
+          </div>
         </div>
-        <div class="display" style="position:absolute;top:420px;left:0;right:0;">
-          <span class="line">PRO</span>
-          <span class="line accent">MOTION</span>
-          <span class="line">120Hz.</span>
-        </div>
-        <div class="sub" style="position:absolute;bottom:280px;left:0;right:0;">
-          Brighter. Smoother. Sharper.
-        </div>
+        <div class="ctr" style="bottom:280px;"><div class="sub">Brighter. Smoother. Sharper.</div></div>
       </div>
 
-      <!-- S5 BATTERY/POWER -->
+      <!-- S5 POWER -->
       <div class="scene s5" id="s5">
-        <div style="position:absolute;top:280px;left:0;right:0;text-align:center;">
-          <div class="kicker">The Power</div>
+        <div class="ctr" style="top:280px;"><div class="kicker">The Power</div></div>
+        <div class="ctr" style="top:420px;">
+          <div class="display" style="font-size:240px;">
+            <span class="line accent">ALL</span>
+            <span class="line">DAY</span>
+            <span class="line">POWER.</span>
+          </div>
         </div>
-        <div class="display" style="position:absolute;top:420px;left:0;right:0;">
-          <span class="line accent">ALL</span>
-          <span class="line">DAY</span>
-          <span class="line">POWER.</span>
-        </div>
-        <div class="sub" style="position:absolute;bottom:340px;left:0;right:0;">
-          39 hrs video · 50% in 20 min
-        </div>
-        <div style="position:absolute;bottom:200px;left:0;right:0;text-align:center;">
-          <span class="badge cyan">HEAT-FORGED ALUMINUM</span>
-        </div>
+        <div class="ctr" style="bottom:340px;"><div class="sub">39 hrs video · 50% in 20 min</div></div>
+        <div class="ctr" style="bottom:200px;"><span class="badge cyan">HEAT-FORGED ALUMINUM</span></div>
       </div>
 
       <!-- S6 CTA -->
       <div class="scene s6" id="s6">
-        <div style="position:absolute;top:280px;left:0;right:0;text-align:center;">
-          <div class="kicker">Available Now</div>
+        <div class="ctr" style="top:280px;"><div class="kicker">Available Now</div></div>
+        <div class="ctr" style="top:420px;">
+          <div class="display" style="font-size:280px;">
+            <span class="line">iPHONE</span>
+            <span class="line accent">17 PRO.</span>
+          </div>
         </div>
-        <div class="display" style="position:absolute;top:420px;left:0;right:0;">
-          <span class="line">iPHONE</span>
-          <span class="line accent">17 PRO.</span>
-        </div>
-        <div style="position:absolute;bottom:340px;left:0;right:0;text-align:center;">
-          <span class="pricetag">FROM <span>$999</span></span>
-        </div>
-        <div class="sub" style="position:absolute;bottom:200px;left:0;right:0;">
-          Pre-order at apple.com
-        </div>
+        <div class="ctr" style="bottom:340px;"><span class="pricetag">FROM <span>$999</span></span></div>
+        <div class="ctr" style="bottom:200px;"><div class="sub">Pre-order at apple.com</div></div>
       </div>
     </div>
 
@@ -287,10 +283,12 @@
         const badge = el.querySelector('.badge');
         const price = el.querySelector('.pricetag');
 
-        /* PHONE image: slow KEN-BURNS zoom + slide */
+        /* PHONE image: slow KEN-BURNS zoom + slight drift.
+           xPercent:-50 preserves the CSS translateX(-50%) center anchor so any x:N
+           px offset rides on top of it without breaking horizontal centering. */
         if (phone) {
           const dir = (i % 2 === 0) ? 1 : -1;
-          gsap.set(phone, {scale: 1.0, x: 0, y: 30, opacity: 0});
+          gsap.set(phone, {scale: 1.0, x: 0, xPercent: -50, y: 30, opacity: 0});
           tl.to(phone, {opacity: 1, y: 0, duration: 0.8, ease: "expo.out"}, start);
           tl.to(phone, {scale: 1.08, x: 20 * dir, duration: 5.0, ease: "sine.inOut"}, start);
           tl.to(phone, {opacity: 0, duration: 0.5, ease: "power2.in"}, end - 0.45);
