@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" /><meta name="viewport" content="width=1080,height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="richness.js"></script>
+    <style>
+      @font-face{font-family:"TitanOne";src:url("assets/fonts/titan-one-400.ttf");font-weight:400;}
+      @font-face{font-family:"Archivo";src:url("assets/fonts/archivo-900.ttf");font-weight:900;}
+      @font-face{font-family:"Mono";src:url("assets/fonts/jetbrains-500.ttf");font-weight:500;}
+      @font-face{font-family:"Inter";src:url("assets/fonts/inter-500.ttf");font-weight:500;}
+
+      *{margin:0;padding:0;box-sizing:border-box;}
+      :root{
+        --cobalt:#2069E2; --pink:#F082C5; --yellow:#F5E531;
+        --green:#3DBE5B; --cream:#FFF6C0; --ink:#0F0825;
+      }
+      html,body{width:1080px;height:1920px;overflow:hidden;background:var(--cobalt);
+        font-family:"Inter",sans-serif;color:var(--cream);-webkit-font-smoothing:antialiased;}
+      #root{position:relative;width:1080px;height:1920px;overflow:hidden;}
+
+      /* ============ PERSISTENT BG ============ */
+      .bg{position:absolute;inset:0;z-index:1;background:radial-gradient(120% 80% at 50% 40%, #3B85F5 0%, var(--cobalt) 60%, #0E4FC0 100%);}
+      .grain{position:absolute;inset:0;z-index:2;pointer-events:none;opacity:.10;mix-blend-mode:overlay;
+        background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='320' height='320' filter='url(%23n)' opacity='0.5'/></svg>");}
+
+      /* ============ SPARKLE STARS (8 absolute-positioned svgs, blink + drift) ============ */
+      .stars{position:absolute;inset:0;z-index:5;pointer-events:none;}
+      .star{position:absolute;width:90px;height:90px;}
+      .star.s1{top:140px;left:120px;}
+      .star.s2{top:210px;right:140px;}
+      .star.s3{top:680px;left:80px;}
+      .star.s4{bottom:580px;right:90px;}
+      .star.s5{bottom:380px;left:150px;}
+      .star.s6{bottom:220px;right:220px;width:60px;height:60px;}
+      .star.s7{top:450px;right:80px;width:70px;height:70px;}
+      .star.s8{bottom:780px;left:240px;width:50px;height:50px;}
+
+      /* ============ MASCOT (the cute yellow blob — lemon-inspired) ============ */
+      .mascot{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:8;
+        width:620px;height:620px;opacity:.92;}
+      .mascot svg{width:100%;height:100%;overflow:visible;}
+
+      /* ============ SCENES — bubble headlines ============ */
+      .scene{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;
+        align-items:center;justify-content:center;padding:120px 60px;text-align:center;
+        visibility:hidden;opacity:0;}
+      .kicker{position:absolute;top:200px;left:0;right:0;text-align:center;
+        font-family:"Mono",monospace;font-weight:500;font-size:36px;letter-spacing:.32em;
+        text-transform:uppercase;color:var(--cream);opacity:.85;}
+      .bubble{font-family:"TitanOne","Archivo",sans-serif;font-weight:400;color:var(--pink);
+        line-height:.88;letter-spacing:-.01em;text-transform:uppercase;text-align:center;
+        text-shadow:
+          0 8px 0 #C13F8C,      /* mid-tone pink shadow */
+          0 16px 0 var(--ink),  /* hard ink shadow */
+          -3px -3px 0 var(--ink),  /* outline left/up */
+           3px -3px 0 var(--ink),
+          -3px  3px 0 var(--ink),
+           3px  3px 0 var(--ink);}
+      .sub{position:absolute;bottom:280px;left:0;right:0;text-align:center;
+        font-family:"Mono",monospace;font-size:46px;letter-spacing:.18em;text-transform:uppercase;
+        color:var(--cream);text-shadow:0 4px 0 var(--ink);}
+
+      /* per-scene sizes */
+      .s1 .bubble{font-size:340px;}
+      .s2 .bubble{font-size:280px;}
+      .s3 .bubble{font-size:330px;}
+      .s4 .bubble{font-size:260px;}
+      .s5 .bubble{font-size:240px;}
+      .s6 .bubble{font-size:300px;}
+
+      /* format chips for S4 */
+      .chips{position:absolute;bottom:240px;left:0;right:0;display:flex;justify-content:center;gap:28px;}
+      .chip{font-family:"Mono",monospace;font-weight:500;font-size:42px;letter-spacing:.10em;color:var(--ink);
+        background:var(--yellow);padding:14px 24px;border:5px solid var(--ink);
+        box-shadow:7px 7px 0 var(--ink);transform:rotate(-4deg);text-transform:uppercase;}
+      .chip:nth-child(2){background:var(--cream);transform:rotate(2deg);}
+      .chip:nth-child(3){background:var(--green);transform:rotate(-2deg);color:var(--ink);}
+
+      /* persistent brand bug bottom */
+      .bug{position:absolute;bottom:60px;left:0;right:0;text-align:center;z-index:50;
+        font-family:"Mono",monospace;font-weight:500;font-size:28px;letter-spacing:.4em;
+        text-transform:uppercase;color:var(--cream);opacity:.55;}
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="15" data-width="1080" data-height="1920">
+
+      <div class="bg"></div>
+      <div class="grain"></div>
+
+      <!-- mascot: cute yellow lemon-style blob with face -->
+      <div class="mascot" id="mascot">
+        <svg viewBox="-300 -340 600 680" xmlns="http://www.w3.org/2000/svg">
+          <!-- lemon body -->
+          <ellipse cx="0" cy="40" rx="240" ry="280" fill="#F5E531" stroke="#0F0825" stroke-width="14"/>
+          <!-- pointy tips -->
+          <path d="M -10 -260 Q 0 -310 10 -260 L 6 -210 L -6 -210 Z" fill="#F5E531" stroke="#0F0825" stroke-width="14"/>
+          <path d="M -10  290 Q 0  330 10  290 L 6  250 L -6  250 Z" fill="#F5E531" stroke="#0F0825" stroke-width="14"/>
+          <!-- glossy highlight -->
+          <ellipse cx="-80" cy="-100" rx="60" ry="100" fill="#FFF6C0" opacity=".55" transform="rotate(-15 -80 -100)"/>
+          <ellipse cx="60" cy="-180" rx="20" ry="35" fill="#FFFFFF" opacity=".7"/>
+          <!-- leaf -->
+          <g transform="translate(110 -240) rotate(28)">
+            <path d="M 0 0 Q 100 -40 140 -100 Q 80 -10 0 0 Z" fill="#3DBE5B" stroke="#0F0825" stroke-width="10"/>
+            <line x1="20" y1="-15" x2="120" y2="-85" stroke="#0F0825" stroke-width="6" stroke-linecap="round"/>
+          </g>
+          <!-- cute face: eyes -->
+          <ellipse cx="-70" cy="60" rx="22" ry="32" fill="#0F0825"/>
+          <ellipse cx="70" cy="60" rx="22" ry="32" fill="#0F0825"/>
+          <circle cx="-63" cy="50" r="9" fill="#FFFFFF"/>
+          <circle cx="77" cy="50" r="9" fill="#FFFFFF"/>
+          <!-- smile -->
+          <path d="M -55 130 Q 0 175 55 130" stroke="#0F0825" stroke-width="14" fill="none" stroke-linecap="round"/>
+          <!-- blush -->
+          <ellipse cx="-130" cy="115" rx="34" ry="22" fill="#F082C5" opacity=".7"/>
+          <ellipse cx="130" cy="115" rx="34" ry="22" fill="#F082C5" opacity=".7"/>
+        </svg>
+      </div>
+
+      <!-- Sparkle stars (4-point) -->
+      <div class="stars" id="stars">
+        <svg class="star s1" viewBox="-50 -50 100 100"><path d="M 0 -50 L 10 -10 L 50 0 L 10 10 L 0 50 L -10 10 L -50 0 L -10 -10 Z" fill="#FFFFFF"/></svg>
+        <svg class="star s2" viewBox="-50 -50 100 100"><path d="M 0 -50 L 10 -10 L 50 0 L 10 10 L 0 50 L -10 10 L -50 0 L -10 -10 Z" fill="#FFFFFF"/></svg>
+        <svg class="star s3" viewBox="-50 -50 100 100"><path d="M 0 -50 L 10 -10 L 50 0 L 10 10 L 0 50 L -10 10 L -50 0 L -10 -10 Z" fill="#FFFFFF"/></svg>
+        <svg class="star s4" viewBox="-50 -50 100 100"><path d="M 0 -50 L 10 -10 L 50 0 L 10 10 L 0 50 L -10 10 L -50 0 L -10 -10 Z" fill="#FFFFFF"/></svg>
+        <svg class="star s5" viewBox="-50 -50 100 100"><path d="M 0 -50 L 10 -10 L 50 0 L 10 10 L 0 50 L -10 10 L -50 0 L -10 -10 Z" fill="#FFFFFF"/></svg>
+        <svg class="star s6" viewBox="-50 -50 100 100"><path d="M 0 -50 L 10 -10 L 50 0 L 10 10 L 0 50 L -10 10 L -50 0 L -10 -10 Z" fill="#FFFFFF"/></svg>
+        <svg class="star s7" viewBox="-50 -50 100 100"><path d="M 0 -50 L 10 -10 L 50 0 L 10 10 L 0 50 L -10 10 L -50 0 L -10 -10 Z" fill="#FFFFFF"/></svg>
+        <svg class="star s8" viewBox="-50 -50 100 100"><path d="M 0 -50 L 10 -10 L 50 0 L 10 10 L 0 50 L -10 10 L -50 0 L -10 -10 Z" fill="#FFFFFF"/></svg>
+      </div>
+
+      <!-- brand bug -->
+      <div class="bug">✦ XOTION · STICKER PACK № 04 ✦</div>
+
+      <!-- SCENES -->
+      <div class="scene s1" id="s1">
+        <div class="kicker">step zero</div>
+        <div class="bubble">DON'T<br/>DRAG</div>
+        <div class="sub">the timeline.</div>
+      </div>
+      <div class="scene s2" id="s2">
+        <div class="kicker">step one</div>
+        <div class="bubble">JUST<br/>PROMPT</div>
+        <div class="sub">it.</div>
+      </div>
+      <div class="scene s3" id="s3">
+        <div class="kicker">step two</div>
+        <div class="bubble">WATCH<br/>IT MOVE</div>
+        <div class="sub">in real time.</div>
+      </div>
+      <div class="scene s4" id="s4">
+        <div class="kicker">step three</div>
+        <div class="bubble">ANY<br/>FORMAT</div>
+        <div class="chips">
+          <div class="chip">MP4</div>
+          <div class="chip">WEBM</div>
+          <div class="chip">GIF</div>
+        </div>
+      </div>
+      <div class="scene s5" id="s5">
+        <div class="kicker">brand voice</div>
+        <div class="bubble">DON'T<br/>BE BITTER</div>
+        <div class="sub">be xotion.</div>
+      </div>
+      <div class="scene s6" id="s6">
+        <div class="kicker">your turn ↓</div>
+        <div class="bubble">START<br/>FREE</div>
+        <div class="sub">xotion.com</div>
+      </div>
+    </div>
+
+    <script>
+      Rich.css();
+
+      /* ============ MAIN TIMELINE ============ */
+      const tl = gsap.timeline({paused:true});
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+
+      /* persistent mascot continuous wobble (back and forth tiny rotation) */
+      const mascot = document.getElementById('mascot');
+      tl.to(mascot, {rotation: 3, duration: 1.4, ease:"sine.inOut", yoyo:true, repeat:9}, 0);
+      tl.to(mascot, {y: -20, duration: 1.0, ease:"sine.inOut", yoyo:true, repeat:13}, 0.5);
+
+      /* sparkle stars: deterministic blink (different phases) */
+      const starEls = document.querySelectorAll('.star');
+      starEls.forEach((s, i) => {
+        gsap.set(s, {opacity: 0.0});
+        const period = 0.55, offset = (i * 0.18) % period;
+        const cycles = Math.floor(15 / period);
+        for (let k = 0; k < cycles; k++) {
+          const t = offset + k * period;
+          tl.to(s, {opacity: 1, duration: 0.18, ease:"sine.out"}, t);
+          tl.to(s, {opacity: 0, duration: 0.18, ease:"sine.in"},  t + 0.22);
+        }
+        // also drift slowly
+        tl.to(s, {rotation: 30, duration: 15, ease:"none"}, 0);
+      });
+
+      /* persistent brand bug subtle bounce */
+      const bug = document.querySelector('.bug');
+      Rich.idle(bug, tl, 1, 14, {scale:.025, x:6, y:4, rot:.6});
+
+      /* Scene helper */
+      function show(el, s, e) {
+        gsap.set(el, {visibility:"hidden", opacity:0});
+        tl.set(el, {visibility:"visible"}, s);
+        tl.to(el, {opacity:1, duration:.2, ease:"power2.out"}, s);
+        tl.to(el, {opacity:0, duration:.2, ease:"power2.in"}, e - 0.20);
+        tl.set(el, {visibility:"hidden"}, e);
+      }
+
+      /* Per-scene BOUNCY entrances */
+      const SCENES = ['s1','s2','s3','s4','s5','s6'];
+      SCENES.forEach((id, i) => {
+        const start = i * 2.5, end = (i+1) * 2.5;
+        const el = document.getElementById(id);
+        show(el, start, end);
+        const kicker = el.querySelector('.kicker');
+        const bubble = el.querySelector('.bubble');
+        const sub = el.querySelector('.sub');
+        const chips = el.querySelector('.chips');
+
+        if (kicker) {
+          Rich.enter(kicker, tl, start + 0.05, 'drop');
+          Rich.idle(kicker, tl, start + 0.55, end - 0.3, {scale:.02, x:5, y:3, rot:.6});
+        }
+        if (bubble) {
+          /* squash-stretch: scaleY 0.55 → overshoot → settle */
+          gsap.set(bubble, {scale:.35, opacity:0, rotation:-3, transformOrigin:"50% 50%"});
+          tl.to(bubble, {scale:1.08, opacity:1, rotation:0, duration:.4, ease:"back.out(3)"}, start + 0.18);
+          tl.to(bubble, {scale:1, duration:.18, ease:"back.out(2)"}, start + 0.58);
+          Rich.idle(bubble, tl, start + 0.85, end - 0.3, {scale:.03, x:8, y:6, rot:2});
+        }
+        if (sub) {
+          Rich.enter(sub, tl, start + 0.7, 'rise');
+          Rich.idle(sub, tl, start + 1.2, end - 0.3, {scale:.025, x:5, y:4, rot:1});
+        }
+        if (chips) {
+          const chipEls = chips.querySelectorAll('.chip');
+          Rich.cascade(chipEls, tl, start + 0.8, {stagger:.1, rot:5, dur:.4});
+          Rich.idle(chipEls[0], tl, start + 1.5, end - 0.3, {scale:.04, x:6, y:5, rot:2});
+          Rich.idle(chipEls[1], tl, start + 1.5, end - 0.3, {scale:.04, x:6, y:5, rot:2});
+          Rich.idle(chipEls[2], tl, start + 1.5, end - 0.3, {scale:.04, x:6, y:5, rot:2});
+        }
+      });
+    </script>
+  </body>
+</html>
