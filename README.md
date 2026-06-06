@@ -32,36 +32,20 @@ turns *describe the edit → finished video.* Effortless editing, for editors, w
 
 ---
 
-## Made with xotion
+## Demos — made with Xotion
 
-Real outputs — **click any thumbnail to play.** Each was produced from a single prompt.
+Real outputs, each from a one-line prompt. **Click a thumbnail to play** (opens the MP4 player on GitHub).
 
 <table>
   <tr>
-    <td align="center" width="50%">
-      <a href="https://customer-e3dcu5z0wpq1kd92.cloudflarestream.com/96d3417fb46b556690686e775bff8c1b/watch">
-        <img src="https://customer-e3dcu5z0wpq1kd92.cloudflarestream.com/96d3417fb46b556690686e775bff8c1b/thumbnails/thumbnail.jpg?time=2.15s&height=600" width="260" alt="Vertical split-screen edit"/>
-      </a><br/><sub>▶ Split-screen edit (3:4)</sub>
-    </td>
-    <td align="center" width="50%">
-      <a href="https://customer-e3dcu5z0wpq1kd92.cloudflarestream.com/8f5c345dd8181f5fcce2cb39d7538f51/watch">
-        <img src="https://customer-e3dcu5z0wpq1kd92.cloudflarestream.com/8f5c345dd8181f5fcce2cb39d7538f51/thumbnails/thumbnail.jpg?time=1s&height=600" width="260" alt="Vertical reel"/>
-      </a><br/><sub>▶ Vertical reel (9:16)</sub>
-    </td>
+    <td align="center"><a href="https://github.com/ahkamboh/xotion-studio/blob/main/demos/xotion-explainer-reel.mp4"><img src="demos/posters/explainer-reel.jpg" width="190" alt="Editorial explainer reel"/></a><br/><sub>▶ Editorial explainer · 9:16</sub></td>
+    <td align="center"><a href="https://github.com/ahkamboh/xotion-studio/blob/main/demos/xotion-neo-brutalist-reel.mp4"><img src="demos/posters/neo-reel.jpg" width="190" alt="Neo-Brutalist reel"/></a><br/><sub>▶ Neo-Brutalist · 9:16</sub></td>
+    <td align="center"><a href="https://github.com/ahkamboh/xotion-studio/blob/main/demos/xotion-neobrutalist-rendered.mp4"><img src="demos/posters/neo-rendered.jpg" width="190" alt="Neo-Brutalist male VO"/></a><br/><sub>▶ Neo-Brutalist · male VO</sub></td>
+    <td align="center"><a href="https://github.com/ahkamboh/xotion-studio/blob/main/demos/xotion-musk-multiplier.mp4"><img src="demos/posters/musk.jpg" width="190" alt="Musk Multiplier"/></a><br/><sub>▶ Musk Multiplier · editorial</sub></td>
   </tr>
   <tr>
-    <td align="center" colspan="2">
-      <a href="https://customer-e3dcu5z0wpq1kd92.cloudflarestream.com/c2eb21236681cc2efbbcbfc7ff1c3abd/watch">
-        <img src="https://customer-e3dcu5z0wpq1kd92.cloudflarestream.com/c2eb21236681cc2efbbcbfc7ff1c3abd/thumbnails/thumbnail.jpg?time=1s&height=600" width="560" alt="AI-impact explainer"/>
-      </a><br/><sub>▶ AI-impact explainer — stock b-roll + animated stats + female VO (16:9)</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" colspan="2">
-      <a href="https://customer-e3dcu5z0wpq1kd92.cloudflarestream.com/6aa8409d186be77e0e9874e65ae9b14e/watch">
-        <img src="https://customer-e3dcu5z0wpq1kd92.cloudflarestream.com/6aa8409d186be77e0e9874e65ae9b14e/thumbnails/thumbnail.jpg?time=3s&height=600" width="560" alt="Narrated motion-graphics explainer"/>
-      </a><br/><sub>▶ Narrated motion-graphics explainer (16:9)</sub>
-    </td>
+    <td align="center" colspan="2"><a href="https://github.com/ahkamboh/xotion-studio/blob/main/demos/xotion-explainer-16x9.mp4"><img src="demos/posters/explainer-16x9.jpg" width="410" alt="Editorial explainer 16:9"/></a><br/><sub>▶ Editorial explainer · 16:9 — stock b-roll + animated stats + female VO</sub></td>
+    <td align="center" colspan="2"><a href="https://github.com/ahkamboh/xotion-studio/blob/main/demos/xotion-neo-brutalist-16x9.mp4"><img src="demos/posters/neo-16x9.jpg" width="410" alt="Neo-Brutalist 16:9"/></a><br/><sub>▶ Neo-Brutalist · 16:9</sub></td>
   </tr>
 </table>
 
