@@ -38,8 +38,12 @@ Real outputs, each from a one-line prompt. **Click a thumbnail to play** (opens 
 
 <table>
   <tr>
+    <td align="center"><a href="https://github.com/ahkamboh/xotion-studio/blob/main/demos/xotion-bold.mp4"><img src="demos/posters/bold.jpg" width="190" alt="Bold Dice — what's your move?"/></a><br/><sub>▶ Bold Dice · 9:16 — female VO + uplift bed</sub></td>
+    <td align="center"><a href="https://github.com/ahkamboh/xotion-studio/blob/main/demos/xotion-dream.mp4"><img src="demos/posters/dream.jpg" width="190" alt="Dream Poster — cloud rains finished frames"/></a><br/><sub>▶ Dream Poster · 9:16 — UK female VO + calm bed</sub></td>
     <td align="center"><a href="https://github.com/ahkamboh/xotion-studio/blob/main/demos/xotion-explainer-reel.mp4"><img src="demos/posters/explainer-reel.jpg" width="190" alt="Editorial explainer reel"/></a><br/><sub>▶ Editorial explainer · 9:16</sub></td>
     <td align="center"><a href="https://github.com/ahkamboh/xotion-studio/blob/main/demos/xotion-neo-brutalist-reel.mp4"><img src="demos/posters/neo-reel.jpg" width="190" alt="Neo-Brutalist reel"/></a><br/><sub>▶ Neo-Brutalist · 9:16</sub></td>
+  </tr>
+  <tr>
     <td align="center"><a href="https://github.com/ahkamboh/xotion-studio/blob/main/demos/xotion-neobrutalist-rendered.mp4"><img src="demos/posters/neo-rendered.jpg" width="190" alt="Neo-Brutalist male VO"/></a><br/><sub>▶ Neo-Brutalist · male VO</sub></td>
     <td align="center"><a href="https://github.com/ahkamboh/xotion-studio/blob/main/demos/xotion-musk-multiplier.mp4"><img src="demos/posters/musk.jpg" width="190" alt="Musk Multiplier"/></a><br/><sub>▶ Musk Multiplier · editorial</sub></td>
   </tr>
