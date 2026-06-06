@@ -68,7 +68,7 @@
       .s2 .bubble{font-size:200px;}  /* JUST / PROMPT (6 chars — tight) */
       .s3 .bubble{font-size:230px;}  /* WATCH / IT MOVE */
       .s4 .bubble{font-size:200px;}  /* ANY / FORMAT (6 chars) */
-      .s5 .bubble{font-size:195px;}  /* DON'T / BE BITTER (6 chars) */
+      .s5 .bubble{font-size:170px;}  /* DON'T / BE BITTER (BITTER widest) */
       .s6 .bubble{font-size:250px;}  /* START / FREE */
 
       /* format chips for S4 */
@@ -206,71 +206,150 @@
       window.__timelines = window.__timelines || {};
       window.__timelines["main"] = tl;
 
-      /* persistent mascot continuous wobble (back and forth tiny rotation) */
-      const mascot = document.getElementById('mascot');
-      tl.to(mascot, {rotation: 3, duration: 1.4, ease:"sine.inOut", yoyo:true, repeat:9}, 0);
-      tl.to(mascot, {y: -20, duration: 1.0, ease:"sine.inOut", yoyo:true, repeat:13}, 0.5);
-
-      /* sparkle stars: deterministic blink (different phases) */
-      const starEls = document.querySelectorAll('.star');
-      starEls.forEach((s, i) => {
-        gsap.set(s, {opacity: 0.0});
-        const period = 0.55, offset = (i * 0.18) % period;
-        const cycles = Math.floor(15 / period);
-        for (let k = 0; k < cycles; k++) {
-          const t = offset + k * period;
-          tl.to(s, {opacity: 1, duration: 0.18, ease:"sine.out"}, t);
-          tl.to(s, {opacity: 0, duration: 0.18, ease:"sine.in"},  t + 0.22);
-        }
-        // also drift slowly
-        tl.to(s, {rotation: 30, duration: 15, ease:"none"}, 0);
-      });
-
-      /* persistent brand bug subtle bounce */
-      const bug = document.querySelector('.bug');
-      Rich.idle(bug, tl, 1, 14, {scale:.025, x:6, y:4, rot:.6});
-
-      /* Scene helper */
-      function show(el, s, e) {
-        gsap.set(el, {visibility:"hidden", opacity:0});
-        tl.set(el, {visibility:"visible"}, s);
-        tl.to(el, {opacity:1, duration:.2, ease:"power2.out"}, s);
-        tl.to(el, {opacity:0, duration:.2, ease:"power2.in"}, e - 0.20);
-        tl.set(el, {visibility:"hidden"}, e);
+      /* ============ helper: split text node into per-letter spans (preserves <br>) ============
+         Each line wrapped in a nowrap div so inline-block letters can't be force-broken by
+         the parent's max-width. The whole bubble can still shrink — but it shrinks the FONT
+         (via max-width on .bubble), not by reflowing mid-word. */
+      function splitLetters(el) {
+        const html = el.innerHTML;
+        const lines = html.split(/<br\s*\/?>/i);
+        el.innerHTML = '';
+        const letters = [];
+        const lineDivs = [];
+        lines.forEach((line) => {
+          const lineDiv = document.createElement('div');
+          lineDiv.style.whiteSpace = 'nowrap';
+          lineDiv.style.lineHeight = 'inherit';
+          lineDiv.style.display = 'inline-block';
+          el.appendChild(lineDiv);
+          lineDivs.push(lineDiv);
+          for (const ch of line) {
+            const sp = document.createElement('span');
+            sp.innerHTML = (ch === ' ') ? '&nbsp;' : ch;
+            sp.className = 'L';
+            sp.style.display = 'inline-block';
+            lineDiv.appendChild(sp);
+            letters.push(sp);
+          }
+        });
+        // AUTO-FIT SAFETY: if any line overflows safe area (920px),
+        // shrink it via transform:scaleX so peak-entrance scale (1.04×) still fits 1080w.
+        // Must run AFTER element is in DOM so getBoundingClientRect works.
+        requestAnimationFrame(() => {
+          const SAFE = 880;  // 920px - 4% headroom for peak scale
+          lineDivs.forEach(div => {
+            const w = div.getBoundingClientRect().width;
+            if (w > SAFE) {
+              const s = SAFE / w;
+              div.style.transformOrigin = '50% 50%';
+              div.style.transform = `scaleX(${s.toFixed(3)})`;
+            }
+          });
+        });
+        return letters;
       }
 
-      /* Per-scene BOUNCY entrances */
+      /* ============ persistent mascot: slow elegant BREATHE (replaces wobble) ============ */
+      const mascot = document.getElementById('mascot');
+      tl.to(mascot, {scale:1.028, duration:3.2, ease:"sine.inOut", yoyo:true, repeat:4}, 0);
+      tl.to(mascot, {rotation:2,   duration:5.0, ease:"sine.inOut", yoyo:true, repeat:2}, 0);
+
+      /* ============ sparkle stars — SOFT WAVE FADE (replaces hard blink) ============ */
+      const starEls = document.querySelectorAll('.star');
+      starEls.forEach((s, i) => {
+        gsap.set(s, {opacity: 0.0, scale: 0.6, transformOrigin:"50% 50%"});
+        const period = 3.6;
+        const offset = (i * 0.42) % period;
+        const cycles = Math.ceil(15 / period);
+        for (let k = 0; k < cycles; k++) {
+          const t0 = offset + k * period;
+          tl.to(s, {opacity: 1, scale: 1, duration: 0.85, ease: "sine.inOut"}, t0);
+          tl.to(s, {opacity: 0.15, scale: 0.7, duration: 0.85, ease: "sine.inOut"}, t0 + 1.0);
+        }
+        // very slow continuous drift rotation
+        tl.to(s, {rotation: 18, duration: 15, ease: "none"}, 0);
+      });
+
+      /* ============ persistent brand bug — very subtle float ============ */
+      const bug = document.querySelector('.bug');
+      gsap.set(bug, {opacity: 0});
+      tl.to(bug, {opacity: 0.55, duration: 0.8, ease: "power2.out"}, 0.4);
+      tl.to(bug, {y: -3, duration: 4.0, ease: "sine.inOut", yoyo: true, repeat: 3}, 1);
+      tl.to(bug, {opacity: 0, duration: 0.6, ease: "power2.in"}, 14.4);
+
+      /* ============ SCENE CROSSFADE — overlap 0.3s before boundary for smooth handoff ============ */
+      function show(el, idx) {
+        const start = idx * 2.5;
+        const end   = (idx + 1) * 2.5;
+        const fadeIn = Math.max(0, start - 0.25);
+        gsap.set(el, {visibility: "hidden", opacity: 0});
+        tl.set(el, {visibility: "visible"}, fadeIn);
+        tl.to(el, {opacity: 1, duration: 0.5, ease: "power2.inOut"}, fadeIn);
+        tl.to(el, {opacity: 0, duration: 0.5, ease: "power2.inOut"}, end - 0.35);
+        tl.set(el, {visibility: "hidden"}, end + 0.15);
+      }
+
+      /* ============ PER-SCENE PREMIUM ENTRANCE: letter stagger + blur reveal + expo.out ============ */
       const SCENES = ['s1','s2','s3','s4','s5','s6'];
       SCENES.forEach((id, i) => {
         const start = i * 2.5, end = (i+1) * 2.5;
         const el = document.getElementById(id);
-        show(el, start, end);
+        show(el, i);
         const kicker = el.querySelector('.kicker');
         const bubble = el.querySelector('.bubble');
         const sub = el.querySelector('.sub');
         const chips = el.querySelector('.chips');
 
+        /* KICKER — letter-spacing reveal (luxe) */
         if (kicker) {
-          Rich.enter(kicker, tl, start + 0.05, 'drop');
-          Rich.idle(kicker, tl, start + 0.55, end - 0.3, {scale:.02, x:5, y:3, rot:.6});
+          gsap.set(kicker, {opacity: 0, y: -8, letterSpacing: '.55em'});
+          tl.to(kicker, {opacity: 1, y: 0, letterSpacing: '.32em', duration: 0.75, ease: "power3.out"}, start + 0.10);
+          tl.to(kicker, {y: -1, duration: 1.6, ease: "sine.inOut", yoyo: true, repeat: 0}, start + 1.0);
+          tl.to(kicker, {opacity: 0, y: -8, duration: 0.45, ease: "power2.in"}, end - 0.55);
         }
+
+        /* BUBBLE — split into letters, stagger with blur+y reveal */
         if (bubble) {
-          /* squash-stretch: smaller overshoot (1.04 instead of 1.08) — keeps text inside safe area at peak scale */
-          gsap.set(bubble, {scale:.45, opacity:0, rotation:-2, transformOrigin:"50% 50%"});
-          tl.to(bubble, {scale:1.04, opacity:1, rotation:0, duration:.4, ease:"back.out(2.2)"}, start + 0.18);
-          tl.to(bubble, {scale:1, duration:.18, ease:"back.out(1.8)"}, start + 0.58);
-          Rich.idle(bubble, tl, start + 0.85, end - 0.3, {scale:.018, x:6, y:5, rot:1.5});
+          const letters = splitLetters(bubble);
+          gsap.set(letters, {opacity: 0, y: 60, scale: 0.88, filter: "blur(10px)", transformOrigin: "50% 60%"});
+          tl.to(letters, {
+            opacity: 1, y: 0, scale: 1, filter: "blur(0px)",
+            duration: 0.85, ease: "expo.out",
+            stagger: { each: 0.045, from: "start" }
+          }, start + 0.18);
+          /* gentle float idle on whole bubble (no rotation = luxe) */
+          tl.to(bubble, {y: -6, duration: 2.4, ease: "sine.inOut", yoyo: true, repeat: 0}, start + 1.2);
+          /* exit: letters fade up with blur */
+          tl.to(letters, {
+            opacity: 0, y: -32, filter: "blur(8px)",
+            duration: 0.50, ease: "power2.in",
+            stagger: { each: 0.025, from: "start" }
+          }, end - 0.55);
         }
+
+        /* SUB — split letters, smaller magnitude reveal */
         if (sub) {
-          Rich.enter(sub, tl, start + 0.7, 'rise');
-          Rich.idle(sub, tl, start + 1.2, end - 0.3, {scale:.025, x:5, y:4, rot:1});
+          const subLetters = splitLetters(sub);
+          gsap.set(subLetters, {opacity: 0, y: 18, filter: "blur(6px)"});
+          tl.to(subLetters, {
+            opacity: 1, y: 0, filter: "blur(0px)",
+            duration: 0.65, ease: "power3.out",
+            stagger: { each: 0.025, from: "start" }
+          }, start + 0.65);
+          tl.to(sub, {opacity: 0, y: -10, duration: 0.45, ease: "power2.in"}, end - 0.55);
         }
+
+        /* CHIPS — smooth cascade up with fade */
         if (chips) {
           const chipEls = chips.querySelectorAll('.chip');
-          Rich.cascade(chipEls, tl, start + 0.8, {stagger:.1, rot:5, dur:.4});
-          Rich.idle(chipEls[0], tl, start + 1.5, end - 0.3, {scale:.04, x:6, y:5, rot:2});
-          Rich.idle(chipEls[1], tl, start + 1.5, end - 0.3, {scale:.04, x:6, y:5, rot:2});
-          Rich.idle(chipEls[2], tl, start + 1.5, end - 0.3, {scale:.04, x:6, y:5, rot:2});
+          gsap.set(chipEls, {opacity: 0, y: 40, scale: 0.85});
+          tl.to(chipEls, {
+            opacity: 1, y: 0, scale: 1,
+            duration: 0.7, ease: "expo.out",
+            stagger: 0.10
+          }, start + 0.6);
+          chipEls.forEach(c => tl.to(c, {y: -4, duration: 2.0, ease: "sine.inOut"}, start + 1.5));
+          tl.to(chipEls, {opacity: 0, y: -16, duration: 0.45, ease: "power2.in", stagger: 0.05}, end - 0.55);
         }
       });
     </script>
