@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" /><meta name="viewport" content="width=1080,height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="richness.js"></script>
+    <style>
+      @font-face{font-family:"Anton";src:url("assets/fonts/anton-400.ttf");font-weight:400;}
+      @font-face{font-family:"BebasNeue";src:url("assets/fonts/bebas-neue-400.ttf");font-weight:400;}
+      @font-face{font-family:"ArchivoBlack";src:url("assets/fonts/archivo-black-400.ttf");font-weight:400;}
+      @font-face{font-family:"Archivo";src:url("assets/fonts/archivo-900.ttf");font-weight:900;}
+      @font-face{font-family:"Inter";src:url("assets/fonts/inter-500.ttf");font-weight:500;}
+      @font-face{font-family:"Inter";src:url("assets/fonts/inter-600.ttf");font-weight:600;}
+
+      *{margin:0;padding:0;box-sizing:border-box;}
+      :root{
+        --orange:#E5552B;       /* cosmic orange */
+        --orange-light:#F58A4E;
+        --ink:#0a0a0c;
+        --cream:#F5EFE2;
+        --cyan:#5DD0E5;
+        --dark:#1B0F0A;
+      }
+      html,body{width:1080px;height:1920px;overflow:hidden;background:var(--dark);
+        font-family:"Inter",-apple-system,sans-serif;color:var(--cream);
+        -webkit-font-smoothing:antialiased;}
+      #root{position:relative;width:1080px;height:1920px;overflow:hidden;}
+
+      /* ============ persistent bg layers ============ */
+      .bg{position:absolute;inset:0;z-index:1;
+        background:radial-gradient(120% 80% at 50% 35%, #2a1a14 0%, #0a0608 60%, #000 100%);}
+      .grain{position:absolute;inset:0;z-index:5;pointer-events:none;opacity:.18;mix-blend-mode:overlay;
+        background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='320' height='320' filter='url(%23n)' opacity='0.5'/></svg>");}
+      .scanlines{position:absolute;inset:0;z-index:6;pointer-events:none;opacity:.07;
+        background:repeating-linear-gradient(0deg, rgba(0,0,0,.6) 0 1px, transparent 1px 4px);}
+
+      /* persistent brand bug + step counter */
+      .bug{position:absolute;left:60px;top:60px;z-index:50;display:flex;align-items:center;gap:14px;}
+      .bug-dot{width:14px;height:14px;border-radius:50%;background:var(--orange);box-shadow:0 0 0 5px rgba(229,85,43,.22);}
+      .bug-t{font-family:"BebasNeue",sans-serif;font-size:30px;letter-spacing:.2em;text-transform:uppercase;color:var(--cream);}
+      .stepper{position:absolute;right:60px;top:62px;z-index:50;font-family:"BebasNeue",sans-serif;font-size:30px;
+        letter-spacing:.15em;color:var(--cream);background:rgba(229,85,43,.15);border:2px solid var(--orange);
+        padding:6px 18px;border-radius:6px;}
+      .credit{position:absolute;left:0;right:0;bottom:55px;text-align:center;z-index:50;
+        font-family:"BebasNeue",sans-serif;font-size:26px;letter-spacing:.4em;color:var(--cream);opacity:.55;}
+
+      /* ============ scene + types ============ */
+      .scene{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;
+        align-items:center;justify-content:center;padding:120px 60px;text-align:center;
+        visibility:hidden;opacity:0;}
+
+      .kicker{font-family:"BebasNeue",sans-serif;font-size:46px;letter-spacing:.4em;
+        text-transform:uppercase;color:var(--orange);
+        text-shadow:0 0 14px rgba(229,85,43,.45);}
+
+      .display{font-family:"Anton",sans-serif;color:var(--cream);line-height:.82;letter-spacing:-.02em;
+        text-transform:uppercase;text-align:center;max-width:960px;
+        text-shadow:0 8px 30px rgba(0,0,0,.7), 0 0 60px rgba(229,85,43,.15);}
+      .display .accent{color:var(--orange);}
+      .display .line{display:block;}
+
+      .sub{font-family:"BebasNeue",sans-serif;font-size:52px;letter-spacing:.18em;
+        text-transform:uppercase;color:var(--cream);opacity:.92;}
+
+      .pricetag{display:inline-flex;align-items:baseline;gap:14px;
+        font-family:"Archivo",sans-serif;font-weight:900;font-size:120px;color:var(--ink);
+        background:var(--orange);padding:18px 38px;border:5px solid var(--ink);
+        box-shadow:14px 14px 0 var(--ink);transform:rotate(-2deg);}
+      .pricetag small{font-family:"BebasNeue",sans-serif;font-size:42px;letter-spacing:.2em;}
+
+      /* ============ iPhone media holder ============ */
+      .phone{position:absolute;left:0;right:0;width:100%;z-index:20;display:flex;justify-content:center;align-items:center;
+        will-change:transform,opacity;}
+      .phone img{display:block;width:100%;height:auto;}
+
+      /* per-scene sizes */
+      .s1 .display{font-size:300px;}
+      .s2 .display{font-size:280px;}
+      .s3 .display{font-size:260px;}
+      .s4 .display{font-size:230px;}
+      .s5 .display{font-size:240px;}
+      .s6 .display{font-size:280px;}
+
+      /* sticker badges */
+      .badge{display:inline-block;font-family:"ArchivoBlack",sans-serif;font-size:64px;
+        background:var(--cream);color:var(--ink);padding:14px 30px;border:6px solid var(--ink);
+        box-shadow:12px 12px 0 var(--ink);transform:rotate(-3deg);letter-spacing:.02em;}
+      .badge.orange{background:var(--orange);color:var(--cream);transform:rotate(2deg);}
+      .badge.cyan{background:var(--cyan);color:var(--ink);transform:rotate(-2deg);}
+
+      /* spec rows for S2/S4 */
+      .specs{display:flex;justify-content:center;gap:30px;margin-top:50px;}
+      .speccard{font-family:"BebasNeue",sans-serif;font-size:36px;letter-spacing:.15em;color:var(--cream);
+        background:rgba(229,85,43,.18);border:3px solid var(--orange);padding:18px 26px;border-radius:8px;}
+      .speccard b{display:block;font-family:"Anton",sans-serif;font-size:80px;color:var(--orange);
+        letter-spacing:-.01em;line-height:1;margin-bottom:6px;}
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="30" data-width="1080" data-height="1920">
+
+      <!-- persistent layers -->
+      <div class="bg"></div>
+      <div class="grain"></div>
+      <div class="scanlines"></div>
+
+      <div class="bug" id="bug">
+        <div class="bug-dot"></div>
+        <div class="bug-t">XOTION · APPLE</div>
+      </div>
+      <div class="stepper" id="stepper">01 / 06</div>
+      <div class="credit" id="credit">iPHONE 17 PRO · COSMIC ORANGE · 2026</div>
+
+      <!-- S1 HERO: iPhone 17 Pro reveal -->
+      <div class="scene s1" id="s1">
+        <div class="phone" id="phone1" style="top:200px;">
+          <img src="assets/img/hero__bsveixlwbms2_xlarge.jpg" alt="iPhone 17 Pro" />
+        </div>
+        <div class="display" style="position:absolute;bottom:280px;left:0;right:0;">
+          <span class="line">BUILT TO</span>
+          <span class="line accent">DAZZLE.</span>
+        </div>
+      </div>
+
+      <!-- S2 CHIP: A19 Pro -->
+      <div class="scene s2" id="s2">
+        <div style="position:absolute;top:280px;left:0;right:0;text-align:center;">
+          <div class="kicker">The Engine</div>
+        </div>
+        <div class="display" style="position:absolute;top:420px;left:0;right:0;">
+          <span class="line accent">A19</span>
+          <span class="line">PRO</span>
+        </div>
+        <div class="sub" style="position:absolute;bottom:340px;left:0;right:0;">
+          Fastest iPhone. Ever.
+        </div>
+        <div style="position:absolute;bottom:200px;left:0;right:0;text-align:center;">
+          <span class="badge orange">6-CORE GPU · NEURAL</span>
+        </div>
+      </div>
+
+      <!-- S3 CAMERA: triple 48MP -->
+      <div class="scene s3" id="s3">
+        <div class="phone" id="phone3" style="top:120px;">
+          <img src="assets/img/colors_orange__cr2oq3n1dwk2_large.jpg" alt="iPhone 17 Pro camera" />
+        </div>
+        <div style="position:absolute;top:60px;left:0;right:0;text-align:center;">
+          <div class="kicker">The Camera</div>
+        </div>
+        <div class="display" style="position:absolute;bottom:300px;left:0;right:0;">
+          <span class="line">TRIPLE</span>
+          <span class="line accent">48MP.</span>
+        </div>
+        <div class="sub" style="position:absolute;bottom:180px;left:0;right:0;">
+          8× OPTICAL · 16× ZOOM
+        </div>
+      </div>
+
+      <!-- S4 DISPLAY: 120Hz ProMotion -->
+      <div class="scene s4" id="s4">
+        <div style="position:absolute;top:280px;left:0;right:0;text-align:center;">
+          <div class="kicker">The Display</div>
+        </div>
+        <div class="display" style="position:absolute;top:420px;left:0;right:0;">
+          <span class="line">PRO</span>
+          <span class="line accent">MOTION</span>
+          <span class="line">120Hz.</span>
+        </div>
+        <div class="sub" style="position:absolute;bottom:280px;left:0;right:0;">
+          Brighter. Smoother. Sharper.
+        </div>
+      </div>
+
+      <!-- S5 BATTERY/POWER -->
+      <div class="scene s5" id="s5">
+        <div style="position:absolute;top:280px;left:0;right:0;text-align:center;">
+          <div class="kicker">The Power</div>
+        </div>
+        <div class="display" style="position:absolute;top:420px;left:0;right:0;">
+          <span class="line accent">ALL</span>
+          <span class="line">DAY</span>
+          <span class="line">POWER.</span>
+        </div>
+        <div class="sub" style="position:absolute;bottom:340px;left:0;right:0;">
+          39 hrs video · 50% in 20 min
+        </div>
+        <div style="position:absolute;bottom:200px;left:0;right:0;text-align:center;">
+          <span class="badge cyan">HEAT-FORGED ALUMINUM</span>
+        </div>
+      </div>
+
+      <!-- S6 CTA -->
+      <div class="scene s6" id="s6">
+        <div style="position:absolute;top:280px;left:0;right:0;text-align:center;">
+          <div class="kicker">Available Now</div>
+        </div>
+        <div class="display" style="position:absolute;top:420px;left:0;right:0;">
+          <span class="line">iPHONE</span>
+          <span class="line accent">17 PRO.</span>
+        </div>
+        <div style="position:absolute;bottom:340px;left:0;right:0;text-align:center;">
+          <span class="pricetag">FROM <span>$999</span></span>
+        </div>
+        <div class="sub" style="position:absolute;bottom:200px;left:0;right:0;">
+          Pre-order at apple.com
+        </div>
+      </div>
+    </div>
+
+    <script>
+      Rich.css();
+
+      /* helper — split text element into letter spans inside nowrap line wrappers */
+      function splitLetters(el) {
+        if (!el) return [];
+        // process only .line spans inside .display
+        const lines = el.querySelectorAll('.line, .sub, .kicker');
+        const all = [];
+        const sources = lines.length ? lines : [el];
+        sources.forEach(line => {
+          const text = line.textContent;
+          line.textContent = '';
+          for (const ch of text) {
+            const sp = document.createElement('span');
+            sp.className = 'L';
+            sp.style.display = 'inline-block';
+            sp.innerHTML = (ch === ' ') ? '&nbsp;' : ch;
+            line.appendChild(sp);
+            all.push(sp);
+          }
+        });
+        return all;
+      }
+
+      const tl = gsap.timeline({paused:true});
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+
+      /* persistent layers */
+      const bug = document.getElementById('bug');
+      const stepper = document.getElementById('stepper');
+      const credit = document.getElementById('credit');
+      gsap.set(bug, {x:-200, opacity:0});
+      gsap.set(stepper, {x:200, opacity:0});
+      gsap.set(credit, {opacity:0, y:8});
+      tl.to(bug, {x:0, opacity:1, duration:.7, ease:"expo.out"}, 0.3);
+      tl.to(stepper, {x:0, opacity:1, duration:.7, ease:"expo.out"}, 0.4);
+      tl.to(credit, {opacity:.55, y:0, duration:.6, ease:"power3.out"}, 0.5);
+      Rich.idle(bug, tl, 1.2, 28, {scale:.018, x:5, y:3, rot:.4});
+      Rich.idle(stepper, tl, 1.2, 28, {scale:.022, x:5, y:3, rot:.5});
+      Rich.idle(credit, tl, 1.2, 28, {scale:.012, x:3, y:2, rot:.2});
+      tl.to([bug,stepper,credit], {opacity:0, duration:.45, ease:"power2.in"}, 28.5);
+
+      /* update stepper text per scene */
+      const stepperUpdates = [
+        [0,    "01 / 06"],
+        [5,    "02 / 06"],
+        [10,   "03 / 06"],
+        [15,   "04 / 06"],
+        [20,   "05 / 06"],
+        [25,   "06 / 06"]
+      ];
+      stepperUpdates.forEach(([t, val]) => {
+        tl.call(() => { stepper.textContent = val; }, [], t);
+      });
+
+      function show(el, idx) {
+        const start = idx * 5.0;
+        const end   = (idx + 1) * 5.0;
+        const fadeIn = Math.max(0, start - 0.3);
+        gsap.set(el, {visibility:"hidden", opacity:0});
+        tl.set(el, {visibility:"visible"}, fadeIn);
+        tl.to(el, {opacity:1, duration:.55, ease:"power2.inOut"}, fadeIn);
+        tl.to(el, {opacity:0, duration:.55, ease:"power2.inOut"}, end - 0.4);
+        tl.set(el, {visibility:"hidden"}, end + 0.2);
+      }
+
+      const SCENES = ['s1','s2','s3','s4','s5','s6'];
+      SCENES.forEach((id, i) => {
+        const start = i * 5.0, end = (i+1) * 5.0;
+        const el = document.getElementById(id);
+        show(el, i);
+        const kicker = el.querySelector('.kicker');
+        const display = el.querySelector('.display');
+        const sub = el.querySelector('.sub');
+        const phone = el.querySelector('.phone');
+        const badge = el.querySelector('.badge');
+        const price = el.querySelector('.pricetag');
+
+        /* PHONE image: slow KEN-BURNS zoom + slide */
+        if (phone) {
+          const dir = (i % 2 === 0) ? 1 : -1;
+          gsap.set(phone, {scale: 1.0, x: 0, y: 30, opacity: 0});
+          tl.to(phone, {opacity: 1, y: 0, duration: 0.8, ease: "expo.out"}, start);
+          tl.to(phone, {scale: 1.08, x: 20 * dir, duration: 5.0, ease: "sine.inOut"}, start);
+          tl.to(phone, {opacity: 0, duration: 0.5, ease: "power2.in"}, end - 0.45);
+        }
+
+        /* KICKER — letter-spacing reveal */
+        if (kicker) {
+          gsap.set(kicker, {opacity: 0, y: -8, letterSpacing: '.6em'});
+          tl.to(kicker, {opacity: 1, y: 0, letterSpacing: '.4em', duration: 0.75, ease: "power3.out"}, start + 0.20);
+          tl.to(kicker, {opacity: 0, y: -8, duration: 0.4, ease: "power2.in"}, end - 0.55);
+        }
+
+        /* DISPLAY — letter-by-letter blur reveal stagger */
+        if (display) {
+          const letters = splitLetters(display);
+          gsap.set(letters, {opacity: 0, y: 60, scale: 0.88, filter: "blur(12px)"});
+          tl.to(letters, {
+            opacity: 1, y: 0, scale: 1, filter: "blur(0px)",
+            duration: 0.9, ease: "expo.out",
+            stagger: { each: 0.04, from: "start" }
+          }, start + 0.35);
+          tl.to(display, {y: -6, duration: 2.4, ease: "sine.inOut"}, start + 1.3);
+          tl.to(letters, {
+            opacity: 0, y: -28, filter: "blur(8px)",
+            duration: 0.45, ease: "power2.in",
+            stagger: { each: 0.02 }
+          }, end - 0.55);
+        }
+
+        /* SUB — letter stagger smaller magnitude */
+        if (sub) {
+          const subLetters = splitLetters(sub);
+          gsap.set(subLetters, {opacity: 0, y: 16, filter: "blur(6px)"});
+          tl.to(subLetters, {
+            opacity: 1, y: 0, filter: "blur(0px)",
+            duration: 0.7, ease: "power3.out",
+            stagger: { each: 0.018 }
+          }, start + 1.0);
+          tl.to(sub, {opacity: 0, y: -8, duration: 0.4, ease: "power2.in"}, end - 0.55);
+        }
+
+        /* BADGE — slam + rotate idle */
+        if (badge) {
+          const baseRot = parseFloat(getComputedStyle(badge).transform === 'none' ? 0 : -3);
+          gsap.set(badge, {scale: 0, opacity: 0});
+          tl.to(badge, {scale: 1, opacity: 1, duration: 0.45, ease: "back.out(2.4)"}, start + 1.6);
+          Rich.idle(badge, tl, start + 2.1, end - 0.4, {scale:.025, x:5, y:4, rot:1.5});
+          tl.to(badge, {scale: 0.5, opacity: 0, duration: 0.4, ease: "power2.in"}, end - 0.5);
+        }
+
+        /* PRICETAG — slam */
+        if (price) {
+          gsap.set(price, {scale: .5, opacity: 0, rotation: -2});
+          tl.to(price, {scale: 1, opacity: 1, rotation: -2, duration: 0.5, ease: "back.out(2.6)"}, start + 1.6);
+          Rich.idle(price, tl, start + 2.1, end - 0.4, {scale:.022, x:6, y:4, rot:1.2});
+        }
+      });
+    </script>
+  </body>
+</html>
