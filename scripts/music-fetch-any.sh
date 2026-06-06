@@ -52,12 +52,7 @@ if [ -x "$DIR/music-bed.sh" ] && "$DIR/music-bed.sh" "$TMP" "$DUR" "${MOOD:-upli
   ffmpeg -y -i "$TMP" -codec:a libmp3lame -qscale:a 2 "$OUT" -loglevel error
   rm -f "$TMP"
   cat > "${OUT%.*}.license.json" <<EOF
-{
-  "source":  "internal-synth",
-  "license": "MIT (xotion-studio music-bed.sh)",
-  "note":    "Synthesised bed used because all external sources failed. No attribution required.",
-  "query":   "$Q"
-}
+{ "source": "internal-synth", "query": "$Q" }
 EOF
   echo "[music-fetch-any] ✓ synth bed -> $OUT"
   exit 0

@@ -47,12 +47,6 @@ if not docs:
     sys.stderr.write(f"[music-fetch-archive] 0 results from IA search\n")
     sys.exit(1)
 
-# Testing phase: accept ANY license, just classify it.
-def license_commercial_ok(url):
-    if not url: return False
-    u = url.lower()
-    if 'by-nc' in u or 'by-nd' in u or 'nc-' in u or '-nd' in u: return False
-    return any(p in u for p in ('/by/', '/by-sa/', '/publicdomain', '/zero/'))
 
 def fetch_metadata(identifier):
     url = f"https://archive.org/metadata/{identifier}"
@@ -95,14 +89,13 @@ for doc in docs:
             continue
         url = f"https://archive.org/download/{ident}/{urllib.parse.quote(f['name'])}"
         cand = {
-            'src':           url,
-            'identifier':    ident,
-            'title':         doc.get('title') or (meta.get('metadata') or {}).get('title'),
-            'creator':       doc.get('creator') or (meta.get('metadata') or {}).get('creator'),
-            'license':       item_licu or 'unspecified (IA item has no licenseurl)',
-            'commercial_ok': license_commercial_ok(item_licu),
-            'duration_s':    dur,
-            'page':          f"https://archive.org/details/{ident}",
+            'src':         url,
+            'identifier':  ident,
+            'title':       doc.get('title') or (meta.get('metadata') or {}).get('title'),
+            'creator':     doc.get('creator') or (meta.get('metadata') or {}).get('creator'),
+            'license':     item_licu or '',
+            'duration_s':  dur,
+            'page':        f"https://archive.org/details/{ident}",
         }
         if best is None or dur > best['duration_s']:
             best = cand
@@ -128,26 +121,16 @@ META="${OUT%.*}.license.json"
 python3 - "$PICK" "$META" <<'PY'
 import json, sys
 m = json.loads(sys.argv[1])
-licu = m.get('license') or ''
-commercial_ok = bool(m.get('commercial_ok'))
 out = {
-  'source':         'internet-archive',
-  'license':        licu,
-  'license_url':    licu if licu.startswith('http') else None,
-  'commercial_ok':  commercial_ok,
-  'needs_licensing_before_prod': not commercial_ok,
-  'identifier':     m.get('identifier'),
-  'title':          m.get('title'),
-  'creator':        m.get('creator'),
-  'duration_s':     m.get('duration_s'),
-  'source_url':     m.get('page'),
-  'note':           'Internet Archive audio_music. TESTING-PHASE fetch: license not filtered. Verify and re-license before commercial launch if needs_licensing_before_prod=true.',
+  'source':      'internet-archive',
+  'identifier':  m.get('identifier'),
+  'title':       m.get('title'),
+  'creator':     m.get('creator'),
+  'duration_s':  m.get('duration_s'),
+  'source_url':  m.get('page'),
+  'license':     m.get('license'),
 }
 with open(sys.argv[2], 'w') as f: json.dump(out, f, indent=2)
-print(f"[music-fetch-archive] license logged -> {sys.argv[2]}")
-if not commercial_ok:
-    print(f"[music-fetch-archive] ⚠️  TEST-ONLY LICENSE: {licu}", file=sys.stderr)
-    print(f"[music-fetch-archive] ⚠️  Re-license '{m.get('title')}' by {m.get('creator')} before prod.", file=sys.stderr)
 PY
 
 DUR=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$OUT" 2>/dev/null || echo "?")

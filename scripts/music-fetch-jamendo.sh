@@ -43,13 +43,6 @@ if data.get('headers',{}).get('status') != 'success':
     print(json.dumps(data.get('headers',{})), file=sys.stderr); sys.exit(2)
 results = data.get('results', [])
 
-# Flag commercial-OK vs needs-licensing — log but don't reject.
-def is_commercial_ok(licu):
-    if not licu: return False
-    u = licu.lower()
-    if 'by-nc' in u or 'by-nd' in u or 'nc-' in u or '-nd' in u: return False
-    return any(p in u for p in ('/by/', '/by-sa/', '/publicdomain', '/zero/'))
-
 best = None
 for t in results:
     dur = t.get('duration', 0)
@@ -59,18 +52,16 @@ for t in results:
     if best is None or dur > best['duration']:
         best = t
         best['_src'] = src
-        best['_commercial_ok'] = is_commercial_ok(t.get('license_ccurl') or t.get('license_url') or '')
 if not best:
     sys.exit(1)
 print(json.dumps({
-    'src':           best['_src'],
-    'id':            best.get('id'),
-    'name':          best.get('name'),
-    'artist':        best.get('artist_name'),
-    'duration':      best.get('duration'),
-    'license':       best.get('license_ccurl') or best.get('license_url'),
-    'shareurl':      best.get('shareurl'),
-    'commercial_ok': best.get('_commercial_ok'),
+    'src':      best['_src'],
+    'id':       best.get('id'),
+    'name':     best.get('name'),
+    'artist':   best.get('artist_name'),
+    'duration': best.get('duration'),
+    'license':  best.get('license_ccurl') or best.get('license_url'),
+    'shareurl': best.get('shareurl'),
 }))
 PY
 ) || { echo "[music-fetch-jamendo] no track matched '$Q' (dur>=${MINDUR}s)" >&2; exit 4; }
@@ -83,26 +74,16 @@ META="${OUT%.*}.license.json"
 python3 - "$PICK" "$META" <<'PY'
 import json, sys
 m = json.loads(sys.argv[1])
-licu = m.get('license') or ''
-commercial_ok = bool(m.get('commercial_ok'))
 out = {
-  'source':         'jamendo',
-  'license':        licu or 'Creative Commons (check license URL)',
-  'license_url':    licu,
-  'commercial_ok':  commercial_ok,
-  'needs_licensing_before_prod': not commercial_ok,
-  'track_id':       m.get('id'),
-  'track_name':     m.get('name'),
-  'artist':         m.get('artist'),
-  'duration_s':     m.get('duration'),
-  'source_url':     m.get('shareurl'),
-  'note':           'Jamendo CC track. TESTING-PHASE fetch: license not filtered. Re-license via Jamendo Pro (jamendo.com/start) before commercial launch if needs_licensing_before_prod=true.',
+  'source':      'jamendo',
+  'track_id':    m.get('id'),
+  'track_name':  m.get('name'),
+  'artist':      m.get('artist'),
+  'duration_s':  m.get('duration'),
+  'source_url':  m.get('shareurl'),
+  'license':     m.get('license'),
 }
 with open(sys.argv[2], 'w') as f: json.dump(out, f, indent=2)
-print(f"[music-fetch-jamendo] license logged -> {sys.argv[2]}")
-if not commercial_ok:
-    print(f"[music-fetch-jamendo] ⚠️  TEST-ONLY LICENSE: {licu}", file=sys.stderr)
-    print(f"[music-fetch-jamendo] ⚠️  Re-license '{m.get('name')}' by {m.get('artist')} via jamendo.com/start before prod.", file=sys.stderr)
 PY
 
 DUR=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$OUT")
