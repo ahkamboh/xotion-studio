@@ -124,6 +124,38 @@ Everything runs **offline, no API keys** — bundled Whisper model + fonts, pinn
 
 ---
 
+## ⚡ One-paste kickstart (any AI agent)
+
+New machine, or want an AI agent to set everything up and start editing? **Copy this whole block and
+paste it to Claude Code (or any coding agent) in an empty folder:**
+
+```
+You are operating the Xotion prompt-native video editor. Do this:
+
+1. Clone and set up the repo:
+   brew install git-lfs && git lfs install
+   git clone https://github.com/ahkamboh/xotion-studio.git
+   cd xotion-studio && git lfs pull && ./scripts/setup.sh
+
+2. Read these IN ORDER to learn the whole system, then confirm you understand:
+   - HANDOFF.md   (the full onboarding: how it works, tools, decisions, current state)
+   - CLAUDE.md    (the engine brain: the Director 7-step playbook + the agent team + rules)
+   - COMMANDS.md  (the ":" shorthand commands)
+
+3. Operate as the Director: for any video job, follow CLAUDE.md's 7-step loop
+   (Understand → Analyze → Decide → Plan → Confirm → Execute → Review), delegate to the
+   specialist agents in .claude/agents/, and NEVER deliver until qa-audio + qa-visual pass.
+   Use the libraries (templates/lib/richness.js + charts.js), scene-sync.py, and caption.py —
+   never hand-roll charts or scene timing. Keep everything offline / no API keys.
+
+Once set up, ask me what to make, then show me your ASSET REPORT + EDIT PLAN before editing.
+```
+
+After it confirms, just give it a file + a one-line prompt (e.g. *"make a 30s neon-caption reel from
+@clip.mp4"*) and it runs the full pipeline.
+
+---
+
 ## Prompt it — the `:` shorthand
 
 `@file` = input · `:cmd` = action · chain them · `=value` passes options. Full list: [`COMMANDS.md`](COMMANDS.md).
