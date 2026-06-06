@@ -62,12 +62,13 @@
         font-family:"Mono",monospace;font-size:46px;letter-spacing:.18em;text-transform:uppercase;
         color:var(--cream);text-shadow:0 4px 0 var(--ink);}
 
-      /* per-scene sizes — sized so AT PEAK entrance scale (1.04×) widest word still fits safe area (≤920px) */
-      .s1 .bubble{font-size:280px;}  /* DON'T / DRAG */
-      .s2 .bubble{font-size:240px;}  /* JUST / PROMPT */
+      /* per-scene sizes — 6-char words (PROMPT, FORMAT, BITTER) capped at 200px at rest
+         so that at peak entrance scale (×1.04) they fit inside 920px safe area */
+      .s1 .bubble{font-size:260px;}  /* DON'T / DRAG (5 char max) */
+      .s2 .bubble{font-size:200px;}  /* JUST / PROMPT (6 chars — tight) */
       .s3 .bubble{font-size:230px;}  /* WATCH / IT MOVE */
-      .s4 .bubble{font-size:220px;}  /* ANY / FORMAT — F-O-R-M-A-T is widest */
-      .s5 .bubble{font-size:200px;}  /* DON'T / BE BITTER */
+      .s4 .bubble{font-size:200px;}  /* ANY / FORMAT (6 chars) */
+      .s5 .bubble{font-size:195px;}  /* DON'T / BE BITTER (6 chars) */
       .s6 .bubble{font-size:250px;}  /* START / FREE */
 
       /* format chips for S4 */
@@ -90,32 +91,58 @@
       <div class="bg"></div>
       <div class="grain"></div>
 
-      <!-- mascot: cute yellow lemon-style blob with face -->
+      <!-- mascot: cartoon lemon matching the reference (no face, dotted skin, leaf with vein) -->
       <div class="mascot" id="mascot">
         <svg viewBox="-300 -340 600 680" xmlns="http://www.w3.org/2000/svg">
-          <!-- lemon body -->
-          <ellipse cx="0" cy="40" rx="240" ry="280" fill="#F5E531" stroke="#0F0825" stroke-width="14"/>
-          <!-- pointy tips -->
-          <path d="M -10 -260 Q 0 -310 10 -260 L 6 -210 L -6 -210 Z" fill="#F5E531" stroke="#0F0825" stroke-width="14"/>
-          <path d="M -10  290 Q 0  330 10  290 L 6  250 L -6  250 Z" fill="#F5E531" stroke="#0F0825" stroke-width="14"/>
-          <!-- glossy highlight -->
-          <ellipse cx="-80" cy="-100" rx="60" ry="100" fill="#FFF6C0" opacity=".55" transform="rotate(-15 -80 -100)"/>
-          <ellipse cx="60" cy="-180" rx="20" ry="35" fill="#FFFFFF" opacity=".7"/>
-          <!-- leaf -->
-          <g transform="translate(110 -240) rotate(28)">
-            <path d="M 0 0 Q 100 -40 140 -100 Q 80 -10 0 0 Z" fill="#3DBE5B" stroke="#0F0825" stroke-width="10"/>
-            <line x1="20" y1="-15" x2="120" y2="-85" stroke="#0F0825" stroke-width="6" stroke-linecap="round"/>
+          <!-- lemon body — rounded teardrop, pointy bottom tip -->
+          <path d="M 0 -270
+                   C 130 -250, 245 -130, 250 30
+                   C 255 180, 165 280, 50 305
+                   C 30 308, 10 310, 0 315
+                   C -10 308, -25 300, -50 290
+                   C -160 250, -250 140, -250 -10
+                   C -250 -160, -130 -270, 0 -270 Z"
+                fill="#F5E531" stroke="#0F0825" stroke-width="12" stroke-linejoin="round"/>
+          <!-- top stem nub -->
+          <path d="M -22 -268 Q -10 -290 10 -288 L 8 -260 L -18 -260 Z" fill="#E8C73A" stroke="#0F0825" stroke-width="10" stroke-linejoin="round"/>
+          <!-- big curved cream highlight on the upper left -->
+          <path d="M -160 -160
+                   Q -100 -210 -30 -200
+                   Q -90 -90 -180 -50
+                   Q -200 -110 -160 -160 Z"
+                fill="#FFF6C0" opacity=".7"/>
+          <!-- secondary slim highlight -->
+          <path d="M -180 30 Q -200 -40 -150 -30 L -160 50 Z" fill="#FFFFFF" opacity=".5"/>
+          <!-- bottom-left soft shadow patch -->
+          <ellipse cx="40" cy="200" rx="120" ry="50" fill="#E8C73A" opacity=".55"/>
+          <!-- dimpled skin texture dots -->
+          <g fill="#0F0825" opacity=".55">
+            <circle cx="-70"  cy="-60" r="4"/>
+            <circle cx="20"   cy="-30" r="3.5"/>
+            <circle cx="90"   cy="20" r="4"/>
+            <circle cx="-100" cy="80" r="3.5"/>
+            <circle cx="40"   cy="130" r="4"/>
+            <circle cx="160"  cy="-30" r="3.5"/>
+            <circle cx="-40"  cy="180" r="3.5"/>
+            <circle cx="120"  cy="180" r="3"/>
+            <circle cx="-160" cy="-30" r="3"/>
+            <circle cx="180"  cy="80" r="3"/>
           </g>
-          <!-- cute face: eyes -->
-          <ellipse cx="-70" cy="60" rx="22" ry="32" fill="#0F0825"/>
-          <ellipse cx="70" cy="60" rx="22" ry="32" fill="#0F0825"/>
-          <circle cx="-63" cy="50" r="9" fill="#FFFFFF"/>
-          <circle cx="77" cy="50" r="9" fill="#FFFFFF"/>
-          <!-- smile -->
-          <path d="M -55 130 Q 0 175 55 130" stroke="#0F0825" stroke-width="14" fill="none" stroke-linecap="round"/>
-          <!-- blush -->
-          <ellipse cx="-130" cy="115" rx="34" ry="22" fill="#F082C5" opacity=".7"/>
-          <ellipse cx="130" cy="115" rx="34" ry="22" fill="#F082C5" opacity=".7"/>
+          <!-- leaf top-right -->
+          <g transform="translate(70 -290) rotate(38)">
+            <path d="M 0 0
+                     Q 90 -60 180 -130
+                     Q 150 -20 30 30
+                     Q -10 20 0 0 Z"
+                  fill="#3DBE5B" stroke="#0F0825" stroke-width="10" stroke-linejoin="round"/>
+            <!-- central vein -->
+            <path d="M 10 -5 Q 80 -50 160 -120" stroke="#0F0825" stroke-width="6" fill="none" stroke-linecap="round"/>
+            <!-- side veins -->
+            <path d="M 50 -30 Q 70 -50 90 -55" stroke="#0F0825" stroke-width="4" fill="none" stroke-linecap="round"/>
+            <path d="M 90 -65 Q 110 -85 130 -90" stroke="#0F0825" stroke-width="4" fill="none" stroke-linecap="round"/>
+            <!-- leaf highlight -->
+            <path d="M 30 -10 Q 100 -50 150 -90" stroke="#7FE39A" stroke-width="6" fill="none" opacity=".6" stroke-linecap="round"/>
+          </g>
         </svg>
       </div>
 
