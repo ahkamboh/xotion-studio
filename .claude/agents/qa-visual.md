@@ -14,6 +14,8 @@ tools: Bash, Read
   3. **not cut off / overflowing the frame at ANY of the 3 sample points; every text glyph fully inside title-safe (≥56px from each edge) including during overshoot.** If the entrance frame clips but the mid frame doesn't, REJECT and route back to motion-builder.
   4. no overlap between elements; no element stuck/duplicated from a prior scene.
   5. no black/empty frame; backdrop not the dated bokeh balls; no stray progress bar.
+  6. **NO VISIBLE RECTANGULAR EDGES around composited web/external images.** If a product shot or logo shows a hard straight edge where its source-JPG background meets the comp backdrop, the image was composited as a solid-bg JPG instead of a transparent cutout. REJECT and route back to motion-builder with the note "key the bg out first" (`scripts/key-bg.sh` or `remove-bg.sh`).
+  7. **CENTER ALIGNMENT** — for every element labeled center-aligned in style.json, measure: the element's bounding-box midpoint must be within 2px of the frame's horizontal midpoint (540px at 1080w, 960px at 1920w). Off-center elements that drift during scale animations are typically caused by wrong `transform-origin` or mixed flex+absolute centering — REJECT and route back to motion-builder with the measured pixel offset.
 - Verify climax frames land on the right beat (counter at target on its peak frame).
 **Definition of done:** a written checklist with PASS/FAIL per scene. If ANY fail, report the exact scene + fix and send back to the responsible agent (motion-builder / sync-master / assembler / colorist). Do NOT approve until all pass.
 **Never:** approve a video you have not actually read frames from.
