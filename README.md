@@ -47,6 +47,9 @@ Real outputs, each from a one-line prompt. **Click a thumbnail to play** (opens 
     <td align="center" colspan="2"><a href="https://github.com/ahkamboh/xotion-studio/blob/main/demos/xotion-explainer-16x9.mp4"><img src="demos/posters/explainer-16x9.jpg" width="410" alt="Editorial explainer 16:9"/></a><br/><sub>▶ Editorial explainer · 16:9 — stock b-roll + animated stats + female VO</sub></td>
     <td align="center" colspan="2"><a href="https://github.com/ahkamboh/xotion-studio/blob/main/demos/xotion-neo-brutalist-16x9.mp4"><img src="demos/posters/neo-16x9.jpg" width="410" alt="Neo-Brutalist 16:9"/></a><br/><sub>▶ Neo-Brutalist · 16:9</sub></td>
   </tr>
+  <tr>
+    <td align="center" colspan="4"><a href="https://github.com/ahkamboh/xotion-studio/blob/main/demos/xotion-ai-impact.mp4"><img src="demos/posters/ai-impact.jpg" width="560" alt="AI-impact explainer"/></a><br/><sub>▶ AI-impact explainer · 16:9 — stock b-roll + animated stats + female VO</sub></td>
+  </tr>
 </table>
 
 ---
