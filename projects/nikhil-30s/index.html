@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <!--
+      Nikhil Kamath × Elon Musk — 30s PROFESSIONAL PODCAST EDIT v6
+      Spec: ONE font (Archivo). Single-line captions, 3–5 words, sentence case, lower-third,
+      white bold w/ subtle dark pill. Rare yellow keyword. Two lower-third name cards.
+      Tiny brand bug. Thin progress bar. No stamps, pull-quotes, stickers, or big text.
+      TRANSPARENT bg so source.mp4 composites underneath via ffmpeg.
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face{font-family:"Archivo";font-weight:500;src:url("assets/fonts/inter-500.ttf") format("truetype");}
+      @font-face{font-family:"Archivo";font-weight:600;src:url("assets/fonts/archivo-600.ttf") format("truetype");}
+      @font-face{font-family:"Archivo";font-weight:700;src:url("assets/fonts/archivo-700.ttf") format("truetype");}
+      @font-face{font-family:"Archivo";font-weight:900;src:url("assets/fonts/archivo-900.ttf") format("truetype");}
+
+      *{margin:0;padding:0;box-sizing:border-box;}
+      html,body{width:1920px;height:1080px;overflow:hidden;background:transparent;
+        font-family:"Archivo",-apple-system,BlinkMacSystemFont,sans-serif;color:#fff;
+        -webkit-font-smoothing:antialiased;}
+      #root{position:relative;width:1920px;height:1080px;overflow:hidden;background:transparent;}
+
+      /* ============ BRAND BUG — top-left, low opacity, never grows ============ */
+      .bug{position:absolute;left:60px;top:50px;z-index:60;display:flex;align-items:center;gap:12px;
+        opacity:.55;}
+      .bug .dot{width:10px;height:10px;border-radius:50%;background:#FFD400;box-shadow:0 0 0 3px rgba(255,212,0,.18);}
+      .bug .label{font-family:"Archivo",sans-serif;font-weight:700;font-size:22px;letter-spacing:.22em;
+        text-transform:uppercase;color:rgba(255,255,255,.85);}
+
+      /* ============ CAPTIONS — single line, 3-5 words, centered lower-third ============ */
+      .cap-wrap{position:absolute;left:0;right:0;bottom:200px;z-index:55;display:flex;justify-content:center;
+        pointer-events:none;}
+      .cap{font-family:"Archivo",sans-serif;font-weight:700;font-size:64px;line-height:1.0;
+        letter-spacing:-.005em;color:#fff;white-space:nowrap;
+        padding:20px 40px;background:rgba(0,0,0,.62);border-radius:14px;
+        text-shadow:0 2px 14px rgba(0,0,0,.6);}
+      .cap em{font-style:normal;color:#FFD400;}
+
+      /* ============ LOWER-THIRD NAME CARD — bottom-left, slides in/out ============ */
+      .lt{position:absolute;left:60px;bottom:70px;z-index:50;display:flex;flex-direction:column;
+        gap:6px;will-change:transform,opacity;}
+      .lt .accent{width:64px;height:5px;background:#FFD400;border-radius:3px;margin-bottom:14px;
+        transform-origin:left center;}
+      .lt .name{font-family:"Archivo",sans-serif;font-weight:900;font-size:62px;line-height:1.0;
+        letter-spacing:-.02em;color:#fff;text-shadow:0 3px 18px rgba(0,0,0,.55);}
+      .lt .role{font-family:"Archivo",sans-serif;font-weight:600;font-size:24px;letter-spacing:.22em;
+        text-transform:uppercase;color:rgba(255,255,255,.78);margin-top:6px;text-shadow:0 2px 10px rgba(0,0,0,.55);}
+
+      /* ============ PROGRESS BAR — very thin, bottom ============ */
+      .progress{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,.10);z-index:40;}
+      .progress .fill{height:100%;width:0%;background:#FFD400;}
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="30" data-width="1920" data-height="1080">
+
+      <!-- brand bug -->
+      <div class="bug">
+        <div class="dot"></div>
+        <div class="label">WTF · Nikhil Kamath</div>
+      </div>
+
+      <!-- live caption -->
+      <div class="cap-wrap"><div class="cap" id="cap"></div></div>
+
+      <!-- Nikhil lower-third (visible 1.0–5.0s) -->
+      <div class="lt" id="ltN">
+        <div class="accent"></div>
+        <div class="name">Nikhil Kamath</div>
+        <div class="role">Founder · Zerodha</div>
+      </div>
+
+      <!-- Elon lower-third (visible 8.4–12.4s) -->
+      <div class="lt" id="ltE">
+        <div class="accent"></div>
+        <div class="name">Elon Musk</div>
+        <div class="role">CEO · Tesla · SpaceX · X</div>
+      </div>
+
+      <!-- progress bar -->
+      <div class="progress"><div class="fill" id="progFill"></div></div>
+    </div>
+
+    <script>
+      /* deterministic — no Date.now / Math.random at render time */
+      const W=1920, H=1080;
+
+      /* Captions: single line, 3-5 words, swap as he speaks. Sentence case. Rare <em>yellow</em>.
+         Times locked to whisperx word boundaries in work/source.json. */
+      const CAPS = [
+        // Nikhil's Matrix question, split into 3-word phrases
+        {s:4.58, e:5.79, t:"If you were"},
+        {s:5.79, e:7.11, t:"a character from <em>The Matrix</em>"},
+        {s:7.11, e:8.27, t:"who would you be?"},
+        // Elon
+        {s:8.45, e:9.51, t:"Hopefully not Agent Smith"},
+        // Other voice
+        {s:11.21,e:12.11,t:"He's my <em>hero</em>"},
+        // Nikhil teases
+        {s:15.62,e:16.94,t:"When you have a friend <em>Elon</em>—"},
+        // Elon reacts
+        {s:17.38,e:17.98,t:"Who, me?"},
+        {s:18.24,e:19.04,t:"Are you saying"},
+        {s:19.04,e:19.64,t:"I have a friend?"},
+        {s:19.96,e:21.89,t:"I <em>do</em> have a friend"},
+        // X question (split across the silent pause)
+        {s:21.91,e:22.69,t:"Why do you like…"},
+        {s:24.57,e:25.40,t:"…the letter <em>X</em>?"}
+      ];
+      const capEl = document.getElementById("cap");
+
+      const progEl = document.getElementById("progFill");
+
+      window.addEventListener("hf-seek", e=>{
+        const t = e.detail.time;
+        progEl.style.width = Math.min(100, (t/30)*100) + "%";
+        let txt = "";
+        for (const c of CAPS) { if (t >= c.s && t < c.e) { txt = c.t; break; } }
+        if (capEl.dataset.t !== txt) { capEl.innerHTML = txt; capEl.dataset.t = txt; }
+        capEl.style.opacity = txt ? "1" : "0";
+      });
+
+      /* PAUSED timeline */
+      const tl = gsap.timeline({ paused:true });
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+
+      /* ============ BRAND BUG (persistent, no idle motion — clean) ============ */
+      const bug = document.querySelector(".bug");
+      gsap.set(bug, {x:-220, opacity:0});
+      tl.to(bug, {x:0, opacity:.55, duration:.6, ease:"power3.out"}, 0.4);
+      tl.to(bug, {opacity:0, duration:.4, ease:"power2.in"}, 27.5);
+
+      /* ============ NIKHIL LOWER-THIRD (1.0–5.0s) ============ */
+      const ltN = document.getElementById("ltN");
+      const ltNAcc = ltN.querySelector(".accent");
+      gsap.set(ltN, {x:-360, opacity:0});
+      gsap.set(ltNAcc, {scaleX:0});
+      tl.to(ltN, {x:0, opacity:1, duration:.55, ease:"expo.out"}, 1.0);
+      tl.to(ltNAcc, {scaleX:1, duration:.55, ease:"expo.out"}, 1.15);
+      // hold settled (no idle motion — clean professional feel)
+      tl.to(ltN, {opacity:0, x:-40, duration:.45, ease:"power2.in"}, 4.6);
+      tl.set(ltN, {visibility:"hidden"}, 5.05);
+
+      /* ============ ELON LOWER-THIRD (8.4–12.4s) ============ */
+      /* Hidden until needed, then slides in. */
+      const ltE = document.getElementById("ltE");
+      const ltEAcc = ltE.querySelector(".accent");
+      gsap.set(ltE, {visibility:"hidden", x:-360, opacity:0});
+      gsap.set(ltEAcc, {scaleX:0});
+      tl.set(ltE, {visibility:"visible"}, 8.40);
+      tl.to(ltE, {x:0, opacity:1, duration:.55, ease:"expo.out"}, 8.40);
+      tl.to(ltEAcc, {scaleX:1, duration:.55, ease:"expo.out"}, 8.55);
+      tl.to(ltE, {opacity:0, x:-40, duration:.45, ease:"power2.in"}, 12.05);
+      tl.set(ltE, {visibility:"hidden"}, 12.55);
+    </script>
+  </body>
+</html>

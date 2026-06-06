@@ -11,10 +11,10 @@ until it passes. The main session is the **Director** (it reads this file and de
                           └───────────────────────────────────────────────┘
  PRE-PRODUCTION        PRODUCTION                      QA GATES            DELIVERY
  ─────────────         ──────────                      ────────            ────────
- scriptwriter   ─┐     sync-master ─┐                  proofreader  ─┐     delivery
+ scriptwriter   ─┐     sync-master ─┐                  senior-editor ─┐    delivery
  art-director   ─┼──►  motion-builder├─► editor ─► colorist ─► qa-visual ─┼──► (ship)
- stock-scout    ─┤     captioner    ─┘                  qa-audio     ─┘
- audio-engineer ─┘
+ stock-scout    ─┤     captioner    ─┘                  qa-audio      ─┘
+ audio-engineer ─┘   b-roll        ─┘
 ```
 
 ## The pipeline (Director runs this every job)
@@ -27,14 +27,14 @@ until it passes. The main session is the **Director** (it reads this file and de
 7. **Assemble** — editor → montage + composite overlay + mux audio.
 8. **Finish** — colorist → `enrich.sh`.
 9. **Captions** (if requested) — captioner.
-10. **QA GATES (must all pass):** proofreader → qa-audio → qa-visual.
+10. **QA GATES (must all pass):** senior-editor (review) → qa-audio → qa-visual.
 11. **Deliver** — delivery (thumbnail/encode/subs/reels) → copy out + report paths.
 
 ## The acceptance loop (this is what makes it mistake-free)
 After step 10, if ANY gate fails:
 - qa-visual fail → back to **motion-builder / sync-master / editor / colorist** (per the issue) → re-render → re-QA.
 - qa-audio fail → back to **audio-engineer** → re-mix → re-QA.
-- proofreader fail → fix text/stat → re-render → re-QA.
+- senior-editor review fail → fix edit decision/text/stat → re-render → re-QA.
 **Never deliver with an open QA failure.** Loop until clean (cap retries; if stuck, surface the exact blocker to the user).
 
 ## Each agent's contract (definition of done) lives in `.claude/agents/<name>.md`
@@ -49,7 +49,8 @@ After step 10, if ANY gate fails:
 | editor | montage/composite/mux/reframe | correct dims/fps/dur; nothing cropped |
 | colorist | premium finish | graded, bloom, restrained |
 | captioner | synced captions | exact, legible, right language |
-| proofreader | text + stat correctness | no typos; stats sane/sourced |
+| senior-editor | edit-direction + copy review | plan executed; no typos; stats sane; nothing decorative |
+| b-roll | clean cutaway boundaries | full-screen cutaways; no graphics on b-roll; aligned to spoken beats |
 | qa-audio | mix gate | −14±2 LUFS, no clip |
 | qa-visual | frame gate | every scene legible/correct/on-time |
 | delivery | export + ship | assets out; paths reported |
@@ -57,5 +58,5 @@ After step 10, if ANY gate fails:
 ## Why this reaches "mistake-less"
 Every recurring mistake is owned by exactly one agent and caught by a gate:
 caption drift → captioner+qa-visual · graphic drift → sync-master · broken charts → motion-builder(XChart) ·
-bad mix → audio-engineer+qa-audio · typos/wrong stats → proofreader · cut-off/illegible text → qa-visual ·
+bad mix → audio-engineer+qa-audio · typos/wrong stats → senior-editor · cut-off/illegible text → qa-visual · b-roll edge leak → b-roll ·
 mismatched/watermarked b-roll → stock-scout · crop on reframe → editor. The Director won't ship until all pass.
