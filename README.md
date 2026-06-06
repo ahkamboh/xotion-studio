@@ -65,9 +65,9 @@ xotion isn't one model winging it. It's a **production team** — each agent own
 ```
               DIRECTOR  (plans · delegates · loops until clean)
  PRE-PROD            PRODUCTION                 QA GATES (must all pass)    SHIP
- scriptwriter        sync-master                proofreader                delivery
- art-director   ─►   motion-builder ─► editor ─► colorist ─► qa-audio ─► qa-visual ─► ✅
- stock-scout         captioner
+ scriptwriter        sync-master                qa-audio                   delivery
+ art-director   ─►   motion-builder ─► assembler ─► colorist ─►            ─► qa-visual ─► ✅
+ stock-scout         captioner ─► b-roll
  audio-engineer
 ```
 

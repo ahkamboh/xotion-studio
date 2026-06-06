@@ -12,5 +12,5 @@ tools: Read, Write, Edit, Bash
 - Backdrop per style.json (grid/aurora/none). Deterministic only: no Math.random()/Date.now() at render (seed once / use hf-seek).
 - `npx hyperframes lint` must be 0 errors before render.
 **Definition of done:** lint clean; scenes use XChart + __SCENES; no bokeh balls; no progress bar unless requested.
-**Hand off to:** sync-master (must run first to make scenes.js), then editor/colorist.
+**Hand off to:** sync-master (must run first to make scenes.js), then assembler/colorist.
 **Never:** hand-roll charts, hand-time scenes, or use random/Date at render time.

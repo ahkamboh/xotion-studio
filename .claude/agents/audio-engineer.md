@@ -11,5 +11,5 @@ tools: Bash, Read
 - Mix: `scripts/mix-audio.sh vo music master.wav <music_vol>` (ducks music under voice, masters −14 LUFS).
 - SELF-CHECK: `scripts/qa-audio.sh master.wav` MUST pass before handing off.
 **Definition of done:** master.wav passes qa-audio (−14±2 LUFS, TP ≤ −0.5, ≤2 long silences), voice intelligible.
-**Hand off to:** editor (mux), sync-master (vo.json times).
+**Hand off to:** assembler (mux), sync-master (vo.json times).
 **Never:** deliver audio that fails qa-audio; never bury the voice under music.

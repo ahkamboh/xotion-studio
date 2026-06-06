@@ -14,7 +14,7 @@ tools: Bash, Read
   4. no overlap between elements; no element stuck/duplicated from a prior scene.
   5. no black/empty frame; backdrop not the dated bokeh balls; no stray progress bar.
 - Verify climax frames land on the right beat (counter at target on its peak frame).
-**Definition of done:** a written checklist with PASS/FAIL per scene. If ANY fail, report the exact scene + fix and send back to the responsible agent (motion-builder / sync-master / editor / colorist). Do NOT approve until all pass.
+**Definition of done:** a written checklist with PASS/FAIL per scene. If ANY fail, report the exact scene + fix and send back to the responsible agent (motion-builder / sync-master / assembler / colorist). Do NOT approve until all pass.
 **Never:** approve a video you have not actually read frames from.
 
 ## Richness gate (REJECT the render if any fails — for editorial/stat motion graphics)
