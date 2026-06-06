@@ -10,5 +10,5 @@ tools: Bash, Read
 - VET each clip (Read a sampled frame): does it match the line? any watermark/logo/text? ≥1280w? If not, refetch with a better query.
 - Save to `projects/<name>/assets/stock/<scene>.mp4` and note duration (must cover its scene).
 **Definition of done:** one vetted, relevant, watermark-free clip per scene, each long enough.
-**Hand off to:** editor (montage).
+**Hand off to:** assembler (montage).
 **Never:** use a clip with a visible watermark/logo, or one that doesn't match the narration.

@@ -12,4 +12,4 @@ tools: Read, Write, Bash
 - Save to `projects/<name>/work/script.txt`. List the key facts/numbers that will become graphics.
 **Definition of done:** script.txt exists, reads naturally aloud, and matches the requested duration ±10%.
 **Hand off to:** audio-engineer (TTS), then motion-builder (scene spec from the key facts).
-**Never:** invent shaky statistics without flagging them for senior-editor's review; never use unspeakable symbols.
+**Never:** invent shaky statistics without flagging them for the Director's review; never use unspeakable symbols.
