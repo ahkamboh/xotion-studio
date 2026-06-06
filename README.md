@@ -50,6 +50,9 @@ Real outputs, each from a one-line prompt. **Click a thumbnail to play** (opens 
   <tr>
     <td align="center" colspan="4"><a href="https://github.com/ahkamboh/xotion-studio/blob/main/demos/xotion-ai-impact.mp4"><img src="demos/posters/ai-impact.jpg" width="560" alt="AI-impact explainer"/></a><br/><sub>▶ AI-impact explainer · 16:9 — stock b-roll + animated stats + female VO</sub></td>
   </tr>
+  <tr>
+    <td align="center" colspan="4"><a href="https://github.com/ahkamboh/xotion-studio/blob/main/demos/xotion-nikhil-podcast.mp4"><img src="demos/posters/nikhil.jpg" width="560" alt="Nikhil Kamath × Elon Musk — 30s podcast cut"/></a><br/><sub>▶ Nikhil Kamath × Elon Musk · 30s podcast cut — full-screen b-roll, single-line captions, lower-third name cards, subtle punch-ins</sub></td>
+  </tr>
 </table>
 
 ---

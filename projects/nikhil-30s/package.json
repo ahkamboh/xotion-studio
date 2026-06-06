@@ -1,0 +1,10 @@
+{
+  "name": "nikhil-30s",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes hyperframes@0.6.70 preview",
+    "check": "npx --yes hyperframes@0.6.70 lint && npx --yes hyperframes@0.6.70 validate && npx --yes hyperframes@0.6.70 inspect",
+    "render": "npx --yes hyperframes@0.6.70 render"
+  }
+}

@@ -11,9 +11,9 @@ when genuinely blocked (a real decision only the user can make).
 ## Operate as a TEAM OF AGENTS (prompt → finished edit, mistake-free) — READ `docs/agent-team.md`
 You (main session) are the **Director**. For any non-trivial video, run the team pipeline and
 **delegate to the specialist subagents in `.claude/agents/`** (scriptwriter, art-director,
-stock-scout, audio-engineer, sync-master, motion-builder, editor, colorist, captioner, proofreader,
+stock-scout, audio-engineer, sync-master, motion-builder, b-roll, editor, colorist, captioner, senior-editor,
 qa-audio, qa-visual, delivery). Each has one job and a strict definition of done.
-**Non-negotiable: the QA gates (`proofreader` → `qa-audio` → `qa-visual`) must ALL pass before you
+**Non-negotiable: the QA gates (`senior-editor` review → `qa-audio` → `qa-visual`) must ALL pass before you
 deliver.** If a gate fails, route the fix back to the owning agent, re-render, re-QA — loop until
 clean. This acceptance loop is what makes output mistake-free; never ship with an open QA failure.
 For tiny one-step edits you may act directly, but still run the relevant QA gate.
