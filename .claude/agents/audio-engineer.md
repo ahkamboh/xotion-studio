@@ -15,10 +15,8 @@ tools: Bash, Read, WebFetch
   - Riso / psychedelic → driving synth / retro funk, 110–128 BPM
   - Apple keynote / product reveal → clean minimal electronic swell, 80–100 BPM
   - Pro podcast → low ambient bed (must NOT fight VO)
-  - **TESTING PHASE (now):** use the unified fetcher `scripts/music-fetch-any.sh "<query>" assets/music/bed.mp3` — tries Jamendo (real JSON API, credentials in `.env.music`) → Internet Archive (no key) → synth fallback (`scripts/music-bed.sh`). The license is *always* logged to `<out>.license.json` next to the audio; tracks that aren't commercial-OK get `needs_licensing_before_prod: true` so we know what to re-license before launch.
-  - **PROD LAUNCH (later):** before commercial launch, scan all `*.license.json` files for `needs_licensing_before_prod: true` and either (a) re-license the track via Jamendo Pro (jamendo.com/start) / IA donation, or (b) re-fetch with a strict filter. Until then, broadest catalog is fine — the agent flags every non-commercial track loudly in stderr.
-  - **DIRECT SOURCE CALLS** if you need to skip the fallback chain: `scripts/music-fetch-jamendo.sh` or `scripts/music-fetch-archive.sh`. Pixabay music has no public JSON API — skip it; manual download still works if you want a specific track.
-  - **LOG the track** in `work/music.json`: `{title, source_url, license, bpm}` (in addition to the per-file `<out>.license.json` written automatically by the fetcher). License logging is mandatory.
+  - Fetch with the unified script: `scripts/music-fetch-any.sh "<query>" assets/music/bed.mp3` — tries Jamendo (real JSON API, credentials in `.env.music`) → Internet Archive (no key) → synth fallback (`scripts/music-bed.sh`). Direct calls if you want to skip the chain: `scripts/music-fetch-jamendo.sh`, `scripts/music-fetch-archive.sh`.
+  - Track metadata is written next to the audio as `<out>.license.json` automatically — also log `{title, source_url, license, bpm}` in `work/music.json` for the project record.
 
 - **BEAT-SYNC SCENES** — this is what makes it feel pro:
   - `python3 scripts/bpm-detect.py assets/music/bed.mp3` → BPM. beat_interval = 60/BPM.
