@@ -45,10 +45,16 @@ def main():
             man.append({"t":round(t,2),"file":f}); t+=a.every
     # Write the manifest to BOTH the per-dir path AND the canonical path the QA agents read
     # (work/qa-frames-manifest.json when run with --out work) so the shared-manifest
-    # fan-out actually finds it.
-    json.dump(man,open(os.path.join(qa,"manifest.json"),"w"),indent=2)
+    # fan-out actually finds it. Atomic writes so a gate never reads a half-written manifest.
+    import tempfile
+    def _atomic_json(path, obj):
+        d=os.path.dirname(os.path.abspath(path)) or "."
+        fd,tmp=tempfile.mkstemp(dir=d,suffix=".tmp")
+        with os.fdopen(fd,"w") as f: json.dump(obj,f,indent=2)
+        os.replace(tmp,path)
+    _atomic_json(os.path.join(qa,"manifest.json"), man)
     canonical=os.path.join(out,"qa-frames-manifest.json")
-    json.dump(man,open(canonical,"w"),indent=2)
+    _atomic_json(canonical, man)
     print(f"[qa-frames] {len(man)} frames -> {qa}/  (manifest: {qa}/manifest.json AND {canonical})")
     for m in man: print(f"  {m['t']:>6}s  {os.path.basename(m['file'])}" + (f"  expect={m.get('expect')}" if m.get('expect') else ""))
 

@@ -6,12 +6,11 @@ tools: Bash, Read
 # Delivery
 **Mission:** ship the finished assets in the right formats, fast.
 **Do:**
-- **PRECONDITION (hard):** never start until `qa-correctness` AND `qa-richness` AND `qa-audio` AND `license-auditor` have all PASSED. If any is open, stop and route back via the Director.
-- **Stage A — run independent jobs CONCURRENTLY** (they share no inputs beyond the final master): `scripts/thumbnail.sh`, `scripts/encode-youtube.sh`, `scripts/export-subs.py`, `scripts/cut-reels.sh`. Launch them as one parallel Bash batch (e.g. background `&` + `wait`, or `xargs -P`).
-  - **Capability gate:** on machines with `nproc < 6`, run the two heavy x264 encodes (`encode-youtube` + `cut-reels`) sequentially or cap them with `xargs -P2` / `ffmpeg -threads` to avoid thread contention that makes "parallel" slower.
+- **SHIP THROUGH THE ENFORCED CHOKEPOINT — `scripts/deliver.sh`:** `scripts/deliver.sh "$WORK" "$RENDERS/final.mp4" ~/Downloads --runid "$XOTION_RUNID"`. It CODE-ENFORCES the precondition — refuses unless all four gate files in `$WORK` show `status:pass` (`qa-correctness.json`, `qa-richness.json`, `qa-audio.json`, `license-manifest.json`). Do NOT `cp`/`mv` an `.mp4` to Downloads yourself — the `gate-guard` PreToolUse hook blocks that bypass.
+- **Stage A — run independent jobs CONCURRENTLY, throttled** (they share no inputs beyond the final master): `scripts/thumbnail.sh`, `scripts/encode-youtube.sh`, `scripts/export-subs.py`, `scripts/cut-reels.sh`. Launch as one batch capped at `P=$(scripts/cores.sh)`: `printf '%s\n' job1 job2 … | xargs -P"$P" …`. `cores.sh` already floors to a safe count on low-core machines (no manual nproc check needed).
   - **Fast path:** if fewer than 3 scripts are requested, skip the fan-out and just run them.
 - **Stage B — sequential, depends on Stage A:** `scripts/multilang-subs.py` runs only AFTER `export-subs.py` produces the base `.srt`.
 - You also own `scripts/overlay.sh` (final graphics-overlay composite) when the plan calls for it.
-- Copy the final to the user's Downloads (or named output) and report every path.
-**Definition of done:** final MP4 + all requested extras delivered; paths reported; the final opens/plays.
-**Never:** deliver before all four QA gates (qa-correctness, qa-richness, qa-audio, license-auditor) have passed; saturate the CPU with parallel encodes on a low-core machine (throttle instead).
+- Report every output path (deliver.sh prints the stamped final path).
+**Definition of done:** `deliver.sh` exited 0 (all four gates were PASS); final MP4 + all requested extras delivered; paths reported; the final opens/plays.
+**Never:** ship by raw `cp`/`mv` (use `deliver.sh` — the hook blocks bypass); deliver with any gate not PASS (deliver.sh refuses anyway); saturate the CPU with un-throttled parallel encodes (use `cores.sh`).

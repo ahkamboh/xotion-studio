@@ -41,7 +41,7 @@ A non-exempt off-theme asset is a blocking FAIL — never deliver with one.
 
 - Write a PASS/FAIL checklist per scene per gate to `work/qa-richness.json`. On any fail, name the rule, scene, and measured value.
 
-**Definition of done:** `work/qa-richness.json` exists with PASS/FAIL per scene per gate; each FAIL names the scene + gate + measured value + the routed owner.
+**Definition of done:** `work/qa-richness.json` exists with a **top-level `"status":"pass"|"fail"`** (deliver.sh reads this) plus PASS/FAIL per scene per gate; `status:"pass"` ONLY if every gate passes. Each FAIL names the scene + gate + measured value + the routed owner.
 
 **Routes FAIL to:**
 - **density / motion richness** fails → **motion-builder** (sole owner of richness application).

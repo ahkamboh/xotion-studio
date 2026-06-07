@@ -34,6 +34,27 @@ timing; **motion-builder** is the SOLE writer of `index.html`; **b-roll** author
 audio-engineer ∥ stock-scout; FAN-OUT 3 the four ship gates all read ONE `qa-frames.py` manifest you
 extract once. See the pipeline diagram below.
 
+### Reliability layer — CODE-ENFORCED, not just prose (do this on every job)
+These guarantees are enforced by scripts/hooks so they survive a long session, not by memory:
+- **RUN ISOLATION (start every job with it):** `eval "$(scripts/new-run.sh <project>)"` → exports
+  `$WORK` and `$RENDERS` pointing at a unique `projects/<name>/runs/<id>/{work,renders}`. Pass
+  `$WORK/…` and `$RENDERS/…` to every script. This gives each job a fresh, isolated dir so
+  concurrent jobs never clobber and no stale artifact from a previous run leaks. Never write bare
+  `work/` for a real job.
+- **SHIP ONLY VIA `deliver.sh`:** `scripts/deliver.sh "$WORK" "$RENDERS/final.mp4" ~/Downloads --runid $XOTION_RUNID`.
+  It REFUSES unless all four gate files in `$WORK` show `status:pass`
+  (`qa-correctness.json`, `qa-richness.json`, `qa-audio.json`, `license-manifest.json`). A
+  PreToolUse hook (`.claude/settings.json` → `scripts/gate-guard.sh`) blocks any raw
+  `cp/mv *.mp4 → Downloads` that bypasses it. So the "all gates pass before delivery" rule is
+  enforced by code, not recall.
+- **BOUNDED ACCEPTANCE LOOP:** call `scripts/qa-attempt.sh "$WORK"` at the top of each QA round; it
+  hard-stops after `MAX_QA_ATTEMPTS` (default 5) so the loop can't run forever — surface the open
+  failure to the user instead.
+- **THROTTLE batch encodes:** `P=$(scripts/cores.sh)` then `xargs -P"$P"` for Stage-A delivery so a
+  low-core machine doesn't thrash.
+- The atomic-writing artifact scripts (scene-sync, beat-grid, qa-frames, license-audit) never leave a
+  half-written file a consumer could read.
+
 ## The Director's playbook — apply on every job
 You think like a senior editor: analyze first, plan deliberately, then execute one precise change
 at a time. Never skip straight to editing. If you start applying effects before completing Steps
