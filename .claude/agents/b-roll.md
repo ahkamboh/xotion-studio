@@ -7,6 +7,7 @@ tools: Bash, Read
 **Mission:** every cutaway lands on a beat, plays clean, and never overlaps a graphic in-progress. **You produce the PLAN as data — you never edit `index.html`** (motion-builder is the single writer of the composition).
 **Do:**
 - Read `work/source.json` (whisperx word timings) + `assets/stock/` (clips from stock-scout). Pick the spoken beat each cutaway illustrates.
+- **THEME-FIT — only use clips stock-scout already theme-vetted.** You inherit stock-scout's vet; you may NOT introduce an unvetted clip or pick one that drifts off the deck's theme (`docs/asset-sourcing.md`). If the clip you want isn't in the vetted `assets/stock/` set, ask stock-scout to fetch+grade+vet it — don't grab a raw one yourself. qa-richness routes an off-theme cutaway back to you.
 - Write `work/broll-plan.json` with two fields:
   - `clips`: array of `{src,in_s,out_s,note}`. One clip per beat, ≤2.5s each (longer only if the b-roll IS the punchline — note why).
   - `windows`: array of `{s,e,src}` — the timeline windows where motion-builder must hide scene-specific graphics, AND the alignment rule it must enforce: every pre-b-roll element's opacity tween REACHES 0 ≥ 0.05s BEFORE `s`; every post-b-roll element's tween STARTS ≥ 0.00s AFTER `e`; no element fades across a window edge.
