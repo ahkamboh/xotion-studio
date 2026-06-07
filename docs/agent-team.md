@@ -25,7 +25,7 @@ stock-scout), and the four QA gates all run in parallel against one `qa-frames.p
 Director extracts once. See `CLAUDE.md` for the full diagram + FAIL routing.
 
 ## The pipeline (Director runs this every job)
-1. **Plan** — parse the prompt: type, format, duration, voice, style.
+1. **Plan** — parse the prompt: type, format, duration, voice, style. **Motion graphics? → motion-director FIRST:** classify the archetype, lock the coherent kit into `work/style.json → kit` (fonts/type-anim/color/transitions/music-query/SFX-map/voice/hook/ending) per `presets/motion-kits.md`. Everything below reads the kit.
 2. **FAN-OUT 1 (∥)** — art-director → `work/style.json` ∥ scriptwriter → `work/script.txt` (+ key facts). (Script needs only duration, not palette — run them concurrently.)
 3. **FAN-OUT 2 (∥)** — audio-engineer → `assets/vo.wav`, `work/vo.json`, music+SFX, beat grid `work/beats.json`, ducked `work/master.wav` (self-passes qa-audio) ∥ stock-scout → vetted VISUAL assets in `assets/stock/`, `assets/img/`, `assets/3d/`.
 4. **Sync** — sync-master → `scenes.js` (window.__SCENES with per-scene `peak`) — canonical scene boundaries from the voice; runs FIRST before any beat layering.
@@ -52,6 +52,7 @@ After step 11, if ANY gate fails:
 ## Each agent's contract (definition of done) lives in `.claude/agents/<name>.md`
 | Agent | Owns | Done when |
 |---|---|---|
+| motion-director | classify archetype → lock the coherent kit (motion graphics) | work/style.json has a complete `kit` |
 | scriptwriter | script, hook, length-fit | script.txt fits duration, reads aloud |
 | art-director | propose style/palette/font/format/backdrop in style.json (+ moodboard research) | style.json complete |
 | stock-scout | vetted VISUAL stock (photo/illustration/vector/video/gif/3d) | relevant, watermark-free, covers scene; license.json written |
