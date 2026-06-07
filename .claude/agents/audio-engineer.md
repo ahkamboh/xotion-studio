@@ -21,8 +21,8 @@ tools: Bash, Read, WebFetch
   - You also own `scripts/normalize-audio.sh` (standalone pre-mix loudness normalization) and `scripts/amplitude.py` (envelope analysis for reactive visuals).
 
 - **EMIT THE BEAT GRID — do NOT redrift scene boundaries** (sync-master owns those from the voice):
-  - `python3 scripts/bpm-detect.py assets/music/bed.mp3` → BPM. beat_interval = 60/BPM.
-  - `python3 scripts/beat-align.py scenes.json --bpm <N> [--offset <intro_silence_s>] --out work/beats.json` — produce a **beat grid + downbeat markers** that motion-builder can OPTIONALLY snap auxiliary micro-tweens to. This is a decorative overlay; it must NEVER move a scene's `start`/`end`/`peak`. The canonical scene boundaries come from `window.__SCENES` (sync-master), derived from the spoken word. (sync-master runs FIRST; your beats.json layers on top.)
+  - `python3 scripts/beat-grid.py --audio assets/music/bed.mp3 --duration <total_s> [--offset <intro_silence_s>] [--downbeat-mod 4] --out work/beats.json` (or pass `--bpm <N>` instead of `--audio` if you already know the tempo from `scripts/bpm-detect.py`). This emits a **read-only beat grid + downbeat markers** (`{bpm, beat_interval, beats:[…], downbeats:[…]}`) that motion-builder can OPTIONALLY snap auxiliary micro-tweens to.
+  - **Do NOT run `scripts/beat-align.py`** — that older script mutates scene `start`/`end` (it's a scene-snapper, not a grid emitter) and would steal sync-master's job. `beat-grid.py` is incapable of touching scenes by design. The canonical boundaries come from `window.__SCENES` (sync-master, voice-derived); sync-master runs FIRST and your beats.json layers on top.
   - Trim/loop the track to the exact video duration. Always add a 0.5s fade-in and a 1–1.5s fade-out. Pick a track whose intro is ≤1s OR trim leading silence so it starts with the video.
 
 - **MIX with sidechain ducking** (VO always wins):

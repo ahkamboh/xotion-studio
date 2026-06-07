@@ -13,7 +13,7 @@ tools: Bash, Read
   1. **Expected text/number present and CORRECT** (donut shows the right %, last bar = target, eyebrow/title/tag are the planned copy).
   2. **Not cut off / overflowing at ANY of the 3 sample points** — every glyph fully inside title-safe (≥56px from each edge) INCLUDING during overshoot. If the entrance frame clips but the mid frame doesn't, REJECT.
   3. **No overlap** between elements; no element stuck/duplicated from a prior scene.
-  4. **No black/empty frame**; no stray progress bar that wasn't requested.
+  4. **No black/empty frame**; **backdrop is not the dated bokeh balls**; no stray progress bar that wasn't requested.
   5. **NO VISIBLE RECTANGULAR EDGES** around composited web/external images — a hard straight edge means a solid-bg JPG was composited instead of a transparent cutout. REJECT with "key the bg out first" (`scripts/key-bg.sh` / `remove-bg.sh`).
   6. **CENTER ALIGNMENT** — every element labeled center-aligned in style.json must have its bounding-box midpoint within 2px of the frame's horizontal midpoint (540px @1080w, 960px @1920w). Drift during scale animations = wrong `transform-origin` or mixed flex+absolute centering.
   7. **Climax frames land on the right beat** — counter at target on its peak frame.
