@@ -55,7 +55,8 @@ def is_media(p):
     if p.startswith(('http://','https://','data:','//')): return False
     ext = os.path.splitext(p)[1].lower()
     return ext in {'.jpg','.jpeg','.png','.webp','.gif','.svg','.mp4','.mov','.webm',
-                   '.mp3','.wav','.m4a','.flac','.glb','.gltf'}
+                   '.mp3','.wav','.m4a','.flac','.glb','.gltf',
+                   '.ttf','.otf','.woff','.woff2'}  # fonts roll up to assets/fonts/LICENSES.json
 
 # Also scan assets/ tree for media that exists (catch assets referenced indirectly)
 asset_files = []
@@ -75,9 +76,11 @@ for r in refs:
 for a in asset_files:
     candidates.add(a)
 
-# Load optional rollups
-fonts_license = os.path.join(proj, 'assets', 'fonts', 'LICENSES.json')
-fonts_ok = os.path.exists(fonts_license)
+# Load optional rollups — fonts are licensed either at the project level OR by
+# the repo-root bundled library (projects reuse assets/fonts/ from the repo).
+repo_root = os.path.dirname(os.path.dirname(os.path.abspath(proj)))
+fonts_ok = (os.path.exists(os.path.join(proj, 'assets', 'fonts', 'LICENSES.json'))
+            or os.path.exists(os.path.join(repo_root, 'assets', 'fonts', 'LICENSES.json')))
 attest_path = os.path.join(proj, 'licenses', 'manual-attestation.json')
 attested = {}
 if os.path.exists(attest_path):

@@ -1,0 +1,13 @@
+{
+  "library": "xotion-studio bundled design-font library",
+  "source": "Google Fonts (via scripts/download-fonts.py)",
+  "license": "OFL-1.1 / Apache-2.0",
+  "license_note": "All bundled families are open-source webfonts from Google Fonts, distributed under the SIL Open Font License 1.1 or Apache License 2.0. Both permit commercial use, embedding, and redistribution as part of a rendered video. No attribution required in the output.",
+  "license_urls": [
+    "https://openfontlicense.org/",
+    "https://www.apache.org/licenses/LICENSE-2.0"
+  ],
+  "covers": "every *.ttf in this directory",
+  "attested_by": "xotion-studio",
+  "note": "This rollup satisfies license-auditor for any font referenced from this directory. Add a per-family entry only if you introduce a font with a different license."
+}
