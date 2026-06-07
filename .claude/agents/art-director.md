@@ -18,10 +18,22 @@ tools: Read, Grep, Bash, WebSearch, WebFetch, Write
 ## Custom-theme research flow (only when building a NEW theme)
 Use the web only when the user names an aesthetic you're not confident on. Otherwise skip — research is overhead, not the default path.
 
+**Preferred research route — Pinterest mood-board (visual, fast):**
+```bash
+scripts/pinterest-moodboard.sh "<aesthetic query>" projects/<name>/work/moodboard --n=20
+```
+Output:
+- `contact-sheet.jpg` — 5×4 tiled thumbnails, **Read this first** to absorb the visual language at a glance
+- `moodboard.json` — per-pin titles + 5-color palette each
+- `palette.json` — top-8 combined palette across all pins (informs your accent + ink choices)
+- `thumbs/*.jpg` — individual references if a specific one inspires a layout decision
+
+**REFERENCE ONLY** — Pinterest images have unknown per-pin licenses (many are unauthorized reposts). NEVER pipe a Pinterest thumbnail into a deliverable. Use only to inform the style.json values (palette hex, typography vibe, composition idea, mood).
+
 1. **Decide if research is even needed:**
    - SKIP if a reference image / brand kit / brand.json was provided — analyze that instead.
    - SKIP for styles you already know cold (the 12 in `presets/styles.md`, common idioms like noir/clean-corporate/cinematic).
-   - RESEARCH when the user names an aesthetic you're unsure of (e.g. "vaporwave", "swiss international", "brutalist web", "Memphis design", "cassette futurism", a specific brand's look, a design era).
+   - RESEARCH (Pinterest moodboard first; fall back to WebSearch only if you need text context) when the user names an aesthetic you're unsure of (e.g. "vaporwave", "swiss international", "brutalist web", "Memphis design", "cassette futurism", a specific brand's look, a design era).
 2. **Search for:** the style's TYPE choices, COLOR palette, GRAPHIC motifs, and 2–3 hallmark examples. **1–2 searches max** — don't rabbit-hole.
 3. **Extract only what informs the theme:**
    - typical fonts / font category
