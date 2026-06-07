@@ -64,7 +64,12 @@ out = {
     "beats": beats,
     "downbeats": downbeats,
 }
-with open(args.out, "w") as f:
+# atomic write — never leave a half-written artifact a consumer could read
+import os, tempfile
+_d = os.path.dirname(os.path.abspath(args.out)) or "."
+_fd, _tmp = tempfile.mkstemp(dir=_d, suffix=".tmp")
+with os.fdopen(_fd, "w") as f:
     json.dump(out, f, indent=2)
+os.replace(_tmp, args.out)
 print(f"[beat-grid] {bpm:.2f} BPM · {len(beats)} beats · {len(downbeats)} downbeats (every {args.downbeat_mod}) -> {args.out}")
 print(f"[beat-grid] READ-ONLY grid — scene boundaries untouched (those are sync-master's).")

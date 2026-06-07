@@ -167,7 +167,11 @@ manifest = {
     'note': 'empty audit on an existing composition is treated as FAIL' if suspicious_empty else None,
 }
 out = os.path.join(proj, 'work', 'license-manifest.json')
-json.dump(manifest, open(out, 'w'), indent=2)
+import tempfile
+_d = os.path.dirname(os.path.abspath(out)) or '.'
+_fd, _tmp = tempfile.mkstemp(dir=_d, suffix='.tmp')
+with os.fdopen(_fd, 'w') as _f: json.dump(manifest, _f, indent=2)
+os.replace(_tmp, out)
 print(f"[license-audit] {status.upper()} — {len(results)}/{len(candidates)} licensed, {len(ref_remote)} remote -> {out}")
 for m in missing:
     print(f"  MISSING: {m['asset']}  ({m['reason']})", file=sys.stderr)

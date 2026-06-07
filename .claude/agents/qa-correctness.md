@@ -19,7 +19,7 @@ tools: Bash, Read
   7. **Climax frames land on the right beat** — counter at target on its peak frame.
 - Write a PASS/FAIL checklist per scene per gate to `work/qa-correctness.json`.
 
-**Definition of done:** `work/qa-correctness.json` exists with PASS/FAIL per scene per gate. On any FAIL, name the exact scene + failing metric and route to the correct fixer.
+**Definition of done:** `work/qa-correctness.json` exists with a **top-level `"status":"pass"|"fail"`** (deliver.sh reads this) plus per-scene per-gate detail. `status:"pass"` ONLY if every scene passes every check. On any FAIL, name the exact scene + failing metric and route to the correct fixer.
 
 **Routes FAIL to:** motion-builder (text overflow / center / image edges) · sync-master (peak/beat off) · assembler (assembly/overlap from compositing) · colorist (grade-induced black/clipping) · Director (acceptance loop).
 

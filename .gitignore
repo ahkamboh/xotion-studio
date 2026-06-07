@@ -1,8 +1,10 @@
 # Renders & work artifacts (large, regenerable)
 projects/*/renders/
 projects/*/work/
+projects/*/runs/
 **/renders/
 **/work/
+**/runs/
 *.mp4
 *.mov
 *.webm
