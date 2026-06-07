@@ -17,6 +17,8 @@ tools: Bash, Read
   - **Video (b-roll)** → `scripts/pixabay-video.sh "query" assets/stock/scene.mp4 [horizontal|vertical] [min_w=1920]`
   - **Music** → `scripts/pixabay-music.sh "query" assets/music/bed.mp3` (puppeteer scrape — no public API)
   - **SFX** → `scripts/pixabay-sfx.sh "query" assets/sfx/hit.mp3` (puppeteer scrape)
+  - **GIF (animated)** → `scripts/pixabay-gif.sh "query" assets/img/celebrate.gif` (puppeteer scrape — no API)
+  - **3D turntable** → `scripts/pixabay-3d.sh "query" assets/3d/object/` — gives an 18-frame PNG turntable sequence (360° in 20° steps) + a 1-second `turntable.mp4` loop. ⚠️ Pixabay's "3D Models" category serves rendered images, NOT source `.glb`/`.obj` files. For real 3D source files, point the user at Poly Haven or Sketchfab.
 - For each scene topic, fetch the appropriate asset type. VET each one (Read a sampled frame for images/video): does it match the line? Any watermark/logo/text? Right resolution and orientation? If not, refetch with a better query.
 - Save assets under `projects/<name>/assets/{img,stock,music,sfx}/` and note duration where relevant.
 
