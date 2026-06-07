@@ -18,7 +18,8 @@ if (!QUERY || !OUT) {
   process.exit(2);
 }
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-const SEARCH_URL = `https://pixabay.com/gifs/search/${encodeURIComponent(QUERY.trim())}/`;
+const IS_URL = /^https?:\/\//.test(QUERY);
+const SEARCH_URL = IS_URL ? QUERY : `https://pixabay.com/gifs/search/${encodeURIComponent(QUERY.trim())}/`;
 
 (async () => {
   const b = await puppeteer.launch({ executablePath: CHROME, headless: 'new',
@@ -27,17 +28,21 @@ const SEARCH_URL = `https://pixabay.com/gifs/search/${encodeURIComponent(QUERY.t
   await p.setUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36");
   await p.setViewport({ width: 1440, height: 900 });
 
-  console.error(`[pixabay-gif] searching: ${SEARCH_URL}`);
-  await p.goto(SEARCH_URL, { waitUntil: 'networkidle2', timeout: 45000 });
-  await new Promise(r => setTimeout(r, 1500));
-
-  // Find first detail link of the form /gifs/<slug>-<id>/
-  const detailUrl = await p.evaluate(() => {
-    const re = /pixabay\.com\/gifs\/[a-z0-9-]+-\d+\/?$/i;
-    return [...document.querySelectorAll('a[href]')].map(a => a.href).find(h => re.test(h)) || null;
-  });
-  if (!detailUrl) { console.error(`[pixabay-gif] no results for '${QUERY}'`); await b.close(); process.exit(4); }
-  console.error(`[pixabay-gif] top: ${detailUrl}`);
+  let detailUrl;
+  if (IS_URL) {
+    detailUrl = QUERY;
+    console.error(`[pixabay-gif] direct URL: ${detailUrl}`);
+  } else {
+    console.error(`[pixabay-gif] searching: ${SEARCH_URL}`);
+    await p.goto(SEARCH_URL, { waitUntil: 'networkidle2', timeout: 45000 });
+    await new Promise(r => setTimeout(r, 1500));
+    detailUrl = await p.evaluate(() => {
+      const re = /pixabay\.com\/gifs\/[a-z0-9-]+-\d+\/?$/i;
+      return [...document.querySelectorAll('a[href]')].map(a => a.href).find(h => re.test(h)) || null;
+    });
+    if (!detailUrl) { console.error(`[pixabay-gif] no results for '${QUERY}'`); await b.close(); process.exit(4); }
+    console.error(`[pixabay-gif] top: ${detailUrl}`);
+  }
 
   // Capture animation CDN URLs (the actual GIF)
   const gifUrls = new Set();

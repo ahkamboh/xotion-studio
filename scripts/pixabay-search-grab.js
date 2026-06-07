@@ -28,8 +28,10 @@ if (!['music', 'sfx'].includes(TYPE)) {
 
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const SEARCH_PATH = TYPE === 'music' ? '/music/search/' : '/sound-effects/search/';
-const querySlug = encodeURIComponent(QUERY.trim());
-const SEARCH_URL = `https://pixabay.com${SEARCH_PATH}${querySlug}/`;
+// QUERY may be a search term OR a direct Pixabay detail URL — agent often passes
+// the URL after vetting candidates via pixabay-search.sh.
+const IS_URL = /^https?:\/\//.test(QUERY);
+const SEARCH_URL = IS_URL ? QUERY : `https://pixabay.com${SEARCH_PATH}${encodeURIComponent(QUERY.trim())}/`;
 
 (async () => {
   const browser = await puppeteer.launch({
@@ -44,23 +46,25 @@ const SEARCH_URL = `https://pixabay.com${SEARCH_PATH}${querySlug}/`;
   );
   await page.setViewport({ width: 1440, height: 900 });
 
-  console.error(`[pixabay-search-grab/${TYPE}] searching: ${SEARCH_URL}`);
-  await page.goto(SEARCH_URL, { waitUntil: 'networkidle2', timeout: 45000 });
-  await new Promise(r => setTimeout(r, 1500));
-
-  // Pull all candidate detail-page URLs out of the search results
-  const detailPaths = TYPE === 'music' ? /\/music\/[^/"']+-\d+\//g
-                                       : /\/sound-effects\/[^/"']+-\d+\//g;
-  const html = await page.content();
-  const matches = [...new Set(html.match(detailPaths) || [])]
-    .filter(p => !p.includes('/search/'));
-  if (!matches.length) {
-    console.error(`[pixabay-search-grab/${TYPE}] no results for '${QUERY}'`);
-    await browser.close();
-    process.exit(4);
+  let detailUrl;
+  if (IS_URL) {
+    detailUrl = QUERY;
+    console.error(`[pixabay-search-grab/${TYPE}] direct URL: ${detailUrl}`);
+  } else {
+    console.error(`[pixabay-search-grab/${TYPE}] searching: ${SEARCH_URL}`);
+    await page.goto(SEARCH_URL, { waitUntil: 'networkidle2', timeout: 45000 });
+    await new Promise(r => setTimeout(r, 1500));
+    const detailPaths = TYPE === 'music' ? /\/music\/[^/"']+-\d+\//g
+                                         : /\/sound-effects\/[^/"']+-\d+\//g;
+    const html = await page.content();
+    const matches = [...new Set(html.match(detailPaths) || [])].filter(p => !p.includes('/search/'));
+    if (!matches.length) {
+      console.error(`[pixabay-search-grab/${TYPE}] no results for '${QUERY}'`);
+      await browser.close(); process.exit(4);
+    }
+    detailUrl = 'https://pixabay.com' + matches[0];
+    console.error(`[pixabay-search-grab/${TYPE}] top result: ${detailUrl}`);
   }
-  const detailUrl = 'https://pixabay.com' + matches[0];
-  console.error(`[pixabay-search-grab/${TYPE}] top result: ${detailUrl}`);
 
   // Capture any audio CDN URLs hit during page load + play
   const audioUrls = new Set();
