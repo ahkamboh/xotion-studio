@@ -38,7 +38,6 @@ Real outputs, each from a one-line prompt. **Click a thumbnail to play** (opens 
 
 <table>
   <tr>
-    <td align="center"><a href="https://github.com/ahkamboh/xotion-studio/blob/main/demos/xotion-iphone17.mp4"><img src="demos/posters/iphone17.jpg" width="190" alt="iPhone 17 Pro reveal"/></a><br/><sub>▶ iPhone 17 Pro · 9:16 — product reveal, cosmic orange, female VO</sub></td>
     <td align="center"><a href="https://github.com/ahkamboh/xotion-studio/blob/main/demos/xotion-sticker.mp4"><img src="demos/posters/sticker.jpg" width="190" alt="Sticker Pop — don't be bitter"/></a><br/><sub>▶ Sticker Pop · 9:16 — Y2K kawaii, bubble type</sub></td>
     <td align="center"><a href="https://github.com/ahkamboh/xotion-studio/blob/main/demos/xotion-psychedelic.mp4"><img src="demos/posters/psychedelic.jpg" width="190" alt="Psychedelic Poster — Begin Anew"/></a><br/><sub>▶ Psychedelic Poster · 9:16 — halftone screen-print + sunburst rays</sub></td>
     <td align="center"><a href="https://github.com/ahkamboh/xotion-studio/blob/main/demos/xotion-bold.mp4"><img src="demos/posters/bold.jpg" width="190" alt="Bold Dice — what's your move?"/></a><br/><sub>▶ Bold Dice · 9:16 — female VO + uplift bed</sub></td>
