@@ -2,7 +2,8 @@
 # license-audit.sh — verify every asset in a project's assets/ tree (+ the assets
 # statically referenced from index.html) carries a recorded license before delivery.
 #
-#   scripts/license-audit.sh projects/<name>
+#   scripts/license-audit.sh projects/<name> [work-dir]
+#   (work-dir defaults to <project>/work; pass $WORK to write into a run-isolated dir)
 #
 # SIMPLE by design: scans index.html (src/href/srcset + CSS url()) and the
 # project's assets/ tree, and requires each local media file to carry an
@@ -13,13 +14,15 @@
 # Emits work/license-manifest.json {status, assets:[...], missing:[...]}.
 # Exit 0 = all licensed (status:pass). Exit 1 = at least one unlicensed (fail).
 set -euo pipefail
-PROJ="${1:?usage: license-audit.sh projects/<name>}"
+PROJ="${1:?usage: license-audit.sh projects/<name> [work-dir]}"
 [ -d "$PROJ" ] || { echo "[license-audit] no such project dir: $PROJ" >&2; exit 2; }
-mkdir -p "$PROJ/work"
+WORKDIR="${2:-$PROJ/work}"
+mkdir -p "$WORKDIR"
 
-python3 - "$PROJ" <<'PY'
+python3 - "$PROJ" "$WORKDIR" <<'PY'
 import json, os, re, sys, tempfile
 proj = sys.argv[1]
+workdir = sys.argv[2]
 idx  = os.path.join(proj, 'index.html')
 
 # Acceptable license classes (commercial-OK / CC0 / synth / attested)
@@ -113,7 +116,7 @@ for rel in sorted(candidates):
 status = 'pass' if not missing else 'fail'
 manifest = {'status': status, 'checked': len(candidates), 'licensed': len(results),
             'assets': results, 'missing': missing}
-out = os.path.join(proj, 'work', 'license-manifest.json')
+out = os.path.join(workdir, 'license-manifest.json')
 _d = os.path.dirname(os.path.abspath(out)) or '.'
 _fd, _tmp = tempfile.mkstemp(dir=_d, suffix='.tmp')
 with os.fdopen(_fd, 'w') as _f: json.dump(manifest, _f, indent=2)
