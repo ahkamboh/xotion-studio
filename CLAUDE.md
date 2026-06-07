@@ -298,8 +298,10 @@ first; only hand-build when nothing fits.
 - `templates/thumbnail.html` — designed YouTube thumbnail (render 1 frame)
 
 **Workflow:** scaffold → build end-state layout first (static), then add GSAP entrances/exits →
-`npx hyperframes lint` (must be 0/0) → `npx hyperframes render --output renders/x.mp4` → run the
-**acceptance loop** (below) until every criterion passes.
+`scripts/hf-guard.sh <project>` (catches the silent `tl.call()`-created-element footgun that lint
+misses) → `npx hyperframes lint` (0/0) → **`npx hyperframes render --strict --output renders/x.mp4`**
+(`--strict` BLOCKS on lint errors — default render is warn-and-ship and would let a non-deterministic
+comp through) → run the **acceptance loop** (below) until every criterion passes.
 
 ## B. Video Editing (ffmpeg)
 
@@ -426,7 +428,8 @@ Known non-English → `--lang <code>`. Captions stay in source language unless a
 - Whisper model = **small**, not base.
 - **Pre-render caption/animated text into the DOM**, then animate the existing spans. NEVER create
   elements inside `tl.call()` then target them — GSAP resolves selectors at construction time and
-  finds nothing → elements silently never appear.
+  finds nothing → the element appears but its animation is a SILENT no-op (lint stays 0/0; only frame
+  inspection or `scripts/hf-guard.sh` catches it — run hf-guard before every render).
 - **No `Math.random()` / `Date.now()` / network fetches** in compositions (deterministic renderer).
 - **Finite GSAP repeats only** — `repeat: -1` breaks rendering. Use `Math.floor(total/cycle)-1`.
 - **Scope every GSAP selector**: `Q = s => '[data-composition-id="main"] ' + s`.
