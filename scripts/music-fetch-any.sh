@@ -7,9 +7,10 @@
 # Source order:
 #   1. Pixabay music   (puppeteer scrape — no public API for music)
 #   2. Internet Archive (real JSON API, no key)
-#   3. Synth fallback  (scripts/music-bed.sh — deterministic, always works)
+#   3. Synth fallback  (scripts/music-bed.sh) — DEGRADED, exits 3 (not a real success)
 #
-# Writes <out>.license.json next to the audio.
+# Exit codes: 0 = real track fetched · 3 = degraded synth fallback (confirm/re-fetch) · 1 = total failure.
+# Writes <out>.license.json next to the audio (degraded fallback tagged degraded:true).
 set -euo pipefail
 
 Q="${1:?usage: music-fetch-any.sh <query> <out.mp3> [min_dur=15] [max_dur=300]}"
@@ -40,19 +41,26 @@ if try_source "internet-archive" "$DIR/music-fetch-archive.sh" "$Q" "$OUT" "$MIN
   exit 0
 fi
 
-# 3. Synth fallback
-echo "[music-fetch-any] all real sources failed; falling back to synth bed" >&2
+# 3. Synth fallback — this is a DEGRADED result, not a real success. We still
+#    produce a bed so the project has something, but we tag it distinctly and
+#    EXIT 3 so the caller/Director cannot mistake it for a real fetch.
+echo "[music-fetch-any] ⚠️  all real sources failed; using DEGRADED synth fallback" >&2
 TMP="${OUT%.*}.wav"
-MOOD=$(echo "$Q" | awk '{print $1}')
+# music-bed.sh only knows these moods; validate or the fallback itself crashes.
+VALID_MOODS="calm warm tense uplift dark"
+RAW_MOOD=$(echo "$Q" | awk '{print tolower($1)}')
+MOOD="uplift"
+for m in $VALID_MOODS; do [ "$RAW_MOOD" = "$m" ] && MOOD="$RAW_MOOD"; done
 DUR=$(python3 -c "print(max(${MINDUR}, 30))")
-if [ -x "$DIR/music-bed.sh" ] && "$DIR/music-bed.sh" "$TMP" "$DUR" "${MOOD:-uplift}"; then
+if [ -x "$DIR/music-bed.sh" ] && "$DIR/music-bed.sh" "$TMP" "$DUR" "$MOOD"; then
   ffmpeg -y -i "$TMP" -codec:a libmp3lame -qscale:a 2 "$OUT" -loglevel error
   rm -f "$TMP"
   cat > "${OUT%.*}.license.json" <<EOF
-{ "source": "internal-synth", "query": "$Q" }
+{ "source": "internal-synth-fallback", "degraded": true, "mood": "$MOOD", "query": "$Q",
+  "note": "Real fetch FAILED — this is a generic synth bed, not a mood-matched track. The Director must confirm or re-fetch before shipping." }
 EOF
-  echo "[music-fetch-any] ✓ synth bed -> $OUT"
-  exit 0
+  echo "[music-fetch-any] ⚠️  DEGRADED synth bed -> $OUT (mood=$MOOD). Exit 3 = confirm or re-fetch." >&2
+  exit 3
 fi
 
 echo "[music-fetch-any] FATAL — every source failed including synth" >&2
