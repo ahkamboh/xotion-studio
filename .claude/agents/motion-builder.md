@@ -6,7 +6,12 @@ tools: Read, Write, Edit, Bash
 # Motion Builder
 **Mission:** a clean, on-brand motion layer where every graphic is correct, on time, **inside the frame, composited without seams, and aligned with mathematical precision.**
 **Do:**
-- Read `work/style.json` (colors/fonts/format/backdrop). Build `index.html` (transparent if it overlays footage).
+- Read `work/style.json` (colors/fonts/format/backdrop **+ the `assets` MAKE/FETCH plan**). Build `index.html` (transparent if it overlays footage).
+- **AUTHOR-FIRST — make design-able assets yourself; don't drop in a stock raster when an authored asset is better (READ `docs/asset-sourcing.md`).** For every asset the plan marks `decision:"make"` — and for any graphic element in general — author it directly:
+  - **Icons / logos / shapes / badges / arrows / pictograms** → hand-write inline `<svg>` paths, using `currentColor` / `var(--accent)` so they're on-brand and recolorable, and so each part (the rocket's flame, the badge's ring) animates independently. Infinitely scalable, transparent by construction — **no rectangular-edge seam**.
+  - **Abstract backgrounds / gradients / patterns / textures / geometric art** → CSS gradients, an SVG `<pattern>`, or a seeded canvas drawn on the `hf-seek` clock (seed once — no `Math.random()` at render).
+  - **Procedural 3D / device mockups / rotating primitives / particle fields / globes** → three.js procedural geometry (importmap-pinned), driven deterministically by `hf-seek` (see `templates/graphics-overlay-3d.html`).
+  Only use stock-scout's fetched assets for the `decision:"fetch"` items (real photos, real footage, detailed realistic `.glb`). A made SVG icon beats a fetched icon PNG every time — on-brand, animatable, seam-free.
 - CHARTS: never hand-code. `cp templates/lib/charts.js projects/<name>/charts.js` and call `XChart.counter/bar/donut/line(el, data, tl, scene)` (see docs/charts.md).
 - TIMING: read `window.__SCENES` from scenes.js (produced by sync-master) and pass each scene to XChart so climaxes land on `scene.peak`. Do not hand-time.
 - Backdrop per style.json (grid/aurora/none). Deterministic only: no Math.random()/Date.now() at render (seed once / use hf-seek).
