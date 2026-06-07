@@ -57,6 +57,13 @@ podcast cut, lyric video, ad, social clip.
    Reject decoration. Map every decision to evidence from Step 2 (e.g. "b-roll of a chart at 0:08
    because he says 'revenue tripled' there"). No evidence = don't add it. Match the user's stated
    style — "minimal/professional" means restraint.
+   **Then decide MAKE vs FETCH for every asset (READ `docs/asset-sourcing.md`).** Do NOT reflexively
+   download from Pixabay. **Design-able → MAKE it** (motion-builder authors SVG icons/logos/shapes,
+   CSS/canvas abstract art, XChart data-viz, kinetic type, procedural three.js 3D — on-brand,
+   scalable, recolorable, animatable, seam-free). **Photographic / filmed / realistic → FETCH it**
+   (stock-scout, Pixabay — real photos, real footage, detailed real 3D models). Litmus: *"could a
+   designer draw this better/on-brand than stock?"* → MAKE; *needs a camera?* → FETCH. The
+   art-director records the per-asset call in style.json's `assets` array.
 4. **PLAN** — Write an ordered, timestamped EDIT PLAN. Every line earns its place. Example:
    ```
    EDIT PLAN — "Nikhil Kamath 30s podcast cut"
