@@ -26,6 +26,13 @@ tools: Bash, Read
 - [ ] **Depth** — hero type/cards have stacked shadows, not flat.
 - [ ] **Hero scale** — one oversized graphic anchor per scene.
 
+### Theme-coherence gate (every asset must fit the deck — READ `docs/asset-sourcing.md`)
+Read `work/style.json` (palette + the `assets` theme_fit specs). For every image/icon/illustration/3D/photo on screen:
+- [ ] **Palette match** — the asset's colors sit in (or were recolored to) the deck palette; no clashing hue/temperature.
+- [ ] **Style match** — the asset's visual style matches the deck (flat deck → no glossy 3D icon; line-art deck → no soft gradient blob; mono deck → no full-color illustration).
+- [ ] **Vibe/era match** — detail level, stroke/radius, and mood cohere with the style; no asset that reads "pasted in from a different deck".
+On any clash: name the asset + scene + what it violates; route to motion-builder (re-author in-theme) or back to art-director/stock-scout (re-source a theme match). An off-vibe asset is a blocking FAIL — never deliver with one.
+
 - Write a PASS/FAIL checklist per scene per gate to `work/qa-richness.json`. On any fail, name the rule, scene, and measured value.
 
 **Definition of done:** `work/qa-richness.json` exists with PASS/FAIL per scene per gate; FAIL routes back to motion-builder with the failing scene index + gate name + measured value.
