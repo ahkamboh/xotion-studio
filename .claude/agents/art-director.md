@@ -63,4 +63,4 @@ These are spec values to write into style.json, not gates you enforce:
 - One motion personality per video (soft `power2.out` · punchy `back.out` · etc).
 - Richness flags (`idle`, `texture`, `layer≥5`, `depth`, `hero-scale`) for motion-builder to read.
 
-Enforcement of these specs is the job of motion-builder (at build time) and qa-visual (at review time), not the art-director.
+Enforcement of these specs is the job of motion-builder (at build time) and qa-richness (at review time), not the art-director.

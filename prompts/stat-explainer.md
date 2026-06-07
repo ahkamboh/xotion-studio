@@ -37,7 +37,7 @@ Examples:
    warm-ambient (documentary), ducked under VO.
 5. **sync-master** — lock each scene's reveal to the VO word (the value graphic fires on
    the figure word). Zero drift.
-6. **qa-visual + qa-audio** — gate on the richness rules + legibility + loudness.
+6. **qa-correctness + qa-richness + qa-audio + license-auditor** — gate on broken-output, richness rules + legibility, loudness, and asset licenses.
    Reject & re-render on any failure.
 7. **delivery** — render MP4 via HyperFrames, ship.
 

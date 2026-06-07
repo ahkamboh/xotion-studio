@@ -76,7 +76,7 @@ xotion isn't one model winging it. It's a **production team** — each agent own
               DIRECTOR  (plans · delegates · loops until clean)
  PRE-PROD            PRODUCTION                 QA GATES (must all pass)    SHIP
  scriptwriter        sync-master                qa-audio                   delivery
- art-director   ─►   motion-builder ─► assembler ─► colorist ─►            ─► qa-visual ─► ✅
+ art-director   ─►   motion-builder ─► assembler ─► colorist ─►            ─► qa-correctness + qa-richness + qa-audio + license-auditor ─► ✅
  stock-scout         captioner ─► b-roll
  audio-engineer
 ```
@@ -90,7 +90,7 @@ Specialized, reusable agents already power this:
 - **caption agent** — frame-accurate captions, 41 languages, 7 famous styles (Hormozi/pill/neon/TikTok…)
 - **scene-sync agent** — locks every graphic to the spoken word (zero drift)
 - **XChart** — tested chart library (counter/bar/donut/line) so data-graphics are always correct
-- **qa-audio / qa-visual** — self-checks loudness, clipping, legibility, and per-scene correctness
+- **qa-correctness / qa-richness / qa-audio / license-auditor** — four parallel ship gates: broken-output, density+motion richness, loudness/clipping, and asset licenses
 
 ---
 
@@ -148,7 +148,7 @@ You are operating the Xotion prompt-native video editor. Do this:
 
 3. Operate as the Director: for any video job, follow CLAUDE.md's 7-step loop
    (Understand → Analyze → Decide → Plan → Confirm → Execute → Review), delegate to the
-   specialist agents in .claude/agents/, and NEVER deliver until qa-audio + qa-visual pass.
+   specialist agents in .claude/agents/, and NEVER deliver until qa-correctness + qa-richness + qa-audio + license-auditor all pass.
    Use the libraries (templates/lib/richness.js + charts.js), scene-sync.py, and caption.py —
    never hand-roll charts or scene timing. Keep everything offline / no API keys.
 
@@ -181,7 +181,7 @@ CLAUDE.md            # the engine brain: pillars, rules, the agent-team operatin
 .claude/agents/      # 13 specialist subagents (the team)
 docs/agent-team.md   # the Director pipeline + QA gates
 COMMANDS.md          # the : command vocabulary
-scripts/             # caption · scene-sync · pexels · tts · mix · enrich · overlay · qa-audio · qa-frames …
+scripts/             # caption · scene-sync · pixabay-* · tts · mix · enrich · overlay · qa-audio · qa-frames …
 templates/           # compositions + lib/charts.js (XChart)
 presets/             # 12 visual styles · motion presets · video presets
 prompts/             # copy-paste job prompts

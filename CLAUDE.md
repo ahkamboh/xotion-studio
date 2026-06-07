@@ -13,13 +13,26 @@ when genuinely blocked (a real decision only the user can make).
 ## Operate as a TEAM OF AGENTS (prompt → finished edit, mistake-free) — READ `docs/agent-team.md`
 You (main session) are the **Director**. For any non-trivial video, run the team pipeline and
 **delegate to the specialist subagents in `.claude/agents/`** (scriptwriter, art-director,
-stock-scout, audio-engineer, sync-master, motion-builder, b-roll, assembler, colorist, captioner,
-qa-audio, qa-visual, delivery). Each has ONE job and a strict definition of done — none of them
-re-plan or make creative-direction calls. Those are yours.
-**Non-negotiable: the QA gates (`qa-audio` → `qa-visual`) must ALL pass before you deliver.**
-If a gate fails, route the fix back to the owning specialist, re-render, re-QA — loop until clean.
-This acceptance loop is what makes output mistake-free; never ship with an open QA failure.
+stock-scout, audio-engineer, sync-master, b-roll, motion-builder, assembler, captioner, colorist,
+qa-correctness, qa-richness, qa-audio, license-auditor, delivery). Each has ONE job and a strict
+definition of done — none of them re-plan or make creative-direction calls. Those are yours.
+**Non-negotiable: ALL FOUR ship gates — `qa-correctness`, `qa-richness`, `qa-audio`,
+`license-auditor` — must pass before you deliver.** If a gate fails, route the fix back to the
+owning specialist, re-render, re-QA — loop until clean. This acceptance loop is what makes output
+mistake-free; never ship with an open QA failure.
 For tiny one-step edits you may act directly, but still run the relevant QA gate.
+
+**SINGLE-RESPONSIBILITY is the law.** Each agent does ONE job so quality never degrades from split
+attention. Key ownership boundaries (don't let them blur): **sync-master** owns scene boundaries
+(from voice); **audio-engineer** owns audio + emits a beat-grid overlay but NEVER moves scene
+timing; **motion-builder** is the SOLE writer of `index.html`; **b-roll** authors data
+(`broll-plan.json`) only; **stock-scout** fetches VISUAL assets (audio is audio-engineer's);
+**qa-correctness** checks "is it broken", **qa-richness** checks "is it rich" — separately.
+
+**Parallelize for speed — fan out independent work.** Run agents with no shared inputs concurrently
+(single message, multiple Agent calls): FAN-OUT 1 art-director ∥ scriptwriter; FAN-OUT 2
+audio-engineer ∥ stock-scout; FAN-OUT 3 the four ship gates all read ONE `qa-frames.py` manifest you
+extract once. See the pipeline diagram below.
 
 ## The Director's playbook — apply on every job
 You think like a senior editor: analyze first, plan deliberately, then execute one precise change
@@ -82,8 +95,36 @@ podcast cut, lyric video, ad, social clip.
   landed. They never re-plan.
 - **No specialist changes creative direction.** If a specialist thinks the plan is wrong, it
   surfaces the issue back to the Director — it does not silently rewrite the plan.
-- **QA-gate specialists (qa-audio, qa-visual)** may reject and route a fix back to the owning
-  specialist; that is execution-level enforcement, not re-planning.
+- **QA-gate specialists (qa-correctness, qa-richness, qa-audio, license-auditor)** may reject and
+  route a fix back to the owning specialist; that is execution-level enforcement, not re-planning.
+
+### Delegation pipeline (fan out where there's no data dependency)
+```
+Director (Steps 1-5: UNDERSTAND → ANALYZE → DECIDE → PLAN → CONFIRM)
+  │
+  ├─ FAN-OUT 1:  art-director (style.json + moodboard research) ∥ scriptwriter (script.txt)
+  │     └ barrier: style.json + script.txt ready
+  ├─ FAN-OUT 2:  audio-engineer (TTS → vo.json → music/SFX → bpm → beats.json → mix → master.wav)
+  │              ∥ stock-scout (photos/illustrations/vectors/videos/gifs/3d — visual only)
+  │     └ barrier: vo.json + assets/stock/* ready
+  ├─ sync-master   (scenes.js / __SCENES — canonical scene boundaries from voice; runs FIRST)
+  ├─ b-roll        (work/broll-plan.json — data only, no index.html writes)
+  ├─ motion-builder(index.html: comp + XChart + 3D GLTFLoader + read broll-plan.windows→BROLL_WINDOWS
+  │                 + read beats.json→snap aux tweens + emit work/motion-hits.json)
+  ├─ audio-engineer(SFX placement pass — read motion-hits.json, layer SFX, re-master)
+  ├─ assembler     (montage + overlay + mux master.wav + b-roll cutaways via filter_complex)
+  ├─ captioner     (captions.js)
+  ├─ colorist      (grade + bloom + grain + vignette)
+  │
+  ├─ Director runs scripts/qa-frames.py ONCE → work/qa-frames-manifest.json
+  ├─ FAN-OUT 3:  qa-correctness ∥ qa-richness ∥ qa-audio ∥ license-auditor  (all read the one manifest)
+  │     └ barrier: all 4 PASS
+  ├─ Director Step 7 acceptance review
+  └─ delivery      (Stage A parallel: thumbnail + encode-youtube + export-subs + cut-reels;
+                    Stage B: multilang-subs after export-subs; throttle heavy encodes if nproc<6)
+```
+FAIL routing: qa-correctness → sync-master/colorist/assembler/motion-builder · qa-richness →
+motion-builder · qa-audio → audio-engineer · license-auditor → Director (re-fetch via stock-scout/audio-engineer).
 
 ## Command shorthand (`:` tokens) — READ `COMMANDS.md`
 The user may drive the engine with short `:name` commands instead of full sentences. When a prompt
@@ -183,7 +224,7 @@ blocks (`data-chart`, `world-map`, `us-map`…) — see `prompts/data-video.md`.
 first; only hand-build when nothing fits.
   - **Code videos** (`prompts/code-video.md`) — 24 editor/terminal themes, per-char typing.
   - **App/product showcase** (`prompts/app-showcase.md`) — 3D device (vfx-iphone-device) + liquid-glass UI.
-  - **Stat explainer** (`prompts/stat-explainer.md`, `:stat`) — rich editorial data-journalism on ANY topic (6 scenes): styles **Editorial Brutalist** / **Warm Documentary** from `presets/styles.md`; enforce the art-director **Richness checklist** + qa-visual **Richness gate**. Template `templates/stat-explainer-vertical.html` (fill the DATA object only).
+  - **Stat explainer** (`prompts/stat-explainer.md`, `:stat`) — rich editorial data-journalism on ANY topic (6 scenes): styles **Editorial Brutalist** / **Warm Documentary** from `presets/styles.md`; enforce the art-director **Richness checklist** + qa-richness **Richness gate**. Template `templates/stat-explainer-vertical.html` (fill the DATA object only).
   - **Overlays & end-cards** (`docs/overlays.md`) — social CTAs (subscribe/follow/post), logo-outro,
     grain/vignette/light-leak atmosphere, premium text FX. Drop onto any video.
   - **JS graphics overlays** (`docs/graphics-libraries.md`) — enrich a *plain* clip with particles,
@@ -282,9 +323,11 @@ grab the frame. `scripts/thumbnail.sh` pulls a frame from any video.
 | **Premium finish** | look expensive | `scripts/enrich.sh <in.mp4> <out.mp4> [cine\|teal-orange\|warm\|moody\|clean\|vibrant] [strength] [mblur]` (grade + bloom/glow + grain + vignette + sharpen + optional motion blur). Stack AFTER overlay for rich, non-amateur output. |
 | **Data-driven batch** | N videos from data | `python3 scripts/render-batch.py <project> <data.csv\|.json> [--name COL]` — one template + a CSV/JSON → one personalized MP4 per row (uses HyperFrames `--variables`; template = `data-driven-card.html`). See `docs/data-driven.md`. |
 | **Scene-sync agent** | lock graphics to VO | `python3 scripts/scene-sync.py <vo.json> <spec.json> --offset <s> --total <s> --out <proj>` → `scenes.js` (`window.__SCENES`). Derives every scene start/end + a `peak` time from the actual spoken words so graphics NEVER lead/lag the voice. The composition reads `__SCENES` and lands each climax (counter end / last bar / donut fill / line draw) on `peak`. |
-| **Stock fetch** | Pexels b-roll | `PEXELS_API_KEY=… python3 scripts/pexels.py "query" out.mp4 [--orient landscape]` — watermark-free, commercial-OK stock video. |
+| **Stock fetch (all media)** | Pixabay | `scripts/pixabay-any.sh <photo\|illustration\|vector\|video\|gif\|3d> "query" out` (visual, stock-scout) · `scripts/music-fetch-any.sh "query" out.mp3` + `scripts/pixabay-sfx.sh "query" out.mp3` (audio, audio-engineer). Search first: `scripts/pixabay-search.sh <type> "query" --n=10`. Key in `.env.pixabay`. All commercial-OK; writes `<out>.license.json`. |
+| **Reference research** | Pinterest/Dribbble/Vimeo | `scripts/{pinterest,dribbble,vimeo}-moodboard.sh "query" out/` — contact sheet + palette for art-direction. REFERENCE ONLY, never used as deliverable assets. |
 | **Audio QA gate** | mix check | `scripts/qa-audio.sh <file>` → PASS/FAIL on −14 LUFS, true-peak/clipping, silences. |
-| **Visual QA gate** | frame check | `python3 scripts/qa-frames.py <video> --scenes scenes.json` → frames+manifest; the `qa-visual` agent reads them and checks each scene is correct/legible/on-time. |
+| **Visual QA gate** | frame check | `python3 scripts/qa-frames.py <video> --scenes scenes.json` → frames+manifest extracted ONCE by the Director; then `qa-correctness` (broken-output) and `qa-richness` (density/motion) read the SAME manifest in parallel. |
+| **License gate** | pre-ship audit | `scripts/license-audit.sh projects/<name>` → `work/license-manifest.json`; `license-auditor` agent blocks delivery on any asset missing a valid `.license.json`. |
 | **Thumbnail (designed)** | template | render `templates/thumbnail.html` → grab frame 1 |
 | **Animated icons** | Lottie | `templates/lottie-overlay.html` + a `.json` from lottiefiles.com |
 

@@ -29,7 +29,7 @@ Three things combine on every motion-graphics video — keep all three:
    correct counter/bar/donut/line) + the **QA gates**.
 
 The whole thing runs as a **team of agents** (`.claude/agents/`, orchestrated per `docs/agent-team.md`):
-**Director** (main session) plans + delegates; specialists each do ONE step; **qa-audio + qa-visual
+**Director** (main session) plans + delegates; specialists each do ONE step; **the four ship gates (qa-correctness + qa-richness + qa-audio + license-auditor)
 gate delivery — nothing ships until they pass**, and the Director loops until clean. That acceptance
 loop is what makes output mistake-free. Read `docs/agent-team.md` for the 12-step pipeline.
 
@@ -43,11 +43,11 @@ loop is what makes output mistake-free. Read `docs/agent-team.md` for the 12-ste
 | `templates/lib/charts.js` (XChart) | broken charts (donut full-ring, label flicker). counter/bar/donut/line |
 | `templates/lib/richness.js` (Rich) | flat/static/thin scenes. `Rich.idle` (never static), `Rich.texture`, `Rich.cascade/enter`, `.r-shadow2`, furniture |
 | `scripts/capture-html.mjs` | renders external browser animations (React `window.__stage` Stage) frame-by-frame → MP4 |
-| `scripts/pexels.py` | watermark-free stock b-roll |
+| `scripts/pixabay-*.sh` | all stock media (photo/illustration/vector/video/gif/3d/music/sfx) from Pixabay |
 | `scripts/tts.sh` (Kokoro) | VO. female `af_heart`/`af_nova`, male `am_onyx`; UK `bf_emma` |
 | `scripts/mix-audio.sh` + `qa-audio.sh` | bad mix / clipping. ducks music under VO, masters −14 LUFS, gates it |
 | `scripts/enrich.sh` | flat finish. grade + bloom + grain + vignette + motion-blur |
-| `scripts/qa-frames.py` + qa-visual agent | wrong/illegible/static scenes (samples mid+peak frames vs expected) |
+| `scripts/qa-frames.py` + qa-correctness & qa-richness agents | broken-output (cut-off/black/overlap) + density/motion regressions; both read one manifest |
 | `b-roll` agent | graphic-over-broll leak (graphics finish BEFORE cutaway; b-roll plays naked) |
 | `:` commands (`COMMANDS.md`, `scripts/help.sh`) | shorthand: `:short @clip`, `:stat <topic>`, `:caption :hormozi`, etc. |
 
