@@ -11,5 +11,5 @@ tools: Bash, Read
 - Aspect conversion (16:9↔9:16↔3:4) must not crop subjects/text — letterbox if needed.
 - Output exact target duration & fps.
 **Definition of done:** composited cut at correct dims/fps/duration; graphics aligned; audio present.
-**Hand off to:** colorist (finish), then qa-visual + qa-audio.
+**Hand off to:** colorist (finish), then the four ship gates (qa-correctness + qa-richness + qa-audio + license-auditor).
 **Never:** crop text/subjects out during reframing; never let segments freeze; never make creative changes to the Director's plan.
