@@ -18,8 +18,8 @@
     .r-shadow2{box-shadow:10px 10px 0 var(--rs1,#fff),20px 20px 0 var(--rs2,#111);}   /* stacked depth */
     .r-tex{position:absolute;inset:0;pointer-events:none;}
     .r-grain{position:absolute;inset:0;pointer-events:none;background-image:${GRAIN};background-size:160px 160px;opacity:.07;mix-blend-mode:multiply;}
-    .r-eyebrow{font-family:var(--mono,"JetBrains Mono",monospace);font-weight:700;letter-spacing:.2em;text-transform:uppercase;font-size:30px;}
-    .r-counter{font-family:var(--mono,"JetBrains Mono",monospace);font-weight:700;letter-spacing:.12em;font-size:30px;opacity:.85;}
+    .r-eyebrow{font-family:var(--mono,"JetBrains Mono",monospace);font-weight:700;letter-spacing:.2em;text-transform:uppercase;font-size:var(--r-label,30px);}
+    .r-counter{font-family:var(--mono,"JetBrains Mono",monospace);font-weight:700;letter-spacing:.12em;font-size:var(--r-label,30px);opacity:.85;}
     .r-sticker{display:inline-block;font-family:var(--mono,"JetBrains Mono",monospace);font-weight:700;letter-spacing:.04em;text-transform:uppercase;
       padding:10px 20px;border:5px solid #111;box-shadow:8px 8px 0 #111;background:#fff;color:#111;}`;
     document.head.appendChild(s);
@@ -27,8 +27,17 @@
   function dottedDiv(color){ var d=document.createElement("div"); d.className="r-tex";
     d.style.backgroundImage="radial-gradient("+(color||"rgba(0,0,0,.9)")+" 22%, transparent 23%)";
     d.style.backgroundSize="34px 34px"; d.style.opacity=".10"; return d; }
+  /* responsive type scale — set width-aware --r-label + --r-display tokens once.
+     Call Rich.scale(canvasWidth) after Rich.css(); label ≈ width/38, display ≈ label*5 (the
+     kit's type_scale can override per element). Fixes the old hardcoded 30px so a 1920w
+     comp and a 1080w comp aren't using the same label size. */
+  function scale(w){ w=w||1080; var label=Math.round(w/38); var disp=label*5;
+    var r=document.documentElement;
+    r.style.setProperty('--r-label', label+'px');
+    r.style.setProperty('--r-display', disp+'px'); }
   var Rich={
     css:css,
+    scale:scale,
     /* continuous, never-static motion on a scene/hero. One call per scene container. */
     idle:function(el,tl,s,e,o){ o=o||{}; var dur=Math.max(0.6,e-s);
       var sc=o.scale==null?0.014:o.scale, x=o.x==null?8:o.x, y=o.y==null?8:o.y, rot=o.rot==null?0.5:o.rot;

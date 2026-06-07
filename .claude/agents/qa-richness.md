@@ -26,6 +26,16 @@ tools: Bash, Read
 - [ ] **Depth** — hero type/cards have stacked shadows, not flat.
 - [ ] **Hero scale** — one oversized graphic anchor per scene.
 
+### Kit-coherence gate (the video must match its locked kit — READ `presets/motion-kits.md`)
+Read `work/style.json → kit`. Verify the RENDER actually applied the kit it was assigned (this is what stops "every element feels different"):
+- [ ] **Hook present** — the first 1–3s is the kit's engineered open (NOT a fade-up from black / centered logo on flat bg).
+- [ ] **Ending present** — the last 2–4s is the kit's close (climax-land → settle → a freeze-frame-legible last frame), not an abrupt cut or dead air.
+- [ ] **Text-animation matches** — the entrance/emphasis/exit verbs are the kit's (e.g. product-reveal = mask-wipe, hype = punch-in) — not generic fades everywhere.
+- [ ] **Transitions match** — the scene-change language is the kit's (e.g. hype = whip/glitch on beat; cinematic = long crossfade), not all hard cuts when the kit says otherwise.
+- [ ] **Atmosphere matches** — the kit's overlay/grade is present (and the banned dated looks are absent).
+- [ ] **Type scale matches** — display/label ratio ≈ kit.type_scale (hero is genuinely oversized).
+On any mismatch: name the kit field + scene; route to motion-builder (it owns kit application). An off-kit render is a blocking FAIL — coherence is the whole point of the kit system.
+
 ### Theme-coherence gate (every asset must fit the deck — READ `docs/asset-sourcing.md`)
 Read `work/style.json` (palette + the canonical `assets[]` theme_fit specs). For every image/illustration/3D/photo/b-roll clip on screen, check against that asset's recorded `theme_fit`:
 - [ ] **Palette match** — colors sit in (or were graded to) the deck palette; no clashing hue/temperature.

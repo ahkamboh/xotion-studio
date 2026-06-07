@@ -12,7 +12,7 @@ when genuinely blocked (a real decision only the user can make).
 
 ## Operate as a TEAM OF AGENTS (prompt → finished edit, mistake-free) — READ `docs/agent-team.md`
 You (main session) are the **Director**. For any non-trivial video, run the team pipeline and
-**delegate to the specialist subagents in `.claude/agents/`** (scriptwriter, art-director,
+**delegate to the specialist subagents in `.claude/agents/`** (motion-director, scriptwriter, art-director,
 stock-scout, audio-engineer, sync-master, b-roll, motion-builder, assembler, captioner, colorist,
 qa-correctness, qa-richness, qa-audio, license-auditor, delivery). Each has ONE job and a strict
 definition of done — none of them re-plan or make creative-direction calls. Those are yours.
@@ -130,8 +130,11 @@ podcast cut, lyric video, ad, social clip.
 ```
 Director (Steps 1-5: UNDERSTAND → ANALYZE → DECIDE → PLAN → CONFIRM)
   │
+  ├─ MOTION GRAPHICS? → motion-director FIRST: classify archetype → LOCK the kit into
+  │     work/style.json (fonts/type-anim/color/transitions/music-query/SFX-map/voice/hook/ending).
+  │     Everything below reads the kit so it coheres. (READ presets/motion-kits.md.)
   ├─ FAN-OUT 1:  art-director (style.json + moodboard research) ∥ scriptwriter (script.txt)
-  │     └ barrier: style.json + script.txt ready
+  │     └ barrier: style.json (+ kit) + script.txt ready
   ├─ FAN-OUT 2:  audio-engineer (TTS → vo.json → music/SFX → bpm → beats.json → mix → master.wav)
   │              ∥ stock-scout (photos/illustrations/vectors/videos/gifs/3d — visual only)
   │     └ barrier: vo.json + assets/stock/* ready
@@ -239,8 +242,17 @@ Then read the HyperFrames skill docs as needed: `npx hyperframes docs <topic>`
 Deeper guidance lives in the installed skills at `~/.agents/skills/` (`hyperframes`,
 `hyperframes-cli`, `hyperframes-media`, `gsap`, `three`, `lottie`, `tailwind`, ...).
 
-**Art direction (do this FIRST — `presets/styles.md`):** before building any motion graphic, choose
-the visual style. Read the prompt's signals — industry, mood, audience, platform — and pick one of
+**Motion-graphics KIT (do this FIRST — `presets/motion-kits.md` + the `motion-director` agent):**
+before any motion graphic, the **motion-director** classifies the ARCHETYPE (product-reveal / hype-promo /
+kinetic-typography / data-explainer / logo-sting / lyric / title / narrated-explainer / sticker-pop /
+cinematic-intro) and **locks ONE coherent kit** into `work/style.json → kit` — fonts, type-animation,
+color, transitions, music query, SFX `kind→sound` map, voice + processing profile, hook, and ending,
+all matched to that type. motion-builder + audio-engineer then read the kit instead of picking elements
+à la carte (which is what caused music/SFX/animation to feel disconnected). Decision rules + the
+motion-hit `kind` vocabulary + the single tempo clock live in `docs/motion-graphics-decisions.md`.
+
+**Art direction (`presets/styles.md`):** the kit sets the package; styles.md supplies the exact palette/font
+token blocks. Before building any motion graphic, choose the visual style. Read the prompt's signals — industry, mood, audience, platform — and pick one of
 the 12 named styles (Luxe Noir, Bold Pop, Clean Corporate, Warm Editorial, Neon Cyber, Soft Pastel,
 Cinematic, Minimal Mono, Playful, Organic Nature, Tech Gradient, Brutalist Bold). Each bundles a
 complete look: **palette + font pairing + layout + motion personality + default ratio**, with a
@@ -349,6 +361,8 @@ grab the frame. `scripts/thumbnail.sh` pulls a frame from any video.
 | **Generate music bed** | ffmpeg synth | `scripts/music-bed.sh bed.wav 30 <calm\|warm\|tense\|uplift\|dark>` |
 | **SFX pack** | `sfx/*.wav` | whoosh/riser/impact/click/pop/sub-drop/sparkle — layer as extra `<audio>` tracks on motion hits (regen: `scripts/make-sfx.sh`) |
 | **Mix voice + music** | ffmpeg duck | `scripts/mix-audio.sh vo.wav music.mp3 master.wav` (auto-ducks music under voice, −14 LUFS) |
+| **Voice processing** | broadcast chain | `scripts/voice-process.sh vo-raw.wav vo.wav <house\|warm\|hype\|cinematic>` (HPF→compress→presence→de-ess — makes TTS sound hired, not robotic) |
+| **Full A/V mix** | 3-layer | `scripts/mix-av.sh master.wav <dur> --vo vo.wav --music bed.mp3 <gain> --sfx "t:file:gain,…"` (VO + ducked music + SFX-on-hits, SFX duck under VO too, −14 LUFS) |
 | **Auto-pick reel hooks** | energy+keywords | `python3 scripts/find-hooks.py audio segments.json --n 12 --len 18` → segments.txt |
 | **Verify a render (QA)** | frames + inspect | `scripts/verify.sh render.mp4 [ts,ts,...]` or `scripts/verify.sh --inspect <dir>` |
 | **Concatenate clips** | ffmpeg | `scripts/concat.sh out.mp4 a.mp4 b.mp4 ...` |
