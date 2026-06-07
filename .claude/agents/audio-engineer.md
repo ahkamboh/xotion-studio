@@ -22,7 +22,8 @@ tools: Bash, Read, WebFetch
 
 - **EMIT THE BEAT GRID — do NOT redrift scene boundaries** (sync-master owns those from the voice):
   - `python3 scripts/beat-grid.py --audio assets/music/bed.mp3 --duration <total_s> [--offset <intro_silence_s>] [--downbeat-mod 4] --out work/beats.json` (or pass `--bpm <N>` instead of `--audio` if you already know the tempo from `scripts/bpm-detect.py`). This emits a **read-only beat grid + downbeat markers** (`{bpm, beat_interval, beats:[…], downbeats:[…]}`) that motion-builder can OPTIONALLY snap auxiliary micro-tweens to.
-  - **Do NOT run `scripts/beat-align.py`** — that older script mutates scene `start`/`end` (it's a scene-snapper, not a grid emitter) and would steal sync-master's job. `beat-grid.py` is incapable of touching scenes by design. The canonical boundaries come from `window.__SCENES` (sync-master, voice-derived); sync-master runs FIRST and your beats.json layers on top.
+  - Use **`beat-grid.py` only** — the old `beat-align.py` scene-snapper was REMOVED because it mutated scene `start`/`end` (sync-master's job). `beat-grid.py` is incapable of touching scenes by design. Canonical boundaries come from `window.__SCENES` (sync-master, voice-derived); sync-master runs FIRST and your beats.json layers on top.
+  - If a real track can't be fetched, `music-fetch-any.sh` returns a DEGRADED synth bed and **exits 3** (license logs `degraded:true`). That is NOT a clean success — surface it to the Director to confirm or re-fetch; never ship a degraded bed silently.
   - Trim/loop the track to the exact video duration. Always add a 0.5s fade-in and a 1–1.5s fade-out. Pick a track whose intro is ≤1s OR trim leading silence so it starts with the video.
 
 - **MIX with sidechain ducking** (VO always wins):

@@ -26,12 +26,16 @@ def main():
     man=[]
     if a.scenes and os.path.exists(a.scenes):
         for sc in json.load(open(a.scenes)):
-            mid=(sc["s"]+sc["e"])/2.0
+            # tolerate BOTH the canonical scene-sync schema (s/e) and the start/end schema
+            s = sc.get("s", sc.get("start")); e = sc.get("e", sc.get("end"))
+            if s is None or e is None:
+                sys.stderr.write(f"[qa-frames] skipping scene with no s/e or start/end: {sc.get('id')}\n"); continue
+            mid=(float(s)+float(e))/2.0
             for tag,t in [("mid",mid),("peak",sc.get("peak"))]:
                 if t is None: continue
                 f=os.path.join(qa,f"{sc.get('id','sc')}_{tag}.png"); grab(a.video,t,f)
                 exp={k:sc[k] for k in ("title","label","sub","to","suf","pre","vals") if k in sc}
-                man.append({"t":round(t,2),"file":f,"scene":sc.get("id"),"expect":exp})
+                man.append({"t":round(float(t),2),"file":f,"scene":sc.get("id"),"expect":exp})
     else:
         dur=float(subprocess.run(["ffprobe","-v","error","-show_entries","format=duration",
             "-of","default=nokey=1:noprint_wrappers=1",a.video],capture_output=True,text=True).stdout or 0)
@@ -39,8 +43,13 @@ def main():
         while t<dur:
             f=os.path.join(qa,f"frame_{t:.0f}.png"); grab(a.video,t,f)
             man.append({"t":round(t,2),"file":f}); t+=a.every
+    # Write the manifest to BOTH the per-dir path AND the canonical path the QA agents read
+    # (work/qa-frames-manifest.json when run with --out work) so the shared-manifest
+    # fan-out actually finds it.
     json.dump(man,open(os.path.join(qa,"manifest.json"),"w"),indent=2)
-    print(f"[qa-frames] {len(man)} frames -> {qa}/  (manifest.json has expected content per frame)")
+    canonical=os.path.join(out,"qa-frames-manifest.json")
+    json.dump(man,open(canonical,"w"),indent=2)
+    print(f"[qa-frames] {len(man)} frames -> {qa}/  (manifest: {qa}/manifest.json AND {canonical})")
     for m in man: print(f"  {m['t']:>6}s  {os.path.basename(m['file'])}" + (f"  expect={m.get('expect')}" if m.get('expect') else ""))
 
 if __name__=="__main__":
