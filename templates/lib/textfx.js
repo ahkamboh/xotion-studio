@@ -12,13 +12,30 @@
 (function(){
   function splitChars(el){
     if(el.__split) return el.__chars;
-    var txt = el.textContent, frag = document.createDocumentFragment(), chars=[];
-    for(var i=0;i<txt.length;i++){
-      var s=document.createElement('span'); s.style.display='inline-block';
-      s.style.whiteSpace='pre'; s.textContent = txt[i]==' ' ? ' ' : txt[i];
-      frag.appendChild(s); chars.push(s);
+    var chars=[];
+    // Walk the tree so child WRAPPER elements (e.g. <span class="a"> accent words)
+    // are PRESERVED — split only text nodes into per-char spans that stay INSIDE
+    // their wrapper. Flattening el.textContent (old behavior) destroyed every
+    // accent/color span, so highlight words rendered as plain ink.
+    function walk(node){
+      var kids = Array.prototype.slice.call(node.childNodes);
+      for(var k=0;k<kids.length;k++){
+        var ch=kids[k];
+        if(ch.nodeType===3){
+          var txt=ch.nodeValue, frag=document.createDocumentFragment();
+          for(var i=0;i<txt.length;i++){
+            var s=document.createElement('span'); s.style.display='inline-block';
+            s.style.whiteSpace='pre'; s.textContent = txt[i]===' ' ? ' ' : txt[i];
+            frag.appendChild(s); chars.push(s);
+          }
+          node.replaceChild(frag, ch);
+        } else if(ch.nodeType===1){
+          if(!ch.style.display) ch.style.display='inline-block';
+          walk(ch);
+        }
+      }
     }
-    el.textContent=''; el.appendChild(frag); el.__split=true; el.__chars=chars; return chars;
+    walk(el); el.__split=true; el.__chars=chars; return chars;
   }
   function splitWords(el){
     if(el.__wsplit) return el.__words;
@@ -26,7 +43,7 @@
     for(var i=0;i<parts.length;i++){
       var s=document.createElement('span'); s.style.display='inline-block';
       s.textContent=parts[i]; frag.appendChild(s); words.push(s);
-      if(i<parts.length-1) frag.appendChild(document.createTextNode(' '));
+      if(i<parts.length-1) frag.appendChild(document.createTextNode(' '));
     }
     el.textContent=''; el.appendChild(frag); el.__wsplit=true; el.__words=words; return words;
   }
