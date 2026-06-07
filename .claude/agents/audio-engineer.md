@@ -15,7 +15,8 @@ tools: Bash, Read, WebFetch
   - Riso / psychedelic → driving synth / retro funk, 110–128 BPM
   - Apple keynote / product reveal → clean minimal electronic swell, 80–100 BPM
   - Pro podcast → low ambient bed (must NOT fight VO)
-  - Fetch with the unified script: `scripts/music-fetch-any.sh "<query>" assets/music/bed.mp3` — tries Jamendo (real JSON API, credentials in `.env.music`) → Internet Archive (no key) → synth fallback (`scripts/music-bed.sh`). Direct calls if you want to skip the chain: `scripts/music-fetch-jamendo.sh`, `scripts/music-fetch-archive.sh`.
+  - Fetch with the unified script: `scripts/music-fetch-any.sh "<query>" assets/music/bed.mp3` — tries Pixabay music (puppeteer scrape, credentials in `.env.pixabay`) → Internet Archive (keyless JSON API) → synth fallback (`scripts/music-bed.sh`). Direct calls if you want to skip the chain: `scripts/pixabay-music.sh`, `scripts/music-fetch-archive.sh`.
+  - For SFX (whooshes, impacts, logo stings): `scripts/pixabay-sfx.sh "<query>" assets/sfx/<name>.mp3`. Layer as extra `<audio>` tracks on motion hits.
   - Track metadata is written next to the audio as `<out>.license.json` automatically — also log `{title, source_url, license, bpm}` in `work/music.json` for the project record.
 
 - **BEAT-SYNC SCENES** — this is what makes it feel pro:
