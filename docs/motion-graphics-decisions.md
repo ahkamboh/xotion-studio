@@ -48,6 +48,14 @@ motion-builder emits `[{ "t": <sec>, "kind": <one of below>, "scene": <id> }]`. 
 - The hook's first hard transient lands on beat 1; the ending's climax lands on a downbeat.
 - For voice-led archetypes (narrated-explainer), **sync-master's voice timing wins for scene boundaries**;
   the beat grid only governs auxiliary motion. (Voice > beat for boundaries; beat > eye for hits.)
+- **MANDATORY: any video with a VO must derive scene times from `scene-sync.py` (vo.json word timings) — never hand-timed.** Hand-timed scenes + a separate VO track is the #1 first-attempt sync failure. Order: VO → transcribe (word level) → scene spec (scene↔phrase anchors) → scene-sync.py → scenes.js → motion-builder reads `window.__SCENES`. qa-correctness check #8 rejects hand-timed scenes when a VO is present.
+
+## 8. Text animation = a TextFX call, never hand-coded
+The kit's `text_anim.entrance` is a **name** that maps to a real function in `templates/lib/textfx.js`
+(`mask-wipe · letter-cascade · punch-in · rise-blur · typewriter · squash-pop · glitch`). motion-builder
+calls `TextFX.enter(el, tl, t, kit.text_anim.entrance)` — it must NOT hand-write a `scale→back.out` pop.
+Hand-coding is why every video defaulted to the same pop-up; the engine makes the named animation render
+and differ per archetype. qa-richness's kit-coherence gate checks the entrance matches the kit.
 
 ## 4. Precedence (resolves font/color/voice conflicts)
 When sources disagree, apply in this order (later overrides earlier):
