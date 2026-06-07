@@ -27,17 +27,26 @@ tools: Bash, Read
 - [ ] **Hero scale** — one oversized graphic anchor per scene.
 
 ### Theme-coherence gate (every asset must fit the deck — READ `docs/asset-sourcing.md`)
-Read `work/style.json` (palette + the `assets` theme_fit specs). For every image/icon/illustration/3D/photo on screen:
-- [ ] **Palette match** — the asset's colors sit in (or were recolored to) the deck palette; no clashing hue/temperature.
-- [ ] **Style match** — the asset's visual style matches the deck (flat deck → no glossy 3D icon; line-art deck → no soft gradient blob; mono deck → no full-color illustration).
-- [ ] **Vibe/era match** — detail level, stroke/radius, and mood cohere with the style; no asset that reads "pasted in from a different deck".
-On any clash: name the asset + scene + what it violates; route to motion-builder (re-author in-theme) or back to art-director/stock-scout (re-source a theme match). An off-vibe asset is a blocking FAIL — never deliver with one.
+Read `work/style.json` (palette + the canonical `assets[]` theme_fit specs). For every image/illustration/3D/photo/b-roll clip on screen, check against that asset's recorded `theme_fit`:
+- [ ] **Palette match** — colors sit in (or were graded to) the deck palette; no clashing hue/temperature.
+- [ ] **Style match** — visual style matches the deck (flat deck → no glossy 3D icon; line-art deck → no soft gradient blob; mono deck → no full-color illustration).
+- [ ] **Vibe/era match** — detail, stroke/radius, mood cohere; no asset that reads "pasted in from a different deck".
+- **CARVE-OUT:** assets with `decision:"use-as-is"` (user/brand-supplied) are **EXEMPT** — do NOT fail them for clashing; only check they're presented cleanly (framed/scrim/neutral backing). Never alter a brand mark.
+
+**Route a theme-coherence FAIL BY the asset's `decision` field** (NOT blanket to motion-builder):
+- `make` → **motion-builder** (re-author in-theme)
+- `fetch` → **stock-scout** (re-grade / re-source); if unfetchable, stock-scout escalates to the **Director → art-director** (flip to `make` or revise plan)
+- b-roll clip off-theme → **b-roll** (swap to a theme-vetted clip) / stock-scout (re-source)
+A non-exempt off-theme asset is a blocking FAIL — never deliver with one.
 
 - Write a PASS/FAIL checklist per scene per gate to `work/qa-richness.json`. On any fail, name the rule, scene, and measured value.
 
-**Definition of done:** `work/qa-richness.json` exists with PASS/FAIL per scene per gate; FAIL routes back to motion-builder with the failing scene index + gate name + measured value.
+**Definition of done:** `work/qa-richness.json` exists with PASS/FAIL per scene per gate; each FAIL names the scene + gate + measured value + the routed owner.
 
-**Routes FAIL to:** motion-builder (sole owner of richness application) · Director (acceptance loop).
+**Routes FAIL to:**
+- **density / motion richness** fails → **motion-builder** (sole owner of richness application).
+- **theme-coherence** fails → **by the asset's `decision`**: `make`→motion-builder · `fetch`→stock-scout (then Director→art-director if unfetchable) · b-roll clip→b-roll · `use-as-is`→exempt (not a fail).
+- Director (acceptance loop) for any escalation.
 
 **Never:**
 - Re-run `scripts/qa-frames.py` — consume the manifest the Director extracted once.

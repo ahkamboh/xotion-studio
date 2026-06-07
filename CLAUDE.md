@@ -130,8 +130,14 @@ Director (Steps 1-5: UNDERSTAND → ANALYZE → DECIDE → PLAN → CONFIRM)
   └─ delivery      (Stage A parallel: thumbnail + encode-youtube + export-subs + cut-reels;
                     Stage B: multilang-subs after export-subs; throttle heavy encodes if nproc<6)
 ```
-FAIL routing: qa-correctness → sync-master/colorist/assembler/motion-builder · qa-richness →
-motion-builder · qa-audio → audio-engineer · license-auditor → Director (re-fetch via stock-scout/audio-engineer).
+FAIL routing: qa-correctness → sync-master/colorist/assembler/motion-builder · qa-audio →
+audio-engineer · license-auditor → Director (re-fetch via stock-scout/audio-engineer).
+qa-richness: **density/motion** fails → motion-builder; **theme-coherence** fails route BY the
+asset's `decision` — `make`→motion-builder, `fetch`→stock-scout (→ Director→art-director if
+unfetchable), b-roll clip→b-roll, `use-as-is` (brand)→exempt. Asset-sourcing escalation:
+stock-scout, after 2 grade+re-query passes with no theme-fit, writes `work/stock-blockers.json`
+and surfaces it to the **Director**, who relays to **art-director** to flip `decision→make` or
+revise the plan (specialists don't re-plan). This bounds the re-source loop so it always terminates.
 
 ## Command shorthand (`:` tokens) — READ `COMMANDS.md`
 The user may drive the engine with short `:name` commands instead of full sentences. When a prompt

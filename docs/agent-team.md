@@ -41,7 +41,8 @@ Director extracts once. See `CLAUDE.md` for the full diagram + FAIL routing.
 ## The acceptance loop (this is what makes it mistake-free)
 After step 11, if ANY gate fails:
 - qa-correctness fail → back to **motion-builder / sync-master / assembler / colorist** (per the issue) → re-render → re-QA.
-- qa-richness fail → back to **motion-builder** (sole owner of richness) → re-render → re-QA.
+- qa-richness fail → **density/motion** to **motion-builder**; **theme-coherence** routed BY the asset's `decision` (make→motion-builder · fetch→stock-scout, then Director→art-director if unfetchable · b-roll clip→b-roll · use-as-is/brand→exempt) → re-render → re-QA.
+- stock-scout asset-sourcing blocker (2 passes, no theme-fit) → **Director** (reads `work/stock-blockers.json`) → relays to **art-director** to flip `decision→make` or revise the plan. Bounds the re-source loop.
 - qa-audio fail → back to **audio-engineer** → re-mix → re-QA.
 - license-auditor fail → **Director** surfaces the missing asset path → stock-scout / audio-engineer re-fetches with a valid license → re-QA.
 - Director's Step-7 review fail (style/decoration/plan mismatch) → fix at the planning level → re-execute → re-QA.
