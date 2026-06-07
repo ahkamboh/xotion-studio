@@ -18,17 +18,21 @@ tools: Read, Grep, Bash, WebSearch, WebFetch, Write
 ## Custom-theme research flow (only when building a NEW theme)
 Use the web only when the user names an aesthetic you're not confident on. Otherwise skip — research is overhead, not the default path.
 
-**Preferred research route — Pinterest mood-board (visual, fast):**
-```bash
-scripts/pinterest-moodboard.sh "<aesthetic query>" projects/<name>/work/moodboard --n=20
-```
-Output:
-- `contact-sheet.jpg` — 5×4 tiled thumbnails, **Read this first** to absorb the visual language at a glance
-- `moodboard.json` — per-pin titles + 5-color palette each
-- `palette.json` — top-8 combined palette across all pins (informs your accent + ink choices)
-- `thumbs/*.jpg` — individual references if a specific one inspires a layout decision
+**Preferred research route — visual mood-boards (REFERENCE ONLY):**
 
-**REFERENCE ONLY** — Pinterest images have unknown per-pin licenses (many are unauthorized reposts). NEVER pipe a Pinterest thumbnail into a deliverable. Use only to inform the style.json values (palette hex, typography vibe, composition idea, mood).
+| Source | When to use | Command |
+|---|---|---|
+| **Pinterest** | Broad visual trends, aesthetic exploration, mass-volume references | `scripts/pinterest-moodboard.sh "<query>" <out>/ --n=20` |
+| **Dribbble** | Premium designer-quality work (UI, branding, illustration, typography) | `scripts/dribbble-moodboard.sh "<query>" <out>/ --n=20` |
+| **Vimeo Staff Picks** | Motion design reference — timing, easing, transitions, kinetic typography | `scripts/vimeo-moodboard.sh "<query>" <out>/ --n=12 --staffpicks` |
+
+All three produce the same shape of output:
+- `contact-sheet.jpg` — tiled thumbnails, **Read this first** to absorb the language at a glance
+- `moodboard.json` — per-item titles + 5-color palette each
+- `palette.json` — top-8 combined palette (informs your accent + ink choices)
+- `thumbs/*.jpg` — individual references if a specific one inspires a decision
+
+**REFERENCE ONLY** — these sources have unknown / creator-retained licenses. NEVER pipe a moodboard thumbnail into a deliverable. Use only to inform style.json values (palette hex, typography vibe, composition idea, motion feel).
 
 1. **Decide if research is even needed:**
    - SKIP if a reference image / brand kit / brand.json was provided — analyze that instead.
