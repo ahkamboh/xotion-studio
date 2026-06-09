@@ -310,10 +310,15 @@ first; only hand-build when nothing fits.
 - `templates/thumbnail.html` — designed YouTube thumbnail (render 1 frame)
 
 **Workflow:** scaffold → build end-state layout first (static), then add GSAP entrances/exits →
-`scripts/hf-guard.sh <project>` (catches the silent `tl.call()`-created-element footgun that lint
-misses) → `npx hyperframes lint` (0/0) → **`npx hyperframes render --strict --output renders/x.mp4`**
-(`--strict` BLOCKS on lint errors — default render is warn-and-ship and would let a non-deterministic
-comp through) → run the **acceptance loop** (below) until every criterion passes.
+**`scripts/render-with-qa.sh <project> -o renders/x.mp4`** — this is the CANONICAL render path
+(`:render`). It runs the full safety pipeline in one shot: (1) **`scripts/hf-guard.sh`** static gate
+(BLOCKS on the silent `tl.call()`-created-element footgun AND the caption-at-top / headline-overflow
+layout bugs that HyperFrames' own lint misses), (2) `npx hyperframes render`, (3) `scripts/qa-frames.py`
+manifest for qa-correctness, (4) `scripts/sanity-strip.sh` (a 3-frame 25/50/75% strip you Read to
+eyeball overflow/anchoring instantly). **NEVER call bare `npx hyperframes render`** — it skips the
+hf-guard gate and the sanity strip, which is exactly how layout bugs ship. (Note: do NOT blanket-add
+`--strict` — HyperFrames' built-in lint has false positives on `var(--font)` indirection; hf-guard is
+the stronger, correct gate.) Then run the **acceptance loop** (below) until every criterion passes.
 
 ## B. Video Editing (ffmpeg)
 
