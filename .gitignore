@@ -10,6 +10,11 @@ projects/*/runs/
 *.webm
 *.wav
 *.mp3
+
+# Build/cache artifacts from the fast-render + frame-cache pipeline (regenerable)
+**/.framecache/
+**/*.precompiled.html
+**/*.precompiled.js
 # keep small sample outputs if you force-add: git add -f path
 
 # Node / HyperFrames

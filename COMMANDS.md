@@ -81,6 +81,7 @@ Type a `:name` in your prompt and the engine runs that workflow. Rules:
 | `:sync` | lock motion-graphic scenes to the voiceover (`scripts/scene-sync.py`) — graphics never drift |
 | `:stock` | fetch stock media from Pixabay (`scripts/pixabay-any.sh <type> "query" out`) |
 | `:preview` | live hot-reload preview before render |
+| `:render` | **the canonical render path** — `scripts/render-with-qa.sh <project>` (hf-guard static gate → render → qa-frames manifest → 3-frame sanity strip). NEVER call bare `npx hyperframes render`. |
 | `:qa` | run the QA acceptance loop |
 | `:help` | print this list (`scripts/help.sh [group]`) |
 
