@@ -304,7 +304,7 @@
         <div class="num" data-a="num" data-from="${s.from}" data-to="${s.to}" data-prefix="${s.prefix}" data-suffix="${s.suffix}">${s.prefix}0${s.suffix}</div>
       </div>
       ${s.stamp?`<div class="stamp" data-a="stamp" style="right:110px; top:960px;">${esc(s.stamp)}</div>`:''}
-      <div class="layer caption" data-a="caption" style="left:64px; right:64px; bottom:200px;">${s.caption}</div>
+      <div class="layer caption" data-a="caption" style="left:64px; right:64px; top:auto; bottom:200px;">${s.caption}</div>
     </div>`;
     let s2 = statScene(DATA.stats[0], 1);
     let s3 = statScene(DATA.stats[1], 2);
@@ -323,7 +323,7 @@
         </div>
       </div>
       <div class="pct" data-a="pct" style="position:absolute; right:100px; top:1600px;">${esc(c.pct)}</div>
-      <div class="layer caption" data-a="caption" style="left:64px; bottom:240px; max-width:540px;">${c.caption}</div>
+      <div class="layer caption" data-a="caption" style="left:64px; top:auto; bottom:240px; max-width:540px;">${c.caption}</div>
     </div>`;
 
     // Scene 5 — stack
@@ -347,7 +347,7 @@
         <div class="display on-dark" data-a="take-a" style="font-size:200px;">${esc(tk.lineA)}</div>
         <div class="display" data-a="take-b" style="font-size:200px; margin-top:24px;"><span class="it">${esc(tk.lineB)}</span></div>
       </div>
-      <div class="layer" data-a="signoff" style="left:0; right:0; bottom:240px; text-align:center;
+      <div class="layer" data-a="signoff" style="left:0; right:0; top:auto; bottom:240px; text-align:center;
         font-family:var(--mono); font-size:24px; letter-spacing:0.24em; text-transform:uppercase;
         color:var(--accent); font-weight:600;">${esc(tk.signoff)}</div>
     </div>`;
@@ -436,10 +436,45 @@
       onUpdate:()=>{ el.textContent = (prefix||'') + (dec? o.v.toFixed(1) : Math.round(o.v).toLocaleString()) + (suffix||''); } }, at);
   }
 
+  // ── Auto-fit big headlines (FitDisplay equivalent, GSAP-safe) ───────────
+  // Prevents the "Hook fast."-style overflow when a DATA string is too long for
+  // the safe area. Shrinks FONT-SIZE (not transform:scale) so it never fights
+  // GSAP's y/opacity transforms during animation. Runs once after fonts.ready.
+  function autofitBig(){
+    const SAFE = 1080 - 128; // 64px margins each side
+    const sel = '[data-composition-id="main"] .display, '
+              + '[data-composition-id="main"] .label-xl, '
+              + '[data-composition-id="main"] .num, '
+              + '[data-composition-id="main"] .pct';
+    document.querySelectorAll(sel).forEach((el)=>{
+      // For multi-line .display, fit each child line; else the element itself.
+      const lines = (el.classList.contains('display') && el.children.length)
+        ? Array.from(el.children) : [el];
+      lines.forEach((t)=>{
+        const prevWS = t.style.whiteSpace;
+        t.style.whiteSpace = 'nowrap';
+        const w = t.scrollWidth;
+        if (w > SAFE){
+          const cur = parseFloat(getComputedStyle(t).fontSize) || 0;
+          if (cur > 0) t.style.fontSize = (cur * SAFE / w).toFixed(2) + 'px';
+        }
+        t.style.whiteSpace = prevWS;
+      });
+    });
+  }
+
   /* ─── BOOT ──────────────────────────────────────────────────────────── */
   build();
+  // Register the timeline SYNCHRONOUSLY so HyperFrames finds window.__timeline
+  // immediately. GSAP animates y/opacity only, so re-fitting font-size after
+  // fonts load does NOT disturb the entrances.
   const master = animate();
-  // HyperFrames drives master via seek(time). For local preview, uncomment:
+  // Fit big type to the safe area. Run once now (fallback metrics) AND again
+  // after fonts load (true glyph widths) so overflow is gone before the first
+  // captured frame regardless of HyperFrames' internal fonts.ready timing.
+  autofitBig();
+  if (document.fonts && document.fonts.ready) { document.fonts.ready.then(autofitBig); }
+  // HyperFrames drives master via seek(time). For local preview:
   // master.play();
   </script>
 </body>

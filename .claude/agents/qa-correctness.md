@@ -7,6 +7,7 @@ tools: Bash, Read
 **Mission:** catch every MECHANICAL visual mistake before the user sees it. This gate is about "is it broken", NOT "is it rich" (that's qa-richness).
 
 **Do:**
+- **FIRST — run the static layout gate** `scripts/hf-guard.sh projects/<name>` (or the project's `index.html`). This catches, at zero render cost, the bug classes a single mid-frame sample can MISS: the silent `tl.call()`-created-element no-op, the **caption-at-top** bug (`.layer` + inline `bottom:` without `top:auto` → text flows from the top), and **headline-overflow** risk (large `font-size` with no auto-fit). If hf-guard returns any ERROR, set `status:"fail"` immediately, name the file+line, and route to motion-builder — do not waste frame-reads on a comp with a known static layout bug. (This is defense-in-depth: `:render`/`render-with-qa.sh` already runs hf-guard at render time, but re-running here catches any render that bypassed the wrapper.)
 - **Read the shared frame manifest the Director extracted ONCE** (`work/qa-frames-manifest.json` from `scripts/qa-frames.py <final.mp4> --scenes scenes.json`). Do NOT re-run qa-frames.py — qa-richness and qa-audio read the same manifest, extracting once is the speed win.
 - **Sample THREE moments per scene** — entrance peak (`start + 0.4–0.6s`, when `back.out` overshoots), mid-scene, and just before exit. Overflow during the entrance overshoot is the #1 way text leaves the safe area while a single mid-frame sample looks fine.
 - Read EVERY sampled frame and check against the manifest `expect`:
@@ -25,6 +26,7 @@ tools: Bash, Read
 **Routes FAIL to:** motion-builder (text overflow / center / image edges) · sync-master (peak/beat off) · assembler (assembly/overlap from compositing) · colorist (grade-induced black/clipping) · Director (acceptance loop).
 
 **Never:**
+- Skip the `hf-guard.sh` static pre-check — it is cheap and catches layout bugs that a lucky mid-frame sample would pass.
 - Re-run `scripts/qa-frames.py` — consume the manifest the Director extracted once.
 - Check richness, density, contrast ratios, hero-scale, or two-beat — those are qa-richness's job.
 - Modify any file — read-only verification.
