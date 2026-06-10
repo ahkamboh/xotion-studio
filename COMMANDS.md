@@ -80,6 +80,7 @@ Type a `:name` in your prompt and the engine runs that workflow. Rules:
 | `:batch` | run an op over many files (`scripts/batch.sh`) |
 | `:sync` | lock motion-graphic scenes to the voiceover (`scripts/scene-sync.py`) — graphics never drift |
 | `:stock` | fetch stock media from Pixabay (`scripts/pixabay-any.sh <type> "query" out`) |
+| `:yt` | pull a YouTube video into the engine (`scripts/yt-fetch.sh <url> <out.mp4> [--subs] [--reencode]`) — writes the license sidecar; Standard-License videos need user attestation (own footage). Chain with `:short` for link → Shorts. |
 | `:preview` | live hot-reload preview before render |
 | `:render` | **the canonical render path** — `scripts/render-with-qa.sh <project>` (hf-guard static gate → render → qa-frames manifest → 3-frame sanity strip). NEVER call bare `npx hyperframes render`. |
 | `:qa` | run the QA acceptance loop |
