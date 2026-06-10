@@ -1,7 +1,11 @@
 /* textfx.js — the text-ANIMATION engine. Turns a kit's named animation
    (mask-wipe / letter-cascade / punch-in / rise-blur / typewriter / squash-pop /
-   glitch) into ACTUAL deterministic GSAP motion, so motion-builder calls a
-   function by name instead of hand-coding (which always defaulted to pop).
+   glitch / pressure) into ACTUAL deterministic GSAP motion, so motion-builder
+   calls a function by name instead of hand-coding (which always defaulted to pop).
+
+   'pressure' needs a VARIABLE font with a wide wght axis — the library ships
+   assets/fonts/roboto-flex-variable.ttf (wght 100-1000). @font-face it and the
+   sweep fattens each letter as an invisible cursor passes (weight wave).
 
    Usage (after gsap + this script):
      TextFX.enter(el, tl, at, kit.text_anim.entrance, opts)   // entrance at time `at`
@@ -86,7 +90,47 @@
       gsap.set(el,{opacity:0,x:-14,skewX:8});
       tl.to(el,{opacity:1,duration:0.06},at);
       tl.to(el,{x:10,skewX:-6,duration:0.05},at+0.06).to(el,{x:-6,skewX:3,duration:0.05},at+0.11)
-        .to(el,{x:0,skewX:0,duration:0.08,ease:"power2.out"},at+0.16); }
+        .to(el,{x:0,skewX:0,duration:0.08,ease:"power2.out"},at+0.16); },
+    // variable-font weight sweep — an invisible cursor crosses the word once;
+    // each letter's wght swells as the cursor nears (pressure wave) and relaxes
+    // after it passes. REQUIRES a variable font (roboto-flex-variable.ttf).
+    // opts: dur(2) minWeight(100) maxWeight(900) falloff(0.5 of text width)
+    //       ease("power2.inOut") hold(false — true keeps letters bold after pass)
+    'pressure': function(el,tl,at,o){ o=o||{};
+      var chars=splitChars(el),
+          minW=o.minWeight||100, maxW=o.maxWeight||900,
+          dur=o.dur||2, fall=(o.falloff==null?0.5:o.falloff), hold=!!o.hold;
+      function setW(s,w){ s.style.fontVariationSettings="'wght' "+Math.round(w); }
+      for(var i=0;i<chars.length;i++) setW(chars[i],minW);
+      gsap.set(el,{opacity:1});
+      // geometry measured lazily on the first update (fonts are loaded by
+      // render time; measuring at construction could see pre-font layout).
+      var geo=null;
+      function measure(){
+        var r=el.getBoundingClientRect(), centers=[];
+        for(var i=0;i<chars.length;i++){
+          var c=chars[i].getBoundingClientRect();
+          centers.push(c.left + c.width/2 - r.left);
+        }
+        return { w:r.width, centers:centers, fallPx:Math.max(1,r.width*fall) };
+      }
+      var p={t:0};
+      tl.to(p,{t:1,duration:dur,ease:o.ease||"power2.inOut",onUpdate:function(){
+        if(!geo) geo=measure();
+        // cursor sweeps from -fallPx to width+fallPx so edge letters fully
+        // relax once it has passed (unless hold keeps them bold)
+        var start=-geo.fallPx, end=geo.w+(hold?0:geo.fallPx),
+            cx=start+(end-start)*p.t;
+        for(var i=0;i<chars.length;i++){
+          var w;
+          if(hold && geo.centers[i]<=cx){ w=maxW; }
+          else {
+            var k=Math.min(1, Math.abs(cx-geo.centers[i])/geo.fallPx);
+            w=maxW-(maxW-minW)*k;
+          }
+          setW(chars[i], Math.max(minW, Math.min(maxW, w)));
+        }
+      }},at); }
   };
   var EXIT = {
     'fade-up': function(el,tl,at,o){ o=o||{}; tl.to(el,{y:-(o.y||14),opacity:0,filter:"blur(5px)",duration:o.dur||0.45,ease:"power2.in"},at); },
