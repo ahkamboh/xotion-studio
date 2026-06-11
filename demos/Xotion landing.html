@@ -1245,5 +1245,297 @@ console<span class="o">.</span>log(r<span class="o">.</span>url); <span class="c
   </div>
 </footer>
 
+<!-- ═══ MOTION LAYER — animation only, zero design changes ═══ -->
+<style>
+  /* Lenis */
+  html.lenis, html.lenis body { height: auto; }
+  .lenis.lenis-smooth { scroll-behavior: auto !important; }
+
+  /* Masked line reveals (spans injected by JS; harmless if JS never runs) */
+  .x-line { display: block; overflow: hidden; }
+  .x-line > .x-line-inner { display: block; will-change: transform; }
+  .x-line.x-done { overflow: visible; }
+  .x-line.x-done > .x-line-inner { will-change: auto; }
+
+  /* Link underline micro-interaction (nav + footer) */
+  nav.top ul a, footer ul a { position: relative; }
+  nav.top ul a::after, footer ul a::after {
+    content: '';
+    position: absolute; left: 0; bottom: -4px;
+    width: 100%; height: 1px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: 100% 50%;
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  nav.top ul a:hover::after, footer ul a:hover::after {
+    transform: scaleX(1);
+    transform-origin: 0 50%;
+  }
+
+  /* Render-progress bar fill — only armed when JS adds body.x-anim */
+  body.x-anim .step .mock .progress::after {
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 1.5s cubic-bezier(0.22, 1, 0.36, 1) 0.5s;
+  }
+  body.x-anim .step.x-in .mock .progress::after { transform: scaleX(1); }
+
+  /* Slightly richer button easing (same start/end states as before) */
+  .btn { transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), background 160ms ease, color 160ms ease, border-color 160ms ease; }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.18/dist/lenis.min.js"></script>
+<script>
+(() => {
+  if (!window.gsap || !window.ScrollTrigger || !window.Lenis) return;
+  gsap.registerPlugin(ScrollTrigger);
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- reduced motion: keep everything visible, no smoothing ---------- */
+  if (reduceMotion) {
+    document.querySelectorAll('.step').forEach((s) => s.classList.add('x-in'));
+    document.body.classList.add('x-anim');
+    return;
+  }
+
+  document.body.classList.add('x-anim');
+
+  /* ---------- Lenis smooth scroll, driven by the GSAP ticker ---------- */
+  const lenis = new Lenis({
+    duration: 1.2,
+    easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+    smoothWheel: true,
+  });
+  lenis.on('scroll', ScrollTrigger.update);
+  gsap.ticker.add((time) => lenis.raf(time * 1000));
+  gsap.ticker.lagSmoothing(0);
+
+  // Anchor links through Lenis (offset for the sticky nav)
+  document.querySelectorAll('a[href^="#"]').forEach((a) => {
+    a.addEventListener('click', (e) => {
+      const id = a.getAttribute('href');
+      if (id.length > 1 && document.querySelector(id)) {
+        e.preventDefault();
+        lenis.scrollTo(id, { offset: -72, duration: 1.5 });
+      }
+    });
+  });
+
+  /* ---------- helpers ---------- */
+  // Split a heading into masked block lines at <br> boundaries.
+  // Inline markup (em / span.italic / .strike) is preserved inside each line.
+  const splitLines = (el) => {
+    const groups = [[]];
+    [...el.childNodes].forEach((node) => {
+      if (node.nodeName === 'BR') groups.push([]);
+      else groups[groups.length - 1].push(node);
+    });
+    el.textContent = '';
+    const inners = [];
+    groups.forEach((nodes) => {
+      if (!nodes.length) return;
+      const line = document.createElement('span');
+      line.className = 'x-line';
+      const inner = document.createElement('span');
+      inner.className = 'x-line-inner';
+      nodes.forEach((n) => inner.appendChild(n));
+      line.appendChild(inner);
+      el.appendChild(line);
+      inners.push(inner);
+    });
+    return inners;
+  };
+
+  const unmask = (inners) => () =>
+    inners.forEach((inner) => {
+      inner.parentElement.classList.add('x-done');
+      gsap.set(inner, { clearProps: 'transform' });
+    });
+
+  // Masked line rise, scroll-triggered
+  const maskReveal = (headingSel, triggerSel) => {
+    const el = document.querySelector(headingSel);
+    if (!el) return;
+    const inners = splitLines(el);
+    gsap.set(inners, { yPercent: 115 });
+    gsap.to(inners, {
+      yPercent: 0,
+      duration: 1.15,
+      ease: 'power4.out',
+      stagger: 0.1,
+      onComplete: unmask(inners),
+      scrollTrigger: { trigger: triggerSel || el, start: 'top 80%' },
+    });
+  };
+
+  // Generic fade/translate-up reveal with stagger
+  const fadeUp = (targets, trigger, vars = {}) => {
+    const els = gsap.utils.toArray(targets);
+    if (!els.length) return;
+    return gsap.fromTo(
+      els,
+      { y: vars.y ?? 36, autoAlpha: 0 },
+      {
+        y: 0,
+        autoAlpha: 1,
+        duration: vars.duration ?? 1,
+        ease: 'power3.out',
+        stagger: vars.stagger ?? 0.1,
+        scrollTrigger: { trigger, start: vars.start ?? 'top 80%', onEnter: vars.onEnter },
+        delay: vars.delay ?? 0,
+        // release inline transforms so existing CSS hover lifts (.btn, .card) still work
+        onComplete() { gsap.set(this.targets(), { clearProps: 'transform,visibility,opacity' }); },
+      }
+    );
+  };
+
+  /* ---------- page-load intro: nav + hero ---------- */
+  const heroLines = splitLines(document.querySelector('.hero h1'));
+  gsap.set(heroLines, { yPercent: 115 });
+  gsap.set('nav.top', { y: -20, autoAlpha: 0 });
+  gsap.set(['.hero .label', '.hero .sub'], { y: 26, autoAlpha: 0 });
+  gsap.set('.hero .ctas > *', { y: 22, autoAlpha: 0 });
+  gsap.set('.phone', { y: 60, scale: 0.96, autoAlpha: 0 });
+  gsap.set('.live-badge', { scale: 0.6, autoAlpha: 0 });
+  gsap.set('.logo-strip .label, .logo-strip .logos span', { y: 16, autoAlpha: 0 });
+
+  const intro = gsap.timeline({ paused: true, defaults: { ease: 'power4.out' } });
+  intro
+    .to('nav.top', { y: 0, autoAlpha: 1, duration: 0.8 }, 0)
+    .to('.hero .label', { y: 0, autoAlpha: 1, duration: 0.7 }, 0.1)
+    .to(heroLines, { yPercent: 0, duration: 1.2, stagger: 0.12, onComplete: unmask(heroLines) }, 0.25)
+    .to('.hero .sub', { y: 0, autoAlpha: 1, duration: 0.9 }, 0.75)
+    .to('.hero .ctas > *', { y: 0, autoAlpha: 1, duration: 0.8, stagger: 0.08 }, 0.9)
+    .to('.phone', { y: 0, scale: 1, autoAlpha: 1, duration: 1.4, ease: 'power3.out' }, 0.45)
+    .to('.live-badge', { scale: 1, autoAlpha: 1, duration: 0.6, ease: 'back.out(2)' }, 1.25)
+    .to('.logo-strip .label', { y: 0, autoAlpha: 1, duration: 0.7 }, 1.1)
+    .to('.logo-strip .logos span', { y: 0, autoAlpha: 1, duration: 0.7, stagger: 0.06 }, 1.2)
+    // release inline styles so CSS hovers (.btn lift etc.) behave exactly as designed
+    .add(() => gsap.set('nav.top, .hero .label, .hero .sub, .hero .ctas > *', { clearProps: 'transform,visibility,opacity' }));
+
+  if (document.readyState === 'complete') intro.play();
+  else window.addEventListener('load', () => intro.play());
+
+  // Hero phone parallax
+  gsap.to('.phone-wrap', {
+    y: -48,
+    ease: 'none',
+    scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true },
+  });
+
+  /* ---------- pitch ---------- */
+  fadeUp('.pitch .label', '.pitch', { y: 18, duration: 0.7 });
+  maskReveal('.pitch h2', '.pitch');
+  fadeUp('.compare .col', '.compare', { y: 48, stagger: 0.12, start: 'top 82%' });
+
+  /* ---------- how it works ---------- */
+  fadeUp('.how .label', '.how', { y: 18, duration: 0.7 });
+  maskReveal('.how h2', '.how');
+  fadeUp('.step', '.steps', {
+    y: 52,
+    stagger: 0.15,
+    start: 'top 80%',
+    onEnter: () => document.querySelectorAll('.step').forEach((s) => s.classList.add('x-in')),
+  });
+
+  /* ---------- templates ---------- */
+  fadeUp('.templates .label', '.templates .head', { y: 18, duration: 0.7 });
+  maskReveal('.templates h2', '.templates .head');
+  fadeUp('.templates .head p', '.templates .head', { y: 28, delay: 0.25 });
+  fadeUp('.templates .card', '.templates .grid', { y: 56, stagger: 0.09, start: 'top 84%' });
+  gsap.fromTo(
+    '.templates .thumb-inner',
+    { scale: 1.07 },
+    {
+      scale: 1,
+      duration: 1.6,
+      ease: 'power3.out',
+      stagger: 0.09,
+      scrollTrigger: { trigger: '.templates .grid', start: 'top 84%' },
+    }
+  );
+
+  /* ---------- builders ---------- */
+  fadeUp('.builders .label', '.builders', { y: 18, duration: 0.7 });
+  maskReveal('.builders h2', '.builders');
+  fadeUp('.builders p', '.builders', { y: 28, delay: 0.15 });
+  fadeUp('.builders .feat', '.builders .feats', { y: 26, stagger: 0.09, start: 'top 85%' });
+  // Code mock: clip-path inset reveal + inner settle
+  gsap.fromTo(
+    '.code-mock',
+    { clipPath: 'inset(0% 0% 100% 0%)' },
+    {
+      clipPath: 'inset(0% 0% 0% 0%)',
+      duration: 1.3,
+      ease: 'power4.inOut',
+      scrollTrigger: { trigger: '.code-mock', start: 'top 78%' },
+    }
+  );
+  gsap.fromTo(
+    '.code-mock pre',
+    { y: 36, autoAlpha: 0 },
+    {
+      y: 0,
+      autoAlpha: 1,
+      duration: 1.1,
+      ease: 'power3.out',
+      delay: 0.35,
+      scrollTrigger: { trigger: '.code-mock', start: 'top 78%' },
+    }
+  );
+
+  /* ---------- pricing ---------- */
+  fadeUp('.pricing .head .label', '.pricing .head', { y: 18, duration: 0.7 });
+  maskReveal('.pricing h2', '.pricing .head');
+  fadeUp('.pricing .head p', '.pricing .head', { y: 28, delay: 0.25 });
+  fadeUp('.tier', '.tiers', { y: 56, stagger: 0.12, start: 'top 82%' });
+
+  /* ---------- faq ---------- */
+  fadeUp('.faq .label', '.faq', { y: 18, duration: 0.7 });
+  maskReveal('.faq h2', '.faq');
+  fadeUp('.faq .item', '.faq .items', { y: 30, stagger: 0.07, start: 'top 82%' });
+
+  /* ---------- big cta ---------- */
+  maskReveal('.big-cta h2', '.big-cta');
+  fadeUp('.big-cta p', '.big-cta', { y: 28, delay: 0.3 });
+  fadeUp('.big-cta .ctas > *', '.big-cta', { y: 22, stagger: 0.08, delay: 0.45 });
+  // Subtle parallax drift on the giant headline
+  gsap.fromTo(
+    '.big-cta h2',
+    { yPercent: -5 },
+    {
+      yPercent: 5,
+      ease: 'none',
+      scrollTrigger: { trigger: '.big-cta', start: 'top bottom', end: 'bottom top', scrub: true },
+    }
+  );
+
+  /* ---------- footer ---------- */
+  fadeUp('footer .row > div', 'footer .row', { y: 28, stagger: 0.08, start: 'top 92%' });
+  fadeUp('footer .legal', 'footer .legal', { y: 14, start: 'top 96%', duration: 0.8 });
+
+  /* ---------- magnetic primary CTAs ---------- */
+  if (window.matchMedia('(hover: hover)').matches) {
+    document.querySelectorAll('.hero .ctas .btn-primary, .big-cta .btn-primary').forEach((btn) => {
+      const mx = gsap.quickTo(btn, 'x', { duration: 0.4, ease: 'power3' });
+      const my = gsap.quickTo(btn, 'y', { duration: 0.4, ease: 'power3' });
+      btn.addEventListener('pointermove', (e) => {
+        const r = btn.getBoundingClientRect();
+        mx((e.clientX - (r.left + r.width / 2)) * 0.3);
+        my((e.clientY - (r.top + r.height / 2)) * 0.4);
+      });
+      btn.addEventListener('pointerleave', () => { mx(0); my(0); });
+    });
+  }
+
+  /* ---------- keep triggers accurate after webfonts settle ---------- */
+  window.addEventListener('load', () => ScrollTrigger.refresh());
+})();
+</script>
+
 </body>
 </html>
