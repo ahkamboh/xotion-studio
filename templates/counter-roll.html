@@ -40,10 +40,12 @@
       animated element gets its initial state via gsap.set before frame 0.
       Strips tween yPercent (unit-free) so seeks are exact. No Math.random,
       no Date, no rAF, no CSS transitions/keyframes, no infinite repeats.
-      autofitBig() measures the number row LAZILY inside the first onUpdate
-      of a proxy tween (fonts may not be laid out at construction), caches
-      the result, and scales the stack down only if the value overflows the
-      1680px safe width — a pure, time-independent safety net.
+      autofitBig() re-measures the number row inside EVERY onUpdate of a
+      proxy tween and re-applies the fit (scale = min(1, 1680/width));
+      the result is cached only once document.fonts reports "loaded"
+      (first non-zero measure if the Font Loading API is unavailable),
+      so a scale taken from fallback-font metrics is never fit-locked —
+      a pure, idempotent, time-independent safety net.
     -->
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
     <style>
@@ -206,12 +208,16 @@
 
       /* ── lazy autofit (hf-guard exemption + overflow safety net) ────── */
       let fitDone = false;
-      function autofitBig() {            // measured AFTER fonts lay out; cached
+      function autofitBig() {            // re-measured each update until cached
         if (fitDone) return;
         const w = row.offsetWidth;       // layout width, transform-independent
         if (w > 0) {
-          if (w > MAXW) gsap.set(stack, { scale: MAXW / w, transformOrigin: "50% 50%" });
-          fitDone = true;
+          // re-APPLY (not just apply-once): a fit computed from fallback-font
+          // metrics must be overwritten — scale back to 1 if it now fits
+          gsap.set(stack, { scale: w > MAXW ? MAXW / w : 1, transformOrigin: "50% 50%" });
+          // cache only once real font metrics are in; without the Font
+          // Loading API, fall back to caching the first non-zero measure
+          if (!document.fonts || document.fonts.status === "loaded") fitDone = true;
         }
       }
 
@@ -255,7 +261,7 @@
       // hold the final frame to the end of data-duration
       tl.set({}, {}, DUR);
 
-      autofitBig(); // boot attempt (no-op until layout exists; cached after)
+      autofitBig(); // boot attempt (no-op until layout exists; re-applied per update until fonts load)
 
       window.__timelines = window.__timelines || {};
       window.__timelines["main"] = tl;
