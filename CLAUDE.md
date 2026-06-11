@@ -308,6 +308,7 @@ first; only hand-build when nothing fits.
 - `templates/reactive-captions-landscape.html` — HUD + captions over real footage
 - `templates/title-card.html` — clean animated title / intro / lower-third starter
 - `templates/thumbnail.html` — designed YouTube thumbnail (render 1 frame)
+- `templates/input-typing.html` — typing-into-a-search-field with a virtual camera (zoom in → type + pan → pull back). Variables-driven (`text`, `speed`, colors…) so `:cards` can batch a CSV of queries → one video each.
 
 **Workflow:** scaffold → build end-state layout first (static), then add GSAP entrances/exits →
 **`scripts/render-with-qa.sh <project> -o renders/x.mp4`** — this is the CANONICAL render path
