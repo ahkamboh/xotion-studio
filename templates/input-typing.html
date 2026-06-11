@@ -7,6 +7,7 @@
   {"id":"zoomMax",   "type":"string","label":"Zoom: typing",         "default":"5.5"},
   {"id":"zoomEnd",   "type":"string","label":"Zoom: final",          "default":"1.5"},
   {"id":"button",    "type":"string","label":"Enter button (show/hide)","default":"show"},
+  {"id":"cursor",    "type":"string","label":"Cursor click finish (show/hide)","default":"show"},
   {"id":"bg",        "type":"color", "label":"Background",           "default":"#ffffff"},
   {"id":"glow",      "type":"color", "label":"Glow",                 "default":"#60a5fa"},
   {"id":"border",    "type":"color", "label":"Field border",         "default":"#e5e7eb"},
@@ -17,23 +18,27 @@
     <meta name="viewport" content="width=1920, height=1080" />
     <!--
       INPUT TYPING — "typing into a search field" with a virtual camera.
-      A pill input types out character-by-character (blinking cursor, field
+      A pill input types out character-by-character (blinking caret, field
       stretching as text grows) while the camera zooms in close, pans along
-      the growing text, pauses, then pulls back to reveal the whole field.
+      the growing text, pauses, then pulls back to reveal the whole field —
+      and a mac-style cursor glides in and CLICKS the enter button to finish
+      (dip + button squash + glow ripple). Set cursor="hide" to end on the
+      pull-back instead; the click is skipped automatically if button="hide".
 
       Slot-driven via data-composition-variables (works with `:cards` /
       scripts/render-batch.py — e.g. a CSV of domains → one video each):
         npx hyperframes render <proj> --variables '{"text":"xotion.studio"}'
 
-      TIMING — the animation completes at ≈ 2.6s + 0.12s × characters, then
-      HOLDS the final frame. data-duration below (4.5) fits up to ~15 chars;
-      for longer text bump data-duration to (3 + 0.15 × chars).
+      TIMING — the animation completes at ≈ 4.1s + 0.12s × characters (or
+      ≈ 2.6s + 0.12s × characters with cursor="hide"), then HOLDS the final
+      frame. data-duration below (6) fits up to ~15 chars; for longer text
+      bump data-duration to (4.5 + 0.15 × chars).
 
       Determinism contract: one render(t) drives zoom + pan + typing + field
-      width in perfect sync, called from a GSAP proxy tween's onUpdate on the
-      paused master timeline (Pattern A) — HyperFrames seeks any frame exactly.
-      No Math.random, no Date, no rAF. render(0) runs at boot so frame 0 is
-      never unstyled.
+      width + cursor + click in perfect sync, called from a GSAP proxy tween's
+      onUpdate on the paused master timeline (Pattern A) — HyperFrames seeks
+      any frame exactly. No Math.random, no Date, no rAF. render(0) runs at
+      boot so frame 0 is never unstyled.
     -->
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
     <style>
@@ -65,10 +70,14 @@
         background:#0a0a0a;
       }
       .btn svg { display:block; }
+      /* click-finish layer: ripple ring + mac pointer, positioned in cam
+         coordinates (the cam box == the field box) so they track zoom/pan */
+      .ripple { position:absolute; border-radius:50%; opacity:0; pointer-events:none; }
+      .pointer { position:absolute; left:0; top:0; opacity:0; pointer-events:none; }
     </style>
   </head>
   <body>
-    <div id="root" data-composition-id="main" data-start="0" data-duration="4.5" data-width="1920" data-height="1080">
+    <div id="root" data-composition-id="main" data-start="0" data-duration="6" data-width="1920" data-height="1080">
       <div class="cam" id="cam">
         <div class="field" id="field">
           <span class="txt" id="txt"></span><span class="caret" id="caret">|</span>
@@ -79,6 +88,11 @@
             </svg>
           </span>
         </div>
+        <div class="ripple" id="ripple"></div>
+        <svg class="pointer" id="pointer" viewBox="0 0 24 24">
+          <path d="M5.6 2.2 L5.6 18.6 L9.8 14.9 L12.2 20.6 L15.1 19.4 L12.7 13.8 L18.2 13.4 Z"
+                fill="#0a0a0a" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round"/>
+        </svg>
       </div>
     </div>
 
@@ -92,7 +106,8 @@
       const Z0     = parseFloat(V.zoomStart) || 2.5;
       const Z1     = parseFloat(V.zoomMax)   || 5.5;
       const Z2     = parseFloat(V.zoomEnd)   || 1.5;
-      const SHOW_BTN = String(V.button) !== "hide";
+      const SHOW_BTN  = String(V.button) !== "hide";
+      const CURSOR_ON = String(V.cursor) !== "hide" && SHOW_BTN;
 
       /* ── derived layout constants (spec) ────────────────────────────── */
       const CHAR_W  = FS * 0.6;            // approximate monospace-ish advance
@@ -102,6 +117,13 @@
       const FIELD_H = FS * 2.5;
       const N       = TEXT.length;
       const FULL_TEXT_W = N * CHAR_W;
+      // final field width + button center (the click target, in cam coords)
+      const W_FINAL = Math.max(MIN_W, FULL_TEXT_W + PAD * 2 + (SHOW_BTN ? BTN : 0));
+      const BX = W_FINAL - PAD * 0.4 - BTN / 2;
+      const BY = FIELD_H / 2;
+      const CURW = FS * 1.1;                       // pointer size scales with type
+      const TIPX = CURW * (5.6 / 24), TIPY = CURW * (2.2 / 24);  // hotspot offset
+      const RIP  = BTN * 1.3;
 
       /* ── timeline phases (spec) ─────────────────────────────────────── */
       const ZOOM_IN_END = 1.0;
@@ -111,11 +133,19 @@
       const PAN_DUR     = TYPE_DUR * (N > 15 ? 1.5 : 1.2);
       const PAUSE_END   = TYPE_START + TYPE_DUR + 0.3;
       const ZOOM_OUT_DUR = 1.0;
-      const TOTAL       = PAUSE_END + ZOOM_OUT_DUR;
+      const ZOOM_OUT_END = PAUSE_END + ZOOM_OUT_DUR;
+      // cursor-click finish: glide in → click (dip + squash + ripple) → settle
+      const CUR_IN_DUR  = 0.7;
+      const CLICK_AT    = ZOOM_OUT_END + CUR_IN_DUR;
+      const CLICK_DUR   = 0.35;
+      const SETTLE      = 0.45;
+      const TOTAL       = CURSOR_ON ? CLICK_AT + CLICK_DUR + SETTLE : ZOOM_OUT_END;
 
       /* ── easing (spec) ──────────────────────────────────────────────── */
       const outExpo    = t => t >= 1 ? 1 : 1 - Math.pow(2, -10 * t);
       const inOutCubic = t => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
+      const outQuad    = t => 1 - (1 - t) * (1 - t);
+      const outCubic   = t => 1 - Math.pow(1 - t, 3);
       const clamp01    = t => Math.max(0, Math.min(1, t));
 
       /* ── static styles from variables ───────────────────────────────── */
@@ -125,6 +155,8 @@
       const txt   = document.getElementById("txt");
       const caret = document.getElementById("caret");
       const btn   = document.getElementById("btn");
+      const rippleEl  = document.getElementById("ripple");
+      const pointerEl = document.getElementById("pointer");
 
       document.body.style.background = V.bg;
       root.style.background = V.bg;
@@ -141,6 +173,14 @@
       btn.style.display = SHOW_BTN ? "flex" : "none";
       btn.querySelector("svg").style.width  = (BTN * 0.5) + "px";
       btn.querySelector("svg").style.height = (BTN * 0.5) + "px";
+      pointerEl.style.width  = CURW + "px";
+      pointerEl.style.height = CURW + "px";
+      pointerEl.style.display = CURSOR_ON ? "block" : "none";
+      rippleEl.style.width  = RIP + "px";
+      rippleEl.style.height = RIP + "px";
+      rippleEl.style.left = (BX - RIP / 2) + "px";
+      rippleEl.style.top  = (BY - RIP / 2) + "px";
+      rippleEl.style.border = `3px solid ${V.glow}`;
 
       /* ── the one render(t) that keeps everything in sync ────────────── */
       function render(t) {
@@ -155,11 +195,10 @@
         }
 
         // 2. typing
-        const chars = clamp01((t - TYPE_START) / (TYPE_DUR || 1)) * N;
         const shown = Math.min(N, Math.max(0, Math.floor((t - TYPE_START) / SPEED)));
         txt.textContent = TEXT.slice(0, shown);
 
-        // cursor blinks while typing, hidden otherwise
+        // caret blinks while typing, hidden otherwise
         const typing = t >= TYPE_START && t <= TYPE_START + TYPE_DUR;
         caret.style.opacity = typing ? (Math.sin(t * Math.PI * 2) + 1) / 2 : 0;
 
@@ -182,6 +221,38 @@
 
         cam.style.transform =
           `translate(calc(-50% + ${panX.toFixed(2)}px), -50%) scale(${zoom.toFixed(4)})`;
+
+        // 5. cursor-click finish — pointer glides to the button and clicks it
+        if (CURSOR_ON) {
+          let press = 0;
+          if (t < ZOOM_OUT_END) {
+            pointerEl.style.opacity = 0;
+            rippleEl.style.opacity = 0;
+          } else {
+            const kIn = clamp01((t - ZOOM_OUT_END) / CUR_IN_DUR);
+            let cx = BX + 0.42 * W_FINAL * (1 - outQuad(kIn));   // in from the right
+            let cy = BY + 300 * (1 - outCubic(kIn));             // and from below (arc)
+            pointerEl.style.opacity = clamp01((t - ZOOM_OUT_END) / 0.15);
+            const kc = (t - CLICK_AT) / CLICK_DUR;
+            if (kc >= 0) {
+              press = Math.sin(clamp01(kc) * Math.PI);           // 0 → 1 → 0
+              cx = BX;
+              cy = BY + press * 0.1 * BTN;                       // click dip
+              const e = outCubic(clamp01(kc));
+              rippleEl.style.opacity = kc <= 1 ? 0.55 * (1 - e) : 0;
+              rippleEl.style.transform = `scale(${(0.5 + 1.9 * e).toFixed(4)})`;
+              // settle: drift off the button so the arrow is visible at the end
+              const kd = outCubic(clamp01((t - (CLICK_AT + CLICK_DUR)) / SETTLE));
+              cx = BX + 0.65 * BTN * kd;
+              cy = BY + press * 0.1 * BTN + 0.55 * BTN * kd;
+            } else {
+              rippleEl.style.opacity = 0;
+            }
+            pointerEl.style.transform =
+              `translate(${(cx - TIPX).toFixed(2)}px, ${(cy - TIPY).toFixed(2)}px)`;
+          }
+          btn.style.transform = `scale(${(1 - 0.12 * press).toFixed(4)})`;  // squash
+        }
       }
 
       /* ── paused master timeline; HyperFrames seeks it ───────────────── */
@@ -190,7 +261,7 @@
       tl.to(p, { t: TOTAL, duration: TOTAL, ease: "none",
                  onUpdate: () => render(p.t) }, 0);
       // hold the final frame to the end of data-duration
-      tl.set({}, {}, Math.max(TOTAL, 4.5));
+      tl.set({}, {}, Math.max(TOTAL, 6));
 
       render(0); // frame 0 styled immediately
 
