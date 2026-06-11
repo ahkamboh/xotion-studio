@@ -10,6 +10,6 @@
   
   <text x="613" y="345" text-anchor="end" fill="#0e0d0c" font-family="FrauncesEmb, Georgia, serif" font-weight="900" font-size="250">X</text>
   <circle cx="700" cy="282" r="65" fill="none" stroke="#e0451f" stroke-width="13"></circle>
-  <polygon points="688.6,254.5 688.6,309.5 738.8,282" fill="#e0451f"></polygon>
+  <polygon points="686.1,254.5 686.1,309.5 736.4,282" fill="#e0451f"></polygon>
   <text x="787" y="345" text-anchor="start" fill="#0e0d0c" font-family="FrauncesEmb, Georgia, serif" font-weight="900" font-size="250">tion</text>
 </svg>
