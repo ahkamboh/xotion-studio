@@ -308,7 +308,7 @@ first; only hand-build when nothing fits.
 - `templates/reactive-captions-landscape.html` — HUD + captions over real footage
 - `templates/title-card.html` — clean animated title / intro / lower-third starter
 - `templates/thumbnail.html` — designed YouTube thumbnail (render 1 frame)
-- `templates/input-typing.html` — typing-into-a-search-field with a virtual camera (zoom in → type + pan → pull back). Variables-driven (`text`, `speed`, colors…) so `:cards` can batch a CSV of queries → one video each.
+- `templates/input-typing.html` — typing-into-a-search-field with a virtual camera (zoom in → type + pan → pull back → mac cursor clicks the enter button to finish; `cursor="hide"` to skip). Variables-driven (`text`, `speed`, colors…) so `:cards` can batch a CSV of queries → one video each.
 - `templates/cursor-click.html` — mac cursor glides to a pill button, clicks it (ripple, squash), label swaps to done state. Variables: label/labelDone/colors.
 - `templates/notification-pop.html` — phone push notification drops in with a spring (app/title/message/emoji, optional stacked ghosts via `count`).
 - `templates/counter-roll.html` — odometer digits roll up to a big stat (value/prefix/suffix/label, dark by default).
