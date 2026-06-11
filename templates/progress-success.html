@@ -15,7 +15,9 @@
       morphs into a success check with a deterministic confetti burst.
       Centered 760px column: label (left) + live percent (right, tabular-nums)
       over an 18px rounded track. The fill is driven by ONE proxy {v} so the
-      percent text and the bar scaleX can never drift apart.
+      percent text and the bar scaleX can never drift apart; the text shows
+      Math.floor(v) so it never reads ahead of the fill (final tween ends at
+      exactly v=100, so the done state still prints "100%").
 
       Slot-driven via data-composition-variables:
         label      — progress row text        (default "Rendering launch-video.mp4")
@@ -120,6 +122,11 @@
     <script>
       const V = window.__hyperframes.getVariables();
 
+      /* normalize a CSS hex color to 6-digit form so 2-digit alpha can be
+         appended safely (#abc → #aabbcc, #rrggbbaa → #rrggbb) */
+      function hex6(c){c=String(c).trim();if(/^#[0-9a-fA-F]{3}$/.test(c))return "#"+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];if(/^#[0-9a-fA-F]{8}$/.test(c))return c.slice(0,7);return c;}
+      const ACCENT = hex6(V.accent);   // alpha digits get appended to this one
+
       /* ── elements ───────────────────────────────────────────────────── */
       const root     = document.getElementById("root");
       const cam      = document.getElementById("cam");
@@ -144,7 +151,7 @@
       track.style.background = V.barBg;
       fill.style.background  = V.accent;
       circle.style.background = V.accent;
-      circle.style.boxShadow  = `0 18px 60px ${V.accent}59, 0 6px 18px ${V.accent}40`;
+      circle.style.boxShadow  = `0 18px 60px ${ACCENT}59, 0 6px 18px ${ACCENT}40`;
 
       /* ── confetti: HAND-CODED deterministic table (no randomness) ───── */
       /* angles 0..330 step 30 · dist alternating 95/130/150 · sizes 8–14 */
@@ -193,7 +200,7 @@
       const prog = { v: 0 };
       function drawProgress() {
         fill.style.transform = `scaleX(${(prog.v / 100).toFixed(4)})`;
-        pct.textContent = Math.round(prog.v) + "%";
+        pct.textContent = Math.floor(prog.v) + "%";  // floor: text never leads the fill
       }
 
       /* ── paused master timeline; HyperFrames seeks it ───────────────── */
