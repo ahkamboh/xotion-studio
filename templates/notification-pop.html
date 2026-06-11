@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"app",    "type":"string","label":"App name",          "default":"XOTION"},
+  {"id":"title",  "type":"string","label":"Notification title","default":"Render complete"},
+  {"id":"message","type":"string","label":"Notification body", "default":"launch-video.mp4 is ready — 4K, 24s"},
+  {"id":"emoji",  "type":"string","label":"App icon emoji",    "default":"🎬"},
+  {"id":"bg",     "type":"color", "label":"Background",        "default":"#f1f5f9"},
+  {"id":"iconBg", "type":"color", "label":"App icon bg",       "default":"#0a0a0a"},
+  {"id":"ink",    "type":"color", "label":"Text color",        "default":"#0a0a0a"},
+  {"id":"count",  "type":"string","label":"Total cards (1-3)", "default":"1"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <!--
+      NOTIFICATION POP — a phone-style push notification drops in from above
+      and lands center-frame with a springy elastic settle, then the app icon
+      pops and a soft radial glow pulses behind the card. Clean hold to the
+      end — loopable demo frame, nothing exits.
+
+      VARIABLES (data-composition-variables / npx hyperframes render
+      <proj> --variables '{"title":"Export done"}'):
+        app     — app name, rendered letter-spaced uppercase   ("XOTION")
+        title   — bold notification title                      ("Render complete")
+        message — body line, 60%-ink                           ("launch-video.mp4 is ready — 4K, 24s")
+        emoji   — glyph centered in the 64px app icon          ("🎬")
+        bg      — scene background (solid)                     (#f1f5f9)
+        iconBg  — rounded-square app icon background           (#0a0a0a)
+        ink     — text color; grays derived as ink+alpha hex,
+                  so #rgb / #rrggbbaa inputs are normalized to
+                  #rrggbb (hex6) before suffixing              (#0a0a0a)
+        count   — TOTAL cards on screen. "1" = single card.
+                  "2"/"3" = count-1 ghost cards stacked behind/
+                  below (scale .96/.92, opacity .55/.3), built
+                  at construction.
+
+      TIMING (data-duration 4.0):
+        0.00–0.90  DROP  card y:-360 rot:-2 → y:0 rot:0, elastic.out(1,0.62);
+                         opacity 0→1 over the first 0.12s (so frame 0 is the
+                         empty bg — pure y:-360 would still peek into frame);
+                         drop shadow fades in 0.25–0.90.
+        0.55–0.95  STACK ghost cards (count 2/3 only) slide up behind the
+                         card, staggered, power3.out.
+        0.90–1.30  POP   icon scale 1→1.14→1 (back.out) + radial glow behind
+                         the card pulses opacity 0→0.5→0.
+        1.30–4.00  HOLD  nothing exits; final frame held to data-duration.
+        0.00–4.00  CAM   slow push 1.0→1.05 on the .cam wrapper, linear.
+
+      Determinism contract: ONE paused GSAP master timeline registered as
+      window.__timelines["main"]; HyperFrames seeks any frame exactly. All DOM
+      (including ghost cards) is built at script-construction time; every
+      animated element's initial state is gsap.set before any tween. No
+      Math.random, no Date, no rAF, no setTimeout, no CSS transitions or
+      @keyframes, no infinite repeats. Final frame padded with
+      tl.set({},{},DUR) so the hold renders to the last frame.
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family:"Inter"; font-weight:500;
+        src:url("assets/fonts/inter-500.ttf") format("truetype"); }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      html,body { width:1920px; height:1080px; overflow:hidden; }
+      #root { position:relative; width:1920px; height:1080px; overflow:hidden;
+        font-family:"Inter",sans-serif; font-weight:500; }
+      /* the camera: slow push applied as ONE transform on this wrapper */
+      .cam { position:absolute; left:50%; top:50%; will-change:transform; }
+      /* stack sizes itself to the card; ghosts + glow hang off it */
+      .stack { position:relative; }
+      .glow {
+        position:absolute; left:50%; top:50%; z-index:0;
+        width:1040px; height:620px;
+        transform:translate(-50%,-50%);
+        pointer-events:none;
+      }
+      .ghost {
+        position:absolute; inset:0; z-index:1;
+        border-radius:28px;
+        background:rgba(255,255,255,0.95);
+        border:1px solid rgba(10,10,10,0.12);
+        box-shadow:0 14px 30px rgba(10,10,10,0.14);
+        will-change:transform,opacity;
+      }
+      .cardWrap { position:relative; z-index:3; will-change:transform; }
+      .cardShadow {
+        position:absolute; inset:0; z-index:-1;
+        border-radius:28px;
+        box-shadow:0 24px 60px rgba(10,10,10,0.16), 0 6px 18px rgba(10,10,10,0.10);
+      }
+      .card {
+        width:720px;
+        border-radius:28px;
+        background:rgba(255,255,255,0.95);
+        border:1px solid rgba(10,10,10,0.08);
+        padding:24px;
+        display:flex; align-items:flex-start; gap:20px;
+      }
+      .icon {
+        flex:0 0 auto;
+        width:64px; height:64px; border-radius:17px;
+        display:flex; align-items:center; justify-content:center;
+        font-size:34px; line-height:1;
+        will-change:transform;
+      }
+      .col { flex:1 1 auto; min-width:0; }
+      .meta {
+        display:flex; align-items:baseline; justify-content:space-between;
+        font-size:17px; letter-spacing:0.02em;
+      }
+      .app { text-transform:uppercase; letter-spacing:0.14em; }
+      .ttl { font-size:30px; line-height:1.25; margin-top:7px;
+        white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .msg { font-size:26px; line-height:1.35; margin-top:4px; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="4.0" data-width="1920" data-height="1080">
+      <div class="cam" id="cam">
+        <div class="stack" id="stack">
+          <div class="glow" id="glow"></div>
+          <!-- ghost cards (count 2/3) are appended here at construction -->
+          <div class="cardWrap" id="cardWrap">
+            <div class="cardShadow" id="cardShadow"></div>
+            <div class="card" id="card">
+              <div class="icon" id="icon"></div>
+              <div class="col">
+                <div class="meta">
+                  <span class="app" id="appName"></span>
+                  <span class="now" id="now">now</span>
+                </div>
+                <div class="ttl" id="ttl"></div>
+                <div class="msg" id="msg"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const V = window.__hyperframes.getVariables();
+
+      /* ── parameters ─────────────────────────────────────────────────── */
+      const DUR   = 4.0;
+      const COUNT = Math.max(1, Math.min(3, parseInt(V.count, 10) || 1));
+      /* normalize #rgb / #rrggbbaa → #rrggbb so INK+"73"-style alpha
+         suffixes below always produce valid 8-digit hex colors */
+      function hex6(c){c=String(c).trim();if(/^#[0-9a-fA-F]{3}$/.test(c))return "#"+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];if(/^#[0-9a-fA-F]{8}$/.test(c))return c.slice(0,7);return c;}
+      const INK   = hex6(V.ink);
+
+      /* ── element refs ───────────────────────────────────────────────── */
+      const root    = document.getElementById("root");
+      const cam     = document.getElementById("cam");
+      const stack   = document.getElementById("stack");
+      const glow    = document.getElementById("glow");
+      const wrap    = document.getElementById("cardWrap");
+      const shadow  = document.getElementById("cardShadow");
+      const icon    = document.getElementById("icon");
+      const appName = document.getElementById("appName");
+      const nowEl   = document.getElementById("now");
+      const ttl     = document.getElementById("ttl");
+      const msg     = document.getElementById("msg");
+
+      /* ── static styles + text from variables (construction time) ────── */
+      document.body.style.background = V.bg;
+      root.style.background = V.bg;
+      icon.style.background = V.iconBg;
+      icon.textContent      = String(V.emoji);
+      appName.textContent   = String(V.app);
+      ttl.textContent       = String(V.title);
+      msg.textContent       = String(V.message);
+      appName.style.color   = INK + "73";   /* 45% ink — small meta row */
+      nowEl.style.color     = INK + "73";
+      ttl.style.color       = INK;
+      msg.style.color       = INK + "99";   /* 60% ink — body line */
+      glow.style.background =
+        `radial-gradient(closest-side, ${INK}40, transparent 72%)`;
+
+      /* ── ghost stack — built at CONSTRUCTION time, never inside calls ─ */
+      /* count = TOTAL cards → count-1 ghosts; one spec tier per ghost.    */
+      const GHOST_TIERS = [
+        { y: 22, scale: 0.96, opacity: 0.55 },
+        { y: 42, scale: 0.92, opacity: 0.30 }   /* second ghost at count 3 */
+      ];
+      const ghosts = [];
+      if (COUNT >= 2) {
+        for (let i = 0; i < COUNT - 1; i++) {
+          const g = document.createElement("div");
+          g.className = "ghost";
+          g.style.zIndex = String(2 - i);              /* nearer tier on top */
+          stack.insertBefore(g, wrap);                 /* behind the card    */
+          ghosts.push({ el: g, tier: GHOST_TIERS[i] });
+        }
+      }
+
+      /* ── initial states — frame 0 must be the empty background ──────── */
+      gsap.set(cam,    { xPercent: -50, yPercent: -50, scale: 1 });
+      gsap.set(wrap,   { y: -360, rotation: -2, opacity: 0 });
+      gsap.set(shadow, { opacity: 0 });
+      gsap.set(glow,   { opacity: 0 });
+      gsap.set(icon,   { scale: 1, transformOrigin: "50% 50%" });
+      ghosts.forEach(({ el, tier }) =>
+        gsap.set(el, { y: tier.y + 46, scale: tier.scale, opacity: 0 }));
+
+      /* ── paused master timeline; HyperFrames seeks it ───────────────── */
+      const tl = gsap.timeline({ paused: true });
+
+      /* CAM — slow push 1.0 → 1.05 across the whole clip */
+      tl.to(cam, { scale: 1.05, duration: DUR, ease: "none" }, 0);
+
+      /* DROP 0–0.9 — spring landing; quick opacity-in keeps frame 0 empty */
+      tl.to(wrap, { opacity: 1, duration: 0.12, ease: "power1.out" }, 0);
+      tl.to(wrap, { y: 0, rotation: 0, duration: 0.9,
+                    ease: "elastic.out(1,0.62)" }, 0);
+      tl.to(shadow, { opacity: 1, duration: 0.65, ease: "power2.out" }, 0.25);
+
+      /* STACK 0.55–0.95 — ghosts slide up into place behind, staggered */
+      ghosts.forEach(({ el, tier }, i) => {
+        tl.to(el, { y: tier.y, opacity: tier.opacity, duration: 0.33,
+                    ease: "power3.out" }, 0.55 + i * 0.07);
+      });
+
+      /* POP 0.9–1.3 — icon spring + soft radial glow pulse 0 → 0.5 → 0 */
+      tl.to(icon, { scale: 1.14, duration: 0.18, ease: "back.out(2.2)" }, 0.9);
+      tl.to(icon, { scale: 1,    duration: 0.22, ease: "power2.inOut" }, 1.08);
+      tl.to(glow, { opacity: 0.5, duration: 0.2, ease: "power2.out" }, 0.9);
+      tl.to(glow, { opacity: 0,   duration: 0.2, ease: "power2.in"  }, 1.1);
+
+      /* HOLD 1.3–4.0 — pad so the final frame holds to data-duration */
+      tl.set({}, {}, DUR);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      window.__timeline = tl;
+    </script>
+  </body>
+</html>
