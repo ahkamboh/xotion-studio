@@ -46,7 +46,9 @@
       All DOM is built statically in the markup below (both label spans,
       the accent track overlay, the pulse ring, the bgOn overlay are
       PRE-BUILT — opacity/transform animate, nothing is created at play
-      time). Every animated element gets its initial state via gsap.set at
+      time). The two label spans are grid-stacked IN-FLOW in the same
+      overflow-hidden mask cell, so the mask sizes to the WIDER of
+      labelOff / labelOn and a long label never clips. Every animated element gets its initial state via gsap.set at
       construction so frame 0 renders correctly: light scene, knob left,
       labelOff visible. No Math.random, no Date, no rAF, no CSS
       transitions/keyframes, no infinite repeats, no measurement needed.
@@ -95,14 +97,14 @@
         box-shadow:0 10px 28px rgba(0,0,0,.22), 0 3px 8px rgba(0,0,0,.14);
       }
 
-      /* ── the label: overflow-hidden mask, two pre-built stacked spans ─ */
+      /* ── the label: overflow-hidden mask, two pre-built stacked spans.
+         Both spans are IN-FLOW, stacked in the same grid cell (1/1), so the
+         mask sizes to the WIDER of labelOff / labelOn and a long label never
+         clips. (Absolute spans in a fixed-width box would clip.) ─────────── */
       .labelBlock { margin-top:44px; }
-      .labelMask {
-        position:relative; overflow:hidden;
-        width:1600px; height:84px;
-      }
+      .labelMask { position:relative; display:grid; overflow:hidden; }
       .labelMask span {
-        position:absolute; left:0; right:0; top:0;
+        grid-area:1/1;
         text-align:center; white-space:nowrap;
         font-family:"Inter",sans-serif; font-weight:500;
         font-size:64px; line-height:84px; letter-spacing:-0.01em;
