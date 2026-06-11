@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"label",    "type":"string","label":"Button label",      "default":"Generate video"},
+  {"id":"labelDone","type":"string","label":"Fired label",       "default":"Done"},
+  {"id":"fontSize", "type":"string","label":"Font size (px)",    "default":"40"},
+  {"id":"bg",       "type":"color", "label":"Background",        "default":"#ffffff"},
+  {"id":"btnBg",    "type":"color", "label":"Button background", "default":"#0a0a0a"},
+  {"id":"accent",   "type":"color", "label":"Accent (fired)",    "default":"#22c55e"},
+  {"id":"ink",      "type":"color", "label":"Cursor fill",       "default":"#0a0a0a"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <!--
+      CURSOR CLICK — a mac-style cursor glides to a pill button, clicks it,
+      the button fires. Centered pill button (label, Inter 500), a classic
+      macOS arrow cursor (inline SVG, ink fill + white outline) arcs in,
+      hovers, clicks (squash + ripple ring), the button crossfades to the
+      accent color and the label swaps to a checkmark + done-label. A .cam
+      wrapper gives the whole scene a subtle camera push 1.0 → 1.06.
+
+      Slot-driven via data-composition-variables (works with `:cards` /
+      scripts/render-batch.py):
+        npx hyperframes render <proj> --variables '{"label":"Ship it"}'
+
+      TIMING (data-duration 4.0):
+        0.00–1.20  GLIDE  — cursor tip enters at (+420,+320) px from button
+                            center; x eases power2.out, y eases power3.out so
+                            the path arcs; tiny overshoot, then settles on the
+                            click point.
+        1.20–1.45  HOVER  — button lifts to scale 1.04; accent glow fades in.
+        1.45–1.70  CLICK  — cursor dips ~6px; button squashes to 0.94 then
+                            back.out(2) to 1; ripple ring expands 0 → 2.6
+                            from the click point while fading out.
+        1.70–2.60  FIRE   — button bg crossfades btnBg → accent; label swaps
+                            via two PRE-BUILT spans grid-stacked IN-FLOW in an
+                            overflow-hidden mask (old yPercent 0→-110, done
+                            110→0); the button sizes to the WIDER label so a
+                            long labelDone never clips.
+        2.60–4.00  SETTLE — cursor drifts ~30px away; final frame holds.
+
+      Determinism contract: ONE paused master timeline; every tween uses
+      ABSOLUTE values (no "+=" relatives) so any frame seeks exactly. All DOM
+      (both label spans, glow, ripple, cursor) is built at construction time;
+      every animated element's initial state is applied via gsap.set before
+      the timeline exists, so frame 0 is never unstyled. The ripple uses
+      fromTo + immediateRender:false so seeks before 1.47s keep its hidden
+      construction state. No Math.random, no Date, no rAF, no CSS
+      transitions/keyframes, no infinite repeats. tl.set({},{},4.0) pads the
+      hold to data-duration.
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family:"Inter"; font-weight:500;
+        src:url("assets/fonts/inter-500.ttf") format("truetype"); }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      html,body { width:1920px; height:1080px; overflow:hidden; }
+      #root { position:relative; width:1920px; height:1080px; overflow:hidden; }
+      /* the camera: GSAP owns the transform (translate(-50%,-50%) scale(k)) */
+      .cam {
+        position:absolute; left:50%; top:50%;
+        width:1920px; height:1080px;
+        display:flex; align-items:center; justify-content:center;
+        will-change:transform;
+      }
+      .btnWrap { position:relative; }
+      .glow {
+        position:absolute; inset:-26px; z-index:0;
+        border-radius:9999px; filter:blur(46px);
+      }
+      .btn {
+        position:relative; z-index:1;
+        display:flex; align-items:center; justify-content:center;
+        padding:0.7em 1.5em;
+        border-radius:9999px;
+        font-family:"Inter",sans-serif; font-weight:500;
+        color:#ffffff; white-space:nowrap;
+        box-shadow:0 18px 50px rgba(0,0,0,.20), 0 4px 12px rgba(0,0,0,.12);
+      }
+      /* overflow-hidden mask holding the two pre-built stacked label spans.
+         Both spans are IN-FLOW, stacked in the same grid cell (1/1), so the
+         mask — and therefore the button — sizes to the WIDER of label /
+         labelDone. (An absolute lblB would let a long done-label clip.) */
+      .mask { position:relative; display:grid; overflow:hidden; }
+      .lbl  { grid-area:1/1; display:flex; align-items:center;
+              justify-content:center; gap:0.4em; line-height:1.3; }
+      .check { width:0.75em; height:0.75em; flex:0 0 auto; }
+      .ripple {
+        position:absolute; left:50%; top:50%; z-index:2;
+        width:56px; height:56px; border-radius:50%;
+        pointer-events:none;
+      }
+      .cursor {
+        position:absolute; left:50%; top:50%; z-index:10;
+        width:48px; height:56px;
+        filter:drop-shadow(0 3px 8px rgba(0,0,0,.35));
+      }
+      .cursor svg  { display:block; width:100%; height:100%; }
+      .cursor path { paint-order:stroke; stroke:#ffffff; stroke-width:2.2;
+                     stroke-linejoin:round; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="4.0" data-width="1920" data-height="1080">
+      <div class="cam" id="cam">
+        <div class="btnWrap">
+          <div class="glow" id="glow"></div>
+          <div class="btn" id="btn">
+            <span class="mask">
+              <span class="lbl lblA" id="lblA"></span>
+              <span class="lbl lblB" id="lblB">
+                <svg class="check" viewBox="0 0 24 24" fill="none" stroke="#ffffff"
+                     stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4.5 12.5l5 5L19.5 6.8"></path>
+                </svg>
+                <span id="doneTxt"></span>
+              </span>
+            </span>
+          </div>
+          <div class="ripple" id="ripple"></div>
+        </div>
+        <!-- classic macOS arrow cursor: ink fill, white outline -->
+        <div class="cursor" id="cursor">
+          <svg viewBox="0 0 24 28" xmlns="http://www.w3.org/2000/svg">
+            <path id="cursorPath"
+              d="M4 2 L4 22.5 L8.8 18 L11.6 24.6 L14.6 23.3 L11.8 16.7 L18.6 16.7 Z"></path>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const V = window.__hyperframes.getVariables();
+
+      /* ── parameters ─────────────────────────────────────────────────── */
+      const LABEL = String(V.label);
+      const DONE  = String(V.labelDone);
+      const FS    = parseFloat(V.fontSize) || 40;
+
+      /* ── scene geometry (px, relative to button center) ─────────────── */
+      const TIPX = 8, TIPY = 4;                 // arrow tip inside the 48×56 box
+      const ENTER = { x: 420,  y: 320 };        // cursor tip entry point
+      const OVER  = { x: 33,   y: 5   };        // glide overshoot (past target)
+      const CLICK = { x: 40,   y: 12  };        // click point on the button
+      const DRIFT = { x: 64,   y: 30  };        // settle drift ≈30px away
+      const cx = p => p.x - TIPX;               // element x that puts the TIP…
+      const cy = p => p.y - TIPY;               // …at (p.x, p.y)
+
+      /* ── phase clock (spec) ─────────────────────────────────────────── */
+      const GLIDE_END = 1.2, HOVER_END = 1.45, CLICK_END = 1.7,
+            FIRE_END  = 2.6, DUR = 4.0;
+
+      /* ── dom + static styles from variables ─────────────────────────── */
+      const root    = document.getElementById("root");
+      const cam     = document.getElementById("cam");
+      const glow    = document.getElementById("glow");
+      const btn     = document.getElementById("btn");
+      const lblA    = document.getElementById("lblA");
+      const lblB    = document.getElementById("lblB");
+      const doneTxt = document.getElementById("doneTxt");
+      const ripple  = document.getElementById("ripple");
+      const cursor  = document.getElementById("cursor");
+
+      document.body.style.background = V.bg;
+      root.style.background = V.bg;
+      btn.style.fontSize = FS + "px";
+      glow.style.background = V.accent;
+      ripple.style.border = `4px solid ${V.accent}`;
+      document.getElementById("cursorPath").style.fill = V.ink;
+      lblA.textContent = LABEL;
+      doneTxt.textContent = DONE;
+
+      /* ── initial states — frame 0 correct before any tween ──────────── */
+      gsap.set(cam,    { xPercent:-50, yPercent:-50, scale:1,
+                         transformOrigin:"50% 50%" });
+      gsap.set(cursor, { x:cx(ENTER), y:cy(ENTER) });
+      gsap.set(glow,   { opacity:0 });
+      gsap.set(ripple, { xPercent:-50, yPercent:-50, x:CLICK.x, y:CLICK.y,
+                         scale:0, opacity:0 });
+      gsap.set(btn,    { backgroundColor:V.btnBg, scale:1,
+                         transformOrigin:"50% 50%" });
+      gsap.set(lblA,   { yPercent:0 });
+      gsap.set(lblB,   { yPercent:110 });
+
+      /* ── paused master timeline; HyperFrames seeks it ───────────────── */
+      const tl = gsap.timeline({ paused:true });
+
+      // camera push 1.0 → 1.06 across the full clip
+      tl.to(cam, { scale:1.06, duration:DUR, ease:"sine.inOut" }, 0);
+
+      // GLIDE 0–1.2 — split easings curve the path; overshoot then settle
+      tl.to(cursor, { x:cx(OVER), duration:1.0, ease:"power2.out" }, 0);
+      tl.to(cursor, { y:cy(OVER), duration:1.0, ease:"power3.out" }, 0);
+      tl.to(cursor, { x:cx(CLICK), y:cy(CLICK), duration:0.2,
+                      ease:"power1.inOut" }, 1.0);
+
+      // HOVER 1.2–1.45 — lift + glow
+      tl.to(btn,  { scale:1.04, duration:0.25, ease:"back.out(1.7)" }, GLIDE_END);
+      tl.to(glow, { opacity:0.45, duration:0.25, ease:"power2.out" }, GLIDE_END);
+
+      // CLICK 1.45–1.7 — cursor dip, squash + back.out(2), ripple ring
+      tl.to(btn,    { scale:0.94, duration:0.09, ease:"power2.in" }, HOVER_END);
+      tl.to(btn,    { scale:1.0,  duration:0.34, ease:"back.out(2)" }, 1.54);
+      tl.to(cursor, { y:cy(CLICK)+6, duration:0.08, ease:"power2.in" }, HOVER_END);
+      tl.to(cursor, { y:cy(CLICK),   duration:0.14, ease:"power2.out" }, 1.54);
+      tl.fromTo(ripple, { scale:0, opacity:1 },
+                        { scale:2.6, opacity:0, duration:0.55,
+                          ease:"power2.out", immediateRender:false }, 1.47);
+
+      // FIRE 1.7–2.6 — bg crossfade + masked label swap + glow pulse
+      tl.to(btn,  { backgroundColor:V.accent, duration:0.45,
+                    ease:"power1.inOut" }, CLICK_END);
+      tl.to(lblA, { yPercent:-110, duration:0.5, ease:"power3.inOut" }, 1.75);
+      tl.to(lblB, { yPercent:0,    duration:0.5, ease:"power3.inOut" }, 1.75);
+      tl.to(glow, { opacity:0.62, duration:0.30, ease:"power2.out"   }, CLICK_END);
+      tl.to(glow, { opacity:0.48, duration:0.55, ease:"power2.inOut" }, 2.05);
+
+      // SETTLE 2.6–4.0 — cursor drifts away, scene holds
+      tl.to(cursor, { x:cx(DRIFT), y:cy(DRIFT), duration:0.8,
+                      ease:"power2.inOut" }, FIRE_END);
+
+      // hold the final frame to the end of data-duration
+      tl.set({}, {}, DUR);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      window.__timeline = tl;
+    </script>
+  </body>
+</html>

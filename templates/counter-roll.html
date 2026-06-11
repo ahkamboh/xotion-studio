@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"value",   "type":"string","label":"Value (digits + separators)","default":"12,847"},
+  {"id":"prefix",  "type":"string","label":"Prefix (e.g. $)",            "default":""},
+  {"id":"suffix",  "type":"string","label":"Suffix (e.g. +)",            "default":"+"},
+  {"id":"label",   "type":"string","label":"Label (below the number)",   "default":"videos rendered with Xotion"},
+  {"id":"accent",  "type":"color", "label":"Accent (suffix + underline)","default":"#60a5fa"},
+  {"id":"bg",      "type":"color", "label":"Background",                 "default":"#0a0a0a"},
+  {"id":"ink",     "type":"color", "label":"Number / label color",       "default":"#ffffff"},
+  {"id":"fontSize","type":"string","label":"Number font size (px)",      "default":"180"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <!--
+      COUNTER ROLL — an odometer stat rolls up to a big number.
+      A centered column on a dark stage: huge tabular-numeral row (prefix +
+      odometer digit columns + accent suffix) over a letter-spaced uppercase
+      label with an accent underline bar. Each digit is a 1em mask over a
+      vertical 0-9 strip (repeated 3×); strips spin to the target digit with
+      extra full revolutions toward the right, so the roll reads mechanical.
+      A virtual camera (.cam) pulls back 1.12 → 1.0 across the whole clip.
+
+      Slot-driven via data-composition-variables (works with `:cards` /
+      scripts/render-batch.py — e.g. a CSV of stats → one video each):
+        npx hyperframes render <proj> --variables '{"value":"31,204","suffix":"+"}'
+
+      TIMING (data-duration 4.0, then HOLDS the final frame):
+        0.00–0.50  label + non-digit separators (and the digit masks) fade/rise
+                   in: y 24→0, blur 6→0; a faint accent glow breathes up behind.
+        0.35–2.29  digit strips roll: 1.7s each, power3.inOut, stagger 0.06
+                   from the left; column j gets round(2·j/(D-1)) extra loops
+                   (rightmost ≈ 2 full extra revolutions).
+        2.25       suffix pops in: scale 0→1, back.out(2.4).
+        2.35       accent underline bar: scaleX 0→1 from the left, power3.out.
+        0.00–4.00  camera pull-back 1.12→1.0 (power1.out) across the clip.
+
+      Determinism contract: ONE paused master timeline; all DOM (digit masks,
+      strips, separators) is built at script-construction time and every
+      animated element gets its initial state via gsap.set before frame 0.
+      Strips tween yPercent (unit-free) so seeks are exact. No Math.random,
+      no Date, no rAF, no CSS transitions/keyframes, no infinite repeats.
+      autofitBig() measures the number row LAZILY inside the first onUpdate
+      of a proxy tween (fonts may not be laid out at construction), caches
+      the result, and scales the stack down only if the value overflows the
+      1680px safe width — a pure, time-independent safety net.
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family:"Inter"; font-weight:500;
+        src:url("assets/fonts/inter-500.ttf") format("truetype"); }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      html,body { width:1920px; height:1080px; overflow:hidden; }
+      #root { position:relative; width:1920px; height:1080px; overflow:hidden;
+        font-family:"Inter",sans-serif; font-weight:500; }
+      /* faint accent wash behind the stat — static gradient, opacity tweened */
+      .glow {
+        position:absolute; left:50%; top:50%; width:1300px; height:860px;
+        transform:translate(-50%,-50%); pointer-events:none;
+      }
+      /* the camera: one scale transform on this wrapper */
+      .cam {
+        position:absolute; inset:0;
+        display:flex; align-items:center; justify-content:center;
+        will-change:transform;
+      }
+      .stack { display:flex; flex-direction:column; align-items:center; }
+      /* number row — huge odometer line (autofitBig() shrinks it if needed) */
+      .numrow.autofitBig {
+        display:flex; align-items:flex-start;
+        line-height:1em; white-space:pre;
+        font-variant-numeric:tabular-nums;
+      }
+      .digitCol {
+        position:relative; display:block;
+        width:0.62em; height:1em; overflow:hidden;
+      }
+      .digitStrip { position:absolute; left:0; top:0; width:100%; display:block; }
+      .digitCell  { display:block; height:1em; line-height:1em; text-align:center; }
+      .sep   { display:block; line-height:1em; }
+      .affix { display:block; line-height:1em; }
+      .affix.suffix { margin-left:0.05em; }
+      .affix.prefix { margin-right:0.02em; }
+      /* label — letter-spaced uppercase at 60% ink */
+      .labelTxt {
+        margin-top:48px; font-size:26px; letter-spacing:0.32em;
+        padding-left:0.32em; /* re-center: offset trailing letter-space */
+        text-transform:uppercase; white-space:nowrap;
+      }
+      .underbar { margin-top:26px; width:96px; height:5px; border-radius:999px; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="4.0" data-width="1920" data-height="1080">
+      <div class="glow" id="glow"></div>
+      <div class="cam" id="cam">
+        <div class="stack" id="stack">
+          <div class="numrow autofitBig" id="numrow"></div>
+          <div class="labelTxt" id="labelTxt"></div>
+          <div class="underbar" id="underbar"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const V = window.__hyperframes.getVariables();
+
+      /* ── parameters ─────────────────────────────────────────────────── */
+      const VALUE  = String(V.value);
+      const PREFIX = String(V.prefix || "");
+      const SUFFIX = String(V.suffix || "");
+      const LABEL  = String(V.label  || "");
+      const FS     = parseFloat(V.fontSize) || 180;
+
+      /* ── timeline phases (spec) ─────────────────────────────────────── */
+      const IN_AT     = 0.0,  IN_DUR    = 0.5;   // label + separators rise
+      const ROLL_AT   = 0.35, ROLL_DUR  = 1.7;   // odometer roll window
+      const ROLL_STAG = 0.06;                    // per-column, from the left
+      const SUFFIX_AT = 2.25;                    // suffix pop
+      const BAR_AT    = 2.35;                    // underline draw
+      const DUR       = 4.0;                     // = data-duration (hold after)
+      const REPEATS   = 3;                       // strip = 0-9 × 3 (room for 2 extra loops)
+      const MAXW      = 1680;                    // safe width for the number row
+
+      /* ── static styles from variables ───────────────────────────────── */
+      const root   = document.getElementById("root");
+      const glow   = document.getElementById("glow");
+      const cam    = document.getElementById("cam");
+      const stack  = document.getElementById("stack");
+      const row    = document.getElementById("numrow");
+      const labelE = document.getElementById("labelTxt");
+      const bar    = document.getElementById("underbar");
+
+      document.body.style.background = V.bg;
+      root.style.background  = V.bg;
+      row.style.fontSize     = FS + "px";
+      row.style.color        = V.ink;
+      labelE.textContent     = LABEL;
+      labelE.style.color     = V.ink;
+      bar.style.background   = V.accent;
+      glow.style.background  =
+        `radial-gradient(closest-side, ${V.accent}, transparent 70%)`;
+
+      /* ── build the number row at CONSTRUCTION time (determinism) ────── */
+      const frag     = document.createDocumentFragment();
+      const sepEls   = [];   // static non-digit spans (comma, dot, …)
+      const colEls   = [];   // digit mask columns
+      const stripEls = [];   // strips inside the masks
+      const targets  = [];   // target cell index per strip (loops*10 + digit)
+
+      const pre = document.createElement("span");
+      pre.className = "affix prefix";
+      pre.textContent = PREFIX;
+      if (!PREFIX) pre.style.display = "none";
+      frag.appendChild(pre);
+
+      const chars      = Array.from(VALUE);
+      const digitCount = chars.filter(c => /\d/.test(c)).length;
+      let j = 0;
+      for (const ch of chars) {
+        if (/\d/.test(ch)) {
+          const col   = document.createElement("span");
+          col.className = "digitCol";
+          const strip = document.createElement("span");
+          strip.className = "digitStrip";
+          for (let i = 0; i < 10 * REPEATS; i++) {
+            const cell = document.createElement("span");
+            cell.className = "digitCell";
+            cell.textContent = String(i % 10);
+            strip.appendChild(cell);
+          }
+          col.appendChild(strip);
+          frag.appendChild(col);
+          // extra full revolutions grow toward the right (rightmost ≈ 2)
+          const loops = digitCount > 1 ? Math.round(2 * j / (digitCount - 1)) : 2;
+          targets.push(loops * 10 + Number(ch));
+          colEls.push(col); stripEls.push(strip);
+          j++;
+        } else {
+          const sep = document.createElement("span");
+          sep.className = "sep";
+          sep.textContent = ch;
+          frag.appendChild(sep);
+          sepEls.push(sep);
+        }
+      }
+
+      const suf = document.createElement("span");
+      suf.className = "affix suffix";
+      suf.textContent = SUFFIX;
+      suf.style.color = V.accent;
+      if (!SUFFIX) suf.style.display = "none";
+      frag.appendChild(suf);
+      row.appendChild(frag);
+
+      /* ── initial states (frame 0 correct before any tween) ──────────── */
+      gsap.set(cam,  { scale: 1.12, transformOrigin: "50% 50%" });
+      gsap.set(glow, { opacity: 0 });
+      gsap.set(labelE, { opacity: 0, y: 24, filter: "blur(6px)" });
+      if (PREFIX)         gsap.set(pre,    { opacity: 0, y: 24, filter: "blur(6px)" });
+      if (sepEls.length)  gsap.set(sepEls, { opacity: 0, y: 24, filter: "blur(6px)" });
+      if (colEls.length)  gsap.set(colEls, { opacity: 0, y: 24, filter: "blur(6px)" });
+      if (stripEls.length) gsap.set(stripEls, { yPercent: 0 });
+      gsap.set(suf, { scale: 0, transformOrigin: "50% 60%" });
+      gsap.set(bar, { scaleX: 0, transformOrigin: "0% 50%" });
+
+      /* ── lazy autofit (hf-guard exemption + overflow safety net) ────── */
+      let fitDone = false;
+      function autofitBig() {            // measured AFTER fonts lay out; cached
+        if (fitDone) return;
+        const w = row.offsetWidth;       // layout width, transform-independent
+        if (w > 0) {
+          if (w > MAXW) gsap.set(stack, { scale: MAXW / w, transformOrigin: "50% 50%" });
+          fitDone = true;
+        }
+      }
+
+      /* ── paused master timeline; HyperFrames seeks it ───────────────── */
+      const tl = gsap.timeline({ paused: true });
+
+      // camera pull-back across the whole clip
+      tl.to(cam,  { scale: 1.0, duration: DUR, ease: "power1.out" }, 0);
+      tl.to(glow, { opacity: 0.08, duration: 0.8, ease: "power2.out" }, 0);
+
+      // 0–0.5s: label + static separators (and digit masks) fade/rise in
+      tl.to(labelE, { opacity: 0.6, y: 0, filter: "blur(0px)",
+                      duration: IN_DUR, ease: "power3.out" }, IN_AT);
+      if (PREFIX)
+        tl.to(pre, { opacity: 1, y: 0, filter: "blur(0px)",
+                     duration: IN_DUR, ease: "power3.out" }, IN_AT + 0.04);
+      if (sepEls.length)
+        tl.to(sepEls, { opacity: 1, y: 0, filter: "blur(0px)",
+                        duration: IN_DUR, ease: "power3.out", stagger: 0.05 }, IN_AT + 0.04);
+      if (colEls.length)
+        tl.to(colEls, { opacity: 1, y: 0, filter: "blur(0px)",
+                        duration: 0.45, ease: "power3.out", stagger: 0.04 }, IN_AT + 0.05);
+
+      // 0.35–~2.29s: odometer roll, staggered from the left
+      stripEls.forEach((strip, k) => {
+        tl.to(strip, { yPercent: -(targets[k] * 100 / (10 * REPEATS)),
+                       duration: ROLL_DUR, ease: "power3.inOut" },
+              ROLL_AT + k * ROLL_STAG);
+      });
+
+      // 2.25s: suffix pop · 2.35s: accent underline draws from the left
+      if (SUFFIX)
+        tl.to(suf, { scale: 1, duration: 0.5, ease: "back.out(2.4)" }, SUFFIX_AT);
+      tl.to(bar, { scaleX: 1, duration: 0.6, ease: "power3.out" }, BAR_AT);
+
+      // proxy tween hosts the lazy autofit measurement (first onUpdate)
+      const p = { t: 0 };
+      tl.to(p, { t: DUR, duration: DUR, ease: "none",
+                 onUpdate: () => autofitBig() }, 0);
+
+      // hold the final frame to the end of data-duration
+      tl.set({}, {}, DUR);
+
+      autofitBig(); // boot attempt (no-op until layout exists; cached after)
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      window.__timeline = tl;
+    </script>
+  </body>
+</html>

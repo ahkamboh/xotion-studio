@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"messages", "type":"string","label":"Messages (| separated; ~ prefix = right/sender)","default":"Can you edit my launch video?|~On it — rendering now 🎬|~Done. 4K, captions, color-graded.|That was fast 😍"},
+  {"id":"bubbleL",  "type":"color", "label":"Left bubble",   "default":"#e9e9eb"},
+  {"id":"bubbleR",  "type":"color", "label":"Right bubble",  "default":"#0a84ff"},
+  {"id":"inkL",     "type":"color", "label":"Left text",     "default":"#0a0a0a"},
+  {"id":"inkR",     "type":"color", "label":"Right text",    "default":"#ffffff"},
+  {"id":"bg",       "type":"color", "label":"Background",    "default":"#ffffff"},
+  {"id":"fontSize", "type":"string","label":"Font size (px)","default":"34"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <!--
+      CHAT BUBBLES — an iMessage-style conversation plays out with typing
+      indicators. Each message first shows a bouncing three-dot "typing"
+      pill at its anchor corner, then the pill pops out and the real bubble
+      pops in. A virtual camera does a slow push (1.0 → 1.08) over the
+      whole clip for subtle life.
+
+      VARIABLES (data-composition-variables / --variables JSON):
+        messages  pipe-separated list; a "~" prefix puts that message on the
+                  RIGHT (sender, bubbleR/inkR), otherwise LEFT (receiver,
+                  bubbleL/inkL).
+        bubbleL / bubbleR / inkL / inkR / bg / fontSize — colors + type size.
+
+      TIMING — message i begins at T(i) = 0.4 + i × 1.15s:
+        T       .. T+0.70  typing dots visible (pop in 0.15s back.out,
+                           dots bounce the whole window)
+        T+0.70  .. T+0.85  dots pop out (scale .55, opacity 0)
+        T+0.70  .. T+1.00  real bubble pops in (back.out(1.7))
+      With the default 4 messages the last bubble settles at 4.85s and the
+      clip HOLDS ~0.9s → data-duration 6.0 fits. Adding messages? Bump
+      data-duration by +1.15s per extra message (the script computes its own
+      internal end the same way and holds the final frame).
+
+      DETERMINISM — every frame is a pure function of time, so HyperFrames
+      can seek arbitrary frames: ALL slots are built into their FINAL layout
+      at construction (bubbles/dots only animate opacity/scale/translate, so
+      nothing ever reflows); initial states are gsap.set at boot so frame 0
+      is correct before any tween runs; the pops are plain tweens on ONE
+      paused master timeline; the dot bounce is a single global proxy tween
+      whose render(t) computes offsetY = -6·max(0, sin((t·5 − j·0.5)·π)) per
+      dot j, gated to slots whose dots are visible at t. No Math.random, no
+      Date, no rAF, no CSS transitions/keyframes, no infinite repeats.
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family:"Inter"; font-weight:500;
+        src:url("assets/fonts/inter-500.ttf") format("truetype"); }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      html,body { width:1920px; height:1080px; overflow:hidden; }
+      #root { position:relative; width:1920px; height:1080px; overflow:hidden; }
+      /* virtual camera: the slow push is ONE transform on this wrapper */
+      .cam {
+        position:absolute; inset:0;
+        display:flex; align-items:center; justify-content:center;
+        will-change:transform;
+      }
+      .thread {
+        width:900px;
+        display:flex; flex-direction:column; gap:14px;
+        font-family:"Inter",sans-serif; font-weight:500;
+      }
+      /* one slot per message — normal flow, FINAL layout from construction */
+      .slot { position:relative; display:flex; flex-direction:column; }
+      .bubble {
+        max-width:70%;
+        border-radius:22px;
+        padding:.5em .75em;
+        line-height:1.35;
+        box-shadow:0 1px 2px rgba(0,0,0,.06);
+      }
+      .bubble.l { align-self:flex-start; }
+      .bubble.r { align-self:flex-end; }
+      /* typing indicator pill, anchored at the slot's corner */
+      .dots {
+        position:absolute; top:auto; bottom:0;
+        width:90px; height:54px;
+        border-radius:9999px;
+        display:flex; align-items:center; justify-content:center; gap:10px;
+        box-shadow:0 1px 2px rgba(0,0,0,.06);
+      }
+      .dots.l { left:0;  right:auto; }
+      .dots.r { right:0; left:auto;  }
+      .dot { width:9px; height:9px; border-radius:50%; opacity:.45; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="6.0" data-width="1920" data-height="1080">
+      <div class="cam" id="cam">
+        <div class="thread" id="thread"></div>
+      </div>
+    </div>
+
+    <script>
+      const V = window.__hyperframes.getVariables();
+
+      /* ── parameters ─────────────────────────────────────────────────── */
+      const FS   = parseFloat(V.fontSize) || 34;
+      const MSGS = String(V.messages).split("|")
+        .map(s => s.trim()).filter(Boolean)
+        .map(s => s.startsWith("~")
+          ? { side:"r", text:s.slice(1).trim() }
+          : { side:"l", text:s });
+
+      /* ── beat constants (spec) ──────────────────────────────────────── */
+      const T0 = 0.4, STEP = 1.15;          // message i starts at T(i)
+      const DOTS_ON = 0.7;                  // dots visible window length
+      const POP = 0.15, BUBBLE_POP = 0.3;   // pop durations
+      const Ti = i => T0 + i * STEP;
+      const ANIM_END = Ti(MSGS.length - 1) + DOTS_ON + BUBBLE_POP;
+      const DUR = Math.max(6.0, ANIM_END + 0.9);   // hold ≥ ~0.9s after last
+
+      /* ── build ALL slots at construction (final layout, no reflow) ──── */
+      const root   = document.getElementById("root");
+      const cam    = document.getElementById("cam");
+      const thread = document.getElementById("thread");
+
+      document.body.style.background = V.bg;
+      root.style.background = V.bg;
+      thread.style.fontSize = FS + "px";
+
+      const slots = MSGS.map(m => {
+        const slot = document.createElement("div");
+        slot.className = "slot";
+
+        const bubble = document.createElement("div");
+        bubble.className = "bubble " + m.side;
+        bubble.textContent = m.text;
+        bubble.style.background = m.side === "r" ? V.bubbleR : V.bubbleL;
+        bubble.style.color      = m.side === "r" ? V.inkR    : V.inkL;
+
+        const dots = document.createElement("div");
+        dots.className = "dots " + m.side;
+        dots.style.background = m.side === "r" ? V.bubbleR : V.bubbleL;
+        const dotEls = [];
+        for (let j = 0; j < 3; j++) {
+          const dot = document.createElement("div");
+          dot.className = "dot";
+          dot.style.background = m.side === "r" ? V.inkR : V.inkL;
+          dots.appendChild(dot);
+          dotEls.push(dot);
+        }
+
+        slot.appendChild(bubble);
+        slot.appendChild(dots);
+        thread.appendChild(slot);
+        return { bubble, dots, dotEls, side: m.side };
+      });
+
+      /* ── initial states so frame 0 is correct before any tween ──────── */
+      gsap.set(cam, { scale:1, transformOrigin:"50% 50%" });
+      slots.forEach(s => {
+        const origin = s.side === "r" ? "right bottom" : "left bottom";
+        gsap.set(s.bubble, { opacity:0, scale:0.55, y:14, transformOrigin:origin });
+        gsap.set(s.dots,   { opacity:0, scale:0.55,        transformOrigin:origin });
+      });
+
+      /* ── global dot-bounce render(t): pure function of time ─────────── */
+      function render(t) {
+        for (let i = 0; i < slots.length; i++) {
+          // gate: bounce only while this slot's dots pill is visible
+          const on = t >= Ti(i) && t <= Ti(i) + DOTS_ON + POP;
+          const els = slots[i].dotEls;
+          for (let j = 0; j < 3; j++) {
+            const y = on
+              ? -6 * Math.max(0, Math.sin((t * 5 - j * 0.5) * Math.PI))
+              : 0;
+            els[j].style.transform = "translateY(" + y.toFixed(2) + "px)";
+          }
+        }
+      }
+
+      /* ── ONE paused master timeline; HyperFrames seeks it ───────────── */
+      const tl = gsap.timeline({ paused: true });
+
+      // camera: slow push over the full clip
+      tl.to(cam, { scale:1.08, duration:DUR, ease:"none" }, 0);
+
+      // per-message beat: dots in → dots out + bubble in
+      slots.forEach((s, i) => {
+        const T = Ti(i);
+        tl.to(s.dots,   { opacity:1, scale:1,    duration:POP,        ease:"back.out(2)"    }, T);
+        tl.to(s.dots,   { opacity:0, scale:0.55, duration:POP,        ease:"power2.in"      }, T + DOTS_ON);
+        tl.to(s.bubble, { opacity:1, scale:1, y:0, duration:BUBBLE_POP, ease:"back.out(1.7)" }, T + DOTS_ON);
+      });
+
+      // single proxy tween drives the dot bounce deterministically
+      const p = { t: 0 };
+      tl.to(p, { t:DUR, duration:DUR, ease:"none",
+                 onUpdate: () => render(p.t) }, 0);
+
+      // hold the final frame to the end of data-duration
+      tl.set({}, {}, DUR);
+
+      render(0); // frame 0 styled immediately
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      window.__timeline = tl;
+    </script>
+  </body>
+</html>
