@@ -312,6 +312,7 @@ first; only hand-build when nothing fits.
 - `templates/ai-chat-input.html` — AI chat composer (Agent button + send ↑) types a prompt, it flies up as a user bubble, then an agent status card works through a checklist (spinner→check) while a progress bar climbs to 100% "Done". Light/dark theme. Variables: `prompt`, `steps` (pipe-sep), `agentName`, `accent`. The signature "ask the agent, watch it work" shot.
 - `templates/cursor-click.html` — mac cursor glides to a pill button, clicks it (ripple, squash), label swaps to done state. Variables: label/labelDone/colors.
 - `templates/notification-pop.html` — phone push notification drops in with a spring (app/title/message/emoji, optional stacked ghosts via `count`).
+- `templates/notification-stack.html` — push notifications slide in ONE BY ONE from a side (`side`=right/left) and stack into a feed, each with a spring + icon pop. Variables: `notifications` (pipe-sep, each `emoji~app~title~message`), `side`, `stagger`, colors. The "notifications filling up during a video" look.
 - `templates/counter-roll.html` — odometer digits roll up to a big stat (value/prefix/suffix/label, dark by default).
 - `templates/chat-bubbles.html` — iMessage conversation plays out: typing dots → bubbles pop left/right (`messages` pipe-sep, `~` prefix = sender side).
 - `templates/checklist.html` — card of to-dos ticks off one by one (checkmark draws, strikethrough), "All done" chip at the end (`items` pipe-sep).
