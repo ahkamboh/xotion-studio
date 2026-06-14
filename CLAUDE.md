@@ -317,6 +317,28 @@ first; only hand-build when nothing fits.
 - `templates/toggle-flip.html` — giant iOS switch flips on and the scene crossfades light→dark (labelOff/labelOn/accent/bg pair).
 - `templates/progress-success.html` — loading bar fills with a realistic stall, morphs into a success check + deterministic confetti (label/doneLabel).
 
+**Wave-1 UI-motion pack** (20 variables-driven, `:cards`-batchable presets — see `docs/presets-roadmap.md` for the full 74-preset roadmap):
+- `templates/word-swap-rotator.html` — SaaS hero word rotator: stem holds, slot word swaps behind a mask with a blur streak, underline stretches to fit (`stemText`, `wordList`).
+- `templates/token-stream-response.html` — LLM answer streams in chunked bursts, markdown assembles live, "Stop generating" → "Copy" (`promptText`, `responseMarkdown`, `theme`).
+- `templates/terminal-stream.html` — macOS terminal types a command then streams output: spinner, ASCII progress bar, green checks (`commandText`, `outputLines`, `themeColors`).
+- `templates/pricing-tier-reveal.html` — three SaaS pricing cards rise staggered, featured card lifts with a "Most Popular" ribbon, prices count up (`tierNames`, `prices`, `featureLists`).
+- `templates/lower-third-slide.html` — broadcast lower-third/chyron: accent bar slides, name mask-wipes in, collapses for a clean loop (`name`, `subtitle`, `avatarImage`).
+- `templates/subscribe-bell-cta.html` — YouTube subscribe button squash-flips to "Subscribed", bell swings with ring waves (`channelName`, `avatarImage`, `buttonColor`).
+- `templates/before-after-slider.html` — handle sweeps across revealing the "after" via clip-path, result badge stamps the seam (`beforeImage`, `afterImage`, `badgeText`; designed fallbacks if no images).
+- `templates/review-stars-testimonial.html` — testimonial card, five stars fill one at a time, quote typewriters in (`reviewText`, `reviewerName`, `rating`).
+- `templates/price-slash-stinger.html` — old price slashed + greyed, new price stamps with screen-shake, discount starburst (`oldPrice`, `newPrice`, `discountLabel`).
+- `templates/heart-burst.html` — like button squash-pops and fills, ring shatters into deterministic confetti, count ticks up (`heartColor`, `particleColors`, `startCount`).
+- `templates/ai-diff-accept.html` — red lines strike out, green replacements slide in, Accept self-depresses, "+N −M committed" chip (`fileName`, `beforeLines`, `afterLines`, `syntaxTheme`).
+- `templates/workflow-node-build.html` — automation nodes drop onto a dotted canvas, connector noodles draw, a data pulse lights the chain (`nodes`, `noodleColor`, `successLabel`).
+- `templates/bar-chart-race.html` — horizontal bars grow + swap ranks across eras, highlighted bar surges to a crown / "NEW SOTA" (`rows`, `eraLabels`, `highlightRow`).
+- `templates/before-after-bars.html` — results reveal: short "before" bar, then "after" rockets past with speed lines + a "3.2x" multiplier slam (`beforeValue`, `afterValue`, `multiplierBadgeText`).
+- `templates/highlighter-swipe.html` — hand-drawn marker stroke sweeps behind keywords (multiply blend), highlighted words bump weight (`sentenceText`, `highlightWords`, `markerColor`; auto-fits long copy).
+- `templates/dynamic-island-morph.html` — iPhone status pill stretches into a live-activity card (artwork, title, progress) then contracts back, loop-clean (`activityTitle`, `artworkImage`, `progressValue`).
+- `templates/logo-sting-reveal.html` — logo SVG strokes draw, fills fade in, squash-pop, shine sweep, tagline cascades (`logoSvg`, `tagline`, `shineColor`; default Xotion mark).
+- `templates/agent-tool-trace.html` — agent inspector: tool-call rows append with mono args, spinner → green check, result chips, final answer card (`agentName`, `toolCalls`, `finalAnswerText`).
+- `templates/strike-correction.html` — hand-drawn strike through a word, replacement stamps in above in marker type (`originalText`, `struckWord`, `replacementWord`).
+- `templates/receipt-printer.html` — POS print head chatters out a receipt line-by-line, camera dollies down, bold TOTAL slam, paper tears (`storeName`, `lineItems`, `totalValue`).
+
 **Workflow:** scaffold → build end-state layout first (static), then add GSAP entrances/exits →
 **`scripts/render-with-qa.sh <project> -o renders/x.mp4`** — this is the CANONICAL render path
 (`:render`). It runs the full safety pipeline in one shot: (1) **`scripts/hf-guard.sh`** static gate
