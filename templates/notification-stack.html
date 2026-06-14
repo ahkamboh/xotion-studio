@@ -87,8 +87,10 @@
 
       // anchor the stack column to the chosen side of the frame
       stack.style.alignItems = LEFT ? "flex-start" : "flex-end";
-      // shift the whole .cam toward that side (keep a comfortable margin from the edge)
-      const SIDE_X = LEFT ? -560 : 560;
+      // shift the .cam toward that side, but LEAVE A CLEAN MARGIN from the frame edge
+      // (frame half 960, stack half 380, margin 96 → shift 484; ref image has space on the edge)
+      const MARGIN = 96, STACK_HALF = 380;
+      const SIDE_X = (LEFT ? -1 : 1) * (960 - STACK_HALF - MARGIN);
 
       // build the cards at construction
       const cards=[];
@@ -124,17 +126,12 @@
         tl.to(icon,{scale:1,duration:0.45,ease:"back.out(2.6)"},at+0.12);
       });
 
-      // per-frame: slow camera push toward the side + a gentle group settle bob
-      function render(t){
-        const z=1.0+0.035*clamp01(t/TOTAL);
-        const bob=Math.sin(t*0.7)*5;
-        cam.style.transform=`translate(calc(-50% + ${SIDE_X}px), calc(-50% + ${bob.toFixed(2)}px)) scale(${z.toFixed(4)})`;
-      }
-      const p={t:0};
-      tl.to(p,{t:TOTAL,duration:TOTAL,ease:"none",onUpdate:()=>render(p.t)},0);
+      // STATIC camera — calm, locked. The only motion is the notifications
+      // arriving one-by-one; no zoom, no drift, no bob (those caused the
+      // "big move after they land" artifact). Set once at construction.
+      cam.style.transform = `translate(calc(-50% + ${SIDE_X}px), -50%)`;
       tl.set({},{},DUR);
 
-      render(0);
       window.__timelines=window.__timelines||{};
       window.__timelines["main"]=tl;
       window.__timeline=tl;
