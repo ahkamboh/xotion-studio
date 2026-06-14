@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"reviewText",   "type":"string","label":"Review quote (typewriters in)",            "default":"Xotion cut our launch video from a weekend of editing to twenty minutes. I dropped in raw clips, typed one prompt, and shipped a promo that looked agency-made."},
+  {"id":"reviewerName", "type":"string","label":"Reviewer name",                            "default":"Amara Okafor"},
+  {"id":"avatarImage",  "type":"string","label":"Avatar image path (empty = initials-on-gradient fallback)", "default":""},
+  {"id":"rating",       "type":"string","label":"Star rating 0-5 (fractions half-fill, e.g. 4.5)", "default":"4.5"},
+  {"id":"reviewCount",  "type":"string","label":"Review count text (empty hides it)",       "default":"2,184"},
+  {"id":"sourceLabel",  "type":"string","label":"Platform / source label",                  "default":"Product Hunt"},
+  {"id":"headline",     "type":"string","label":"Kicker headline above the card (empty hides it)", "default":"Loved by creators"},
+  {"id":"starColor",    "type":"color", "label":"Star gold / accent",                       "default":"#f59e0b"},
+  {"id":"cardColor",    "type":"color", "label":"Card background",                          "default":"#ffffff"},
+  {"id":"bg",           "type":"color", "label":"Page background",                          "default":"#f6f3ee"},
+  {"id":"ink",          "type":"color", "label":"Text color",                               "default":"#1c1917"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <!--
+      FIVE-STAR TESTIMONIAL — social-proof review card.
+      A review card slides up under a soft shadow; five stars fill gold one at
+      a time with pop-and-ring flourishes (fractional ratings half-fill via a
+      clip-path wipe) while the big rating numeral counts up in lockstep; the
+      quote typewriters in; then avatar, name, verified line and the platform
+      chip stagger in along the footer. A gentle breathing idle carries the
+      hold so the loop never freezes dead.
+
+      CHOREOGRAPHY (data-duration 8.0 — motion completes ~5.7s, idle hold to 8):
+        phase            start-end (s)      easing               what moves
+        0 opening        0.00               -                    bg + glow blobs + dot texture visible; kicker/card hidden (card 110px low)
+        1 kicker         0.10-0.70          power3.out           headline kicker rises y26->0, fades in
+        2 card rise      0.30-1.20          expo.out             card slides up y110->0, scale .965->1, opacity 0->1 (soft shadow rides along)
+        3 stars          1.10-2.66          back.out(2.4) pop    star i pops at 1.10+0.26i (scale 0->1, rot -25deg->0);
+                                            power2.out ring      ring flourish at +0.10 (scale .45->1.9, fade .55s);
+                                            cubic-out fill       gold fill wipes at +0.12 over 0.30s via clip-path inset
+                                                                 (rating 4.5 -> 5th star wipes only halfway);
+                                                                 rating numeral = Math.floor(sum-of-fills*10)/10 — never reads ahead
+        4 count chip     2.62-3.10          power2.out           "· 2,184 reviews" slides in beside the numeral
+        5 quote          2.55 mark pop      back.out(2.2)        big opening quote-mark pops in;
+                         2.80-TYPE_END      linear (proxy)       quote typewriters (speed auto-clamps so typing <= 1.7s
+                                                                 for ANY text length); caret blinks, hides after the last char
+        6 footer         F=TYPE_END+0.25    power3.out / back    separator line draws (scaleX), avatar pops back.out(2.0),
+                         ... F+0.95         .out(2.0)            name slides x-18->0, verified row follows, platform chip rises y14->0
+        7 idle hold      ~1.4-8.00          sine (period 4s)     card breathes +/-3px, glow blobs drift; sin(pi*t/2) is 0 at
+                                                                 t=0 AND t=8, so first and last frames match -> loop-friendly
+
+      Variable-length robustness: the quote area is height-reserved by an
+      invisible "ghost" span holding the FULL text (same font/width), so the
+      card never grows mid-typing and long quotes simply wrap; the caret is a
+      zero-width inline-block so it never re-wraps the line; the footer is
+      flex-wrap so long names/labels wrap instead of clipping; typing speed is
+      min(0.035, 1.7/N) so any text length fits the fixed timeline.
+
+      avatarImage fallback: when empty (the default) a designed
+      initials-on-gradient disc renders (initials derived from reviewerName,
+      gradient from starColor -> darkened starColor) — the default render
+      needs zero asset files. Set it to a path and an <img> covers the disc.
+
+      Determinism contract: ONE paused master timeline registered as
+      window.__timelines["main"]. One proxy tween (p.t 0->8, ease none) drives
+      every per-frame computed value — star fill wipes, the quantized rating
+      counter, typewriter chars, caret blink, idle breathing, blob drift —
+      from pure functions of t. Discrete moves (card, pops, rings, footer
+      stagger) are normal finite tweens on the same timeline. All DOM
+      (including the 5 star cells) is built at construction; every animated
+      element gets its initial state via gsap.set before frame 0. No
+      Math.random, no Date, no rAF, no CSS transitions/keyframes, no infinite
+      repeats, no geometry measurement (the ghost handles layout).
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family:"Fraunces"; font-weight:600;
+        src:url("assets/fonts/fraunces-600.ttf") format("truetype"); }
+      @font-face { font-family:"Fraunces"; font-weight:700;
+        src:url("assets/fonts/fraunces-700.ttf") format("truetype"); }
+      @font-face { font-family:"Hanken Grotesk"; font-weight:400;
+        src:url("assets/fonts/hanken-grotesk-400.ttf") format("truetype"); }
+      @font-face { font-family:"Hanken Grotesk"; font-weight:600;
+        src:url("assets/fonts/hanken-grotesk-600.ttf") format("truetype"); }
+      @font-face { font-family:"Hanken Grotesk"; font-weight:700;
+        src:url("assets/fonts/hanken-grotesk-700.ttf") format("truetype"); }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      html,body { width:1920px; height:1080px; overflow:hidden; }
+      #root { position:relative; width:1920px; height:1080px; overflow:hidden;
+              font-family:"Hanken Grotesk",sans-serif; }
+      /* ambient glow blobs (pure radial-gradients — no filter cost) */
+      .glow { position:absolute; border-radius:50%; pointer-events:none;
+              will-change:transform; }
+      .dots { position:absolute; inset:0; pointer-events:none; }
+      .stage { position:absolute; inset:0;
+               display:flex; flex-direction:column;
+               align-items:center; justify-content:center; }
+      .floatWrap { display:flex; flex-direction:column; align-items:center;
+                   will-change:transform; }
+      .kicker { display:flex; align-items:center; gap:14px;
+                font-weight:700; font-size:26px; letter-spacing:0.18em;
+                text-transform:uppercase; margin-bottom:34px;
+                max-width:1500px; text-align:center; }
+      .kicker svg { display:block; }
+      .card { position:relative; width:920px;
+              border-radius:30px; padding:54px 64px 48px;
+              box-shadow:0 36px 90px rgba(20,16,12,0.16),
+                         0 10px 30px rgba(20,16,12,0.08); }
+      .starsRow { display:flex; align-items:center; gap:18px;
+                  margin-bottom:26px; }
+      .starsBox { display:flex; gap:10px; }
+      .starCell { position:relative; width:54px; height:54px; }
+      .starPop  { position:absolute; inset:0; will-change:transform; }
+      .starPop svg { position:absolute; left:0; top:0; display:block; }
+      .fillClip { position:absolute; inset:0; }
+      .ring { position:absolute; left:50%; top:50%; width:66px; height:66px;
+              margin:-33px 0 0 -33px; border-radius:50%;
+              pointer-events:none; }
+      .ratingNum { font-family:"Fraunces",serif; font-weight:700;
+                   font-size:46px; line-height:1;
+                   font-variant-numeric:tabular-nums; }
+      .countChip { font-size:24px; font-weight:400; opacity:0.6;
+                   white-space:nowrap; padding-top:10px; }
+      .qmark { font-family:"Fraunces",serif; font-weight:700;
+               font-size:84px; line-height:0.6; height:44px;
+               margin-bottom:10px; }
+      .quoteWrap { position:relative;
+                   font-family:"Fraunces",serif; font-weight:600;
+                   font-size:33px; line-height:1.5;
+                   letter-spacing:-0.005em; margin-bottom:38px; }
+      .ghost { visibility:hidden; }
+      .typed { position:absolute; inset:0; }
+      .caret { display:inline-block; width:0; overflow:visible;
+               white-space:pre; font-weight:600; }
+      .sep { height:2px; border-radius:1px; margin-bottom:34px;
+             transform-origin:left center; }
+      .footer { display:flex; align-items:center; gap:22px; flex-wrap:wrap; }
+      .avatar { position:relative; width:78px; height:78px;
+                border-radius:50%; overflow:hidden; flex:0 0 auto; }
+      .avFb { position:absolute; inset:0; display:flex;
+              align-items:center; justify-content:center;
+              color:#ffffff; font-weight:700; font-size:30px;
+              letter-spacing:0.02em; }
+      .avatar img { position:absolute; inset:0; width:100%; height:100%;
+                    object-fit:cover; display:none; }
+      .nameCol { display:flex; flex-direction:column; gap:6px; min-width:0; }
+      .revName { font-weight:700; font-size:30px; line-height:1.15;
+                 letter-spacing:-0.01em; }
+      .verified { display:flex; align-items:center; gap:8px;
+                  font-size:21px; font-weight:600; opacity:0.62; }
+      .verified svg { display:block; flex:0 0 auto; }
+      .srcChip { display:flex; align-items:center; gap:11px;
+                 margin-left:auto; padding:13px 22px 13px 15px;
+                 border-radius:999px; font-weight:700; font-size:23px;
+                 letter-spacing:-0.005em; }
+      .srcChip svg { display:block; flex:0 0 auto; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="8.0" data-width="1920" data-height="1080">
+      <div class="glow" id="glowA"></div>
+      <div class="glow" id="glowB"></div>
+      <div class="dots" id="dots"></div>
+      <div class="stage">
+        <div class="floatWrap" id="floatWrap">
+          <div class="kicker" id="kicker">
+            <svg id="kickIcon" width="22" height="22" viewBox="0 0 24 24">
+              <path d="M12 2.6l2.95 5.98 6.6.96-4.78 4.66 1.13 6.58L12 17.67l-5.9 3.1 1.13-6.57L2.45 9.54l6.6-.96L12 2.6z"/>
+            </svg>
+            <span id="kickTxt"></span>
+          </div>
+          <div class="card" id="card">
+            <div class="starsRow">
+              <div class="starsBox" id="starsBox"></div>
+              <div class="ratingNum" id="ratingNum">0.0</div>
+              <div class="countChip" id="countChip"></div>
+            </div>
+            <div class="qmark FitDisplay" id="qmark">&#8220;</div>
+            <div class="quoteWrap" id="quoteWrap">
+              <span class="ghost" id="ghost"></span>
+              <span class="typed" id="typed"><span id="typedTxt"></span><span class="caret" id="caret">&#9614;</span></span>
+            </div>
+            <div class="sep" id="sep"></div>
+            <div class="footer">
+              <div class="avatar" id="avatar">
+                <div class="avFb" id="avFb"></div>
+                <img id="avImg" alt="" />
+              </div>
+              <div class="nameCol">
+                <div class="revName" id="revName"></div>
+                <div class="verified" id="verifiedRow">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" fill="#10b981"/>
+                    <path d="M7.6 12.4l2.9 2.9 5.9-6.2" stroke="#ffffff"
+                          stroke-width="2.4" stroke-linecap="round"
+                          stroke-linejoin="round"/>
+                  </svg>
+                  <span>Verified review</span>
+                </div>
+              </div>
+              <div class="srcChip" id="srcChip">
+                <svg width="27" height="27" viewBox="0 0 27 27">
+                  <rect id="logoBox" x="0" y="0" width="27" height="27" rx="7.5"/>
+                  <path d="M13.5 5.4l2.21 4.49 4.95.72-3.58 3.49.85 4.93-4.43-2.33-4.43 2.33.85-4.93-3.58-3.49 4.95-.72L13.5 5.4z"
+                        fill="#ffffff"/>
+                </svg>
+                <span id="srcLabel"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const V = window.__hyperframes.getVariables();
+
+      /* normalize hex to 6 digits so 2-digit alpha appends safely */
+      function hex6(c){c=String(c).trim();if(/^#[0-9a-fA-F]{3}$/.test(c))return "#"+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];if(/^#[0-9a-fA-F]{8}$/.test(c))return c.slice(0,7);return c;}
+      /* darken a hex color by factor k (pure function — avatar gradient) */
+      function shade(c,k){const h=hex6(c);if(!/^#[0-9a-fA-F]{6}$/.test(h))return h;
+        const n=parseInt(h.slice(1),16);
+        const r=Math.round(((n>>16)&255)*k),g=Math.round(((n>>8)&255)*k),b=Math.round((n&255)*k);
+        return "rgb("+r+","+g+","+b+")";}
+      const clamp01 = t => Math.max(0, Math.min(1, t));
+      const outCubic = t => 1 - Math.pow(1 - t, 3);
+
+      /* ── parameters ─────────────────────────────────────────────────── */
+      const TEXT    = String(V.reviewText);
+      const NAME    = String(V.reviewerName);
+      const AV      = String(V.avatarImage || "").trim();
+      const RATING  = Math.max(0, Math.min(5, parseFloat(V.rating) || 0));
+      const COUNT   = String(V.reviewCount || "").trim();
+      const SOURCE  = String(V.sourceLabel || "").trim();
+      const HEADLN  = String(V.headline || "").trim();
+      const STAR    = hex6(V.starColor);
+      const CARD_BG = V.cardColor;
+      const INK     = hex6(V.ink);
+
+      /* ── elements ───────────────────────────────────────────────────── */
+      const root      = document.getElementById("root");
+      const glowA     = document.getElementById("glowA");
+      const glowB     = document.getElementById("glowB");
+      const dots      = document.getElementById("dots");
+      const floatWrap = document.getElementById("floatWrap");
+      const kicker    = document.getElementById("kicker");
+      const kickIcon  = document.getElementById("kickIcon");
+      const kickTxt   = document.getElementById("kickTxt");
+      const card      = document.getElementById("card");
+      const starsBox  = document.getElementById("starsBox");
+      const ratingNum = document.getElementById("ratingNum");
+      const countChip = document.getElementById("countChip");
+      const qmark     = document.getElementById("qmark");
+      const ghost     = document.getElementById("ghost");
+      const typedTxt  = document.getElementById("typedTxt");
+      const caret     = document.getElementById("caret");
+      const sep       = document.getElementById("sep");
+      const avatar    = document.getElementById("avatar");
+      const avFb      = document.getElementById("avFb");
+      const avImg     = document.getElementById("avImg");
+      const revName   = document.getElementById("revName");
+      const verifiedRow = document.getElementById("verifiedRow");
+      const srcChip   = document.getElementById("srcChip");
+      const logoBox   = document.getElementById("logoBox");
+      const srcLabel  = document.getElementById("srcLabel");
+
+      /* ── static styles from variables ───────────────────────────────── */
+      document.body.style.background = V.bg;
+      root.style.background = V.bg;
+      root.style.color = INK;
+      glowA.style.width = "1100px"; glowA.style.height = "1100px";
+      glowA.style.left = "-260px";  glowA.style.top = "-340px";
+      glowA.style.background =
+        "radial-gradient(closest-side," + STAR + "2e, transparent)";
+      glowB.style.width = "1000px"; glowB.style.height = "1000px";
+      glowB.style.right = "-300px"; glowB.style.bottom = "-380px";
+      glowB.style.background =
+        "radial-gradient(closest-side," + STAR + "20, transparent)";
+      dots.style.backgroundImage =
+        "radial-gradient(" + INK + "12 1.4px, transparent 1.4px)";
+      dots.style.backgroundSize = "26px 26px";
+      kicker.style.color = INK;
+      kicker.style.opacity = "0";              /* gsap.set re-confirms below */
+      kickIcon.querySelector("path").setAttribute("fill", STAR);
+      kickTxt.textContent = HEADLN;
+      if (!HEADLN) kicker.style.display = "none";
+      card.style.background = CARD_BG;
+      ratingNum.style.color = INK;
+      countChip.textContent = COUNT ? "· " + COUNT + " reviews" : "";
+      if (!COUNT) countChip.style.display = "none";
+      qmark.style.color = STAR;
+      ghost.textContent = TEXT;                /* reserves final height */
+      caret.style.color = STAR;
+      sep.style.background = INK + "1a";
+      avFb.style.background =
+        "linear-gradient(135deg," + STAR + "," + shade(STAR, 0.55) + ")";
+      /* initials from the first two words of the name */
+      const words = NAME.split(/\s+/).filter(w => /[A-Za-z0-9]/.test(w));
+      avFb.textContent =
+        ((words[0] || "?")[0] + (words[1] ? words[1][0] : "")).toUpperCase();
+      if (AV) { avImg.src = AV; avImg.style.display = "block"; }
+      revName.textContent = NAME;
+      srcChip.style.background = INK + "10";
+      srcChip.style.color = INK;
+      logoBox.setAttribute("fill", STAR);
+      srcLabel.textContent = SOURCE;
+      if (!SOURCE) srcChip.style.display = "none";
+
+      /* ── stars: 5 cells built NOW, at construction time ─────────────── */
+      const STAR_PATH = "M27 6.2l6.1 12.4 13.7 2-9.9 9.6 2.3 13.6L27 37.4l-12.2 6.4 2.3-13.6-9.9-9.6 13.7-2L27 6.2z";
+      const TRACK = INK + "24";
+      const starPops = [], starRings = [], starClips = [];
+      for (let i = 0; i < 5; i++) {
+        const cell = document.createElement("div");
+        cell.className = "starCell";
+        const ring = document.createElement("div");
+        ring.className = "ring";
+        ring.style.border = "3px solid " + STAR;
+        cell.appendChild(ring);
+        const pop = document.createElement("div");
+        pop.className = "starPop";
+        pop.innerHTML =
+          '<svg width="54" height="54" viewBox="0 0 54 54">' +
+            '<path d="' + STAR_PATH + '" fill="' + TRACK + '"/></svg>' +
+          '<div class="fillClip">' +
+            '<svg width="54" height="54" viewBox="0 0 54 54">' +
+              '<path d="' + STAR_PATH + '" fill="' + STAR + '"/></svg></div>';
+        cell.appendChild(pop);
+        starsBox.appendChild(cell);
+        starPops.push(pop);
+        starRings.push(ring);
+        starClips.push(pop.querySelector(".fillClip"));
+      }
+
+      /* ── timing constants (the phase table above, in code) ──────────── */
+      const DUR        = 8.0;
+      const KICK_T     = 0.10;
+      const CARD_T     = 0.30;
+      const STAR_T     = i => 1.10 + 0.26 * i;   /* pop start, star i */
+      const FILL_D     = 0.30;                   /* gold wipe duration */
+      const FILL_T     = i => STAR_T(i) + 0.12;  /* wipe start, star i */
+      const COUNT_T    = 2.62;
+      const QMARK_T    = 2.55;
+      const TYPE_START = 2.80;
+      const N          = TEXT.length;
+      const SPEED      = Math.min(0.035, 1.70 / Math.max(1, N));
+      const TYPE_END   = TYPE_START + N * SPEED;
+      const F          = TYPE_END + 0.25;        /* footer stagger start */
+
+      /* ── initial states — frame 0 correct before any tween runs ────── */
+      gsap.set(kicker, { opacity: 0, y: 26 });
+      gsap.set(card,   { opacity: 0, y: 110, scale: 0.965 });
+      starPops.forEach(el =>
+        gsap.set(el, { scale: 0, rotation: -25, transformOrigin: "50% 50%" }));
+      starRings.forEach(el => gsap.set(el, { opacity: 0, scale: 0.45 }));
+      starClips.forEach(el => { el.style.clipPath = "inset(0 100% 0 0)"; });
+      gsap.set(ratingNum,   { opacity: 0, y: 10 });
+      gsap.set(countChip,   { opacity: 0, x: -12 });
+      gsap.set(qmark,       { opacity: 0, scale: 0, transformOrigin: "20% 80%" });
+      gsap.set(sep,         { scaleX: 0 });
+      gsap.set(avatar,      { scale: 0 });
+      gsap.set(revName,     { opacity: 0, x: -18 });
+      gsap.set(verifiedRow, { opacity: 0, x: -18 });
+      gsap.set(srcChip,     { opacity: 0, y: 14 });
+
+      /* ── per-frame computed values: ONE render(t), pure in t ────────── */
+      function render(t) {
+        /* star fills — fractional rating half-fills the last star */
+        let sum = 0;
+        for (let i = 0; i < 5; i++) {
+          const amount = clamp01(RATING - i);            /* 0..1 of star i */
+          const k = outCubic(clamp01((t - FILL_T(i)) / FILL_D)) * amount;
+          sum += k;
+          starClips[i].style.clipPath =
+            "inset(0 " + ((1 - k) * 100).toFixed(2) + "% 0 0)";
+        }
+        /* rating counter: SAME value as the fills, floored to 1 decimal —
+           the text can never read ahead of the gold */
+        ratingNum.textContent = (Math.floor(sum * 10) / 10).toFixed(1);
+
+        /* typewriter */
+        const shown = Math.min(N, Math.max(0, Math.floor((t - TYPE_START) / SPEED)));
+        typedTxt.textContent = TEXT.slice(0, shown);
+        const typing = t >= TYPE_START - 0.15 && t <= TYPE_END + 0.35;
+        caret.style.opacity =
+          typing ? (0.25 + 0.75 * (Math.sin(t * Math.PI * 3.2) + 1) / 2).toFixed(3) : "0";
+
+        /* idle breathing + blob drift — sin(pi*t/2) and sin(pi*t/4) are both
+           exactly 0 at t=0 and t=8, so the loop point matches frame 0 */
+        const amp = clamp01((t - 1.4) / 1.2);
+        floatWrap.style.transform =
+          "translateY(" + (amp * 3 * Math.sin(Math.PI * t / 2)).toFixed(2) + "px)";
+        const d = Math.sin(Math.PI * t / 4);
+        glowA.style.transform =
+          "translate(" + (12 * d).toFixed(2) + "px," + (16 * d).toFixed(2) + "px)";
+        glowB.style.transform =
+          "translate(" + (-14 * d).toFixed(2) + "px," + (-10 * d).toFixed(2) + "px)";
+      }
+
+      /* ── paused master timeline; HyperFrames seeks it ───────────────── */
+      const tl = gsap.timeline({ paused: true });
+
+      /* proxy: every per-frame value above, for the whole clip */
+      const p = { t: 0 };
+      tl.to(p, { t: DUR, duration: DUR, ease: "none",
+                 onUpdate: () => render(p.t) }, 0);
+
+      /* phase 1 — kicker */
+      tl.to(kicker, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, KICK_T);
+
+      /* phase 2 — card rise (shadow is on the card, blooms with opacity) */
+      tl.to(card, { opacity: 1, y: 0, scale: 1, duration: 0.9,
+                    ease: "expo.out" }, CARD_T);
+
+      /* phase 3 — star pops + ring flourishes (fills live in render) */
+      for (let i = 0; i < 5; i++) {
+        tl.to(starPops[i], { scale: 1, rotation: 0, duration: 0.5,
+                             ease: "back.out(2.4)" }, STAR_T(i));
+        tl.fromTo(starRings[i], { opacity: 0.55, scale: 0.45 },
+                                { opacity: 0, scale: 1.9, duration: 0.55,
+                                  ease: "power2.out", immediateRender: false },
+                  STAR_T(i) + 0.10);
+      }
+      tl.to(ratingNum, { opacity: 1, y: 0, duration: 0.45,
+                         ease: "power2.out" }, STAR_T(0) - 0.05);
+
+      /* phase 4 — review-count chip */
+      tl.to(countChip, { opacity: 0.6, x: 0, duration: 0.48,
+                         ease: "power2.out" }, COUNT_T);
+
+      /* phase 5 — quote mark pop (typing itself lives in render) */
+      tl.to(qmark, { opacity: 1, scale: 1, duration: 0.45,
+                     ease: "back.out(2.2)" }, QMARK_T);
+
+      /* phase 6 — footer stagger */
+      tl.to(sep,         { scaleX: 1, duration: 0.6, ease: "power3.out" }, F - 0.05);
+      tl.to(avatar,      { scale: 1, duration: 0.55, ease: "back.out(2.0)" }, F);
+      tl.to(revName,     { opacity: 1, x: 0, duration: 0.5, ease: "power3.out" }, F + 0.14);
+      tl.to(verifiedRow, { opacity: 0.62, x: 0, duration: 0.5, ease: "power3.out" }, F + 0.24);
+      tl.to(srcChip,     { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" }, F + 0.34);
+
+      /* hold the final frame to the end of data-duration */
+      tl.set({}, {}, DUR);
+
+      render(0); /* frame 0 styled immediately */
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      window.__timeline = tl;
+    </script>
+  </body>
+</html>
