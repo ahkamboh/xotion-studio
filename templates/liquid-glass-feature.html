@@ -17,19 +17,19 @@
     <!--
       LIQUID GLASS FEATURE — frosted "Apple liquid-glass" UI panel over an
       animated mesh gradient, with a specular light sweep and a feature
-      HIGHLIGHT (a glowing ring + glass callout draws the eye to one chip).
+      HIGHLIGHT (a soft accent glow + glass callout draws the eye to one chip).
       For AI-site / product-demo feature highlights and UI showcases.
 
       Phases (data-duration 7.0): mesh gradient drifts the whole time →
       0.0-0.9 glass panel lifts + scales in → 0.9-1.8 inner UI staggers in
       (header, command bar, chips) → 1.8-2.6 diagonal specular sweep across
-      the glass → 2.6-4.4 highlight: target chip lifts, a ring draws around
-      it and pulses, a glass callout slides in above it → hold + slow camera
+      the glass → 2.6-4.4 highlight: target chip lifts + gets a breathing accent
+      glow, a glass callout slides in above it → hold + slow camera
       push. Loop-friendly.
 
       Slot-driven (works with :cards): chips/highlight/accent/gradient are
       variables. Determinism contract: render(t) drives the gradient drift +
-      ring-glow pulse + camera; all entrances/sweep/draw are finite tweens on
+      chip-glow pulse + camera; all entrances/sweep/draw are finite tweens on
       the SAME paused master timeline. No random/Date/rAF. render(0) at boot.
       backdrop-filter is supported by the engine's headless Chromium.
     -->
@@ -100,10 +100,6 @@
         background:rgba(255,255,255,0.13); border:1px solid rgba(255,255,255,0.22);
         box-shadow:inset 0 1px 0 rgba(255,255,255,0.28); white-space:nowrap; position:relative; }
 
-      /* highlight ring (SVG) drawn around the target chip */
-      .ring { position:absolute; pointer-events:none; overflow:visible; }
-      .ring rect { fill:none; stroke-linecap:round; }
-
       /* glass callout */
       .callout { position:absolute; padding:14px 22px; border-radius:16px; font-size:26px;
         font-weight:700; color:#fff; white-space:nowrap; opacity:0;
@@ -154,7 +150,6 @@
 
           <div class="chips" id="chips"></div>
 
-          <svg class="ring" id="ring"><rect id="ringrect" rx="20" ry="20"></rect></svg>
           <div class="callout" id="callout"><span id="callouttext"></span><span class="nib"></span></div>
         </div>
       </div>
@@ -170,7 +165,7 @@
       const bg=$("bg"), cam=$("cam"), panel=$("panel"), sweep=$("sweep"),
             appname=$("appname"), headline=$("headline"), bardot=$("bardot"),
             bartext=$("bartext"), barsend=$("barsend"), chipsWrap=$("chips"),
-            ring=$("ring"), ringrect=$("ringrect"), callout=$("callout"), callouttext=$("callouttext");
+            callout=$("callout"), callouttext=$("callouttext");
 
       appname.textContent=String(V.appName);
       headline.textContent=String(V.headline);
@@ -206,7 +201,6 @@
       gsap.set(panel,{scale:0.92,opacity:0,y:30,transformOrigin:"50% 55%"});
       gsap.set([$("head"),$("bar")],{opacity:0,y:24});
       gsap.set(chipEls,{opacity:0,y:20});
-      gsap.set(ring,{opacity:0});
       gsap.set(callout,{opacity:0,y:18,scale:0.9,transformOrigin:"30% 120%"});
       gsap.set(sweep,{x:0});
 
@@ -219,36 +213,25 @@
       // specular sweep across the glass
       tl.fromTo(sweep,{x:0},{x:3400,duration:0.85,ease:"power2.inOut"},SWEEP_AT);
 
-      // FEATURE HIGHLIGHT — position the ring over the target chip (measured lazily),
-      // lift the chip, draw the ring, slide the callout in
+      // FEATURE HIGHLIGHT — no hard outline ring (reads as a clunky selection box).
+      // Instead the target chip LIFTS and gets a soft accent glow + accent rim, and a
+      // glass callout slides into the gap above it. Position the callout lazily.
+      const hlChip = chipEls[HL];
       let placed=false;
       function placeHighlight(){
         if(placed) return; placed=true;
-        const pr=panel.getBoundingClientRect(), cr=chipEls[HL].getBoundingClientRect();
-        const pad=12;
+        const pr=panel.getBoundingClientRect(), cr=hlChip.getBoundingClientRect();
         const chipTop=cr.top-pr.top, chipLeft=cr.left-pr.left;
-        const x=chipLeft-pad, y=chipTop-pad, w=cr.width+pad*2, h=cr.height+pad*2;
-        ring.setAttribute("width", pr.width); ring.setAttribute("height", pr.height);
-        ring.style.left="0"; ring.style.top="0";
-        ringrect.setAttribute("x",x); ringrect.setAttribute("y",y);
-        ringrect.setAttribute("width",w); ringrect.setAttribute("height",h);
-        ringrect.setAttribute("stroke",AC); ringrect.setAttribute("stroke-width","4");
-        const per=2*(w+h);
-        ringrect.style.strokeDasharray=per; ringrect.style.strokeDashoffset=per;
-        ring.__per=per;
+        const coH=callout.offsetHeight||58;
         // sit the callout in the gap ABOVE the chip, by its measured height, so it
         // never collides with the command bar (which now has clearance above)
-        const coH=callout.offsetHeight||58;
-        callout.style.left=x+"px";
+        callout.style.left=(chipLeft-12)+"px";
         callout.style.top=(chipTop - coH - 18)+"px";
       }
       tl.add(()=>placeHighlight(), HL_AT-0.01);
-      tl.to(chipEls[HL],{scale:1.06,duration:0.4,ease:"back.out(2)"},HL_AT);
-      tl.set(ring,{opacity:1},HL_AT);
-      tl.to({},{duration:0.5,onUpdate:function(){
-        const k=clamp01(this.progress());
-        if(ring.__per!=null) ringrect.style.strokeDashoffset=(ring.__per*(1-k)).toFixed(1);
-      }},HL_AT);
+      // lift the chip + brighten its rim to the accent (the highlight, no box)
+      tl.to(hlChip,{scale:1.07,duration:0.45,ease:"back.out(2)"},HL_AT);
+      tl.to(hlChip,{borderColor:AC,backgroundColor:"rgba(255,255,255,0.22)",duration:0.35},HL_AT);
       tl.to(callout,{opacity:1,y:0,scale:1,duration:0.45,ease:"back.out(1.8)"},CALL_AT);
 
       const lgDisp = document.getElementById("lgDisp");
@@ -262,12 +245,10 @@
           const dy=blobHome[i].y + Math.cos(t*0.38+ph*1.3)*120;
           b.style.transform=`translate(${(dx-550).toFixed(1)}px, ${(dy-550).toFixed(1)}px)`;
         });
-        // ring soft glow pulse after it's drawn
-        if(t>HL_AT+0.5){
-          const g=(Math.sin((t-HL_AT)*3.2)+1)/2;
-          ringrect.style.filter=`drop-shadow(0 0 ${(8+g*14).toFixed(1)}px ${AC})`;
-        } else {
-          ringrect.style.filter="none";
+        // highlighted chip: soft accent glow that gently breathes (no hard ring)
+        if(t>HL_AT){
+          const g=(Math.sin((t-HL_AT)*2.6)+1)/2;
+          hlChip.style.boxShadow=`inset 0 1px 0 rgba(255,255,255,0.32), 0 0 ${(18+g*26).toFixed(1)}px ${AC}, 0 6px 22px rgba(0,0,0,0.28)`;
         }
         // slow camera push 1.0 -> 1.04
         const z=1.0+0.04*clamp01(t/TOTAL);
