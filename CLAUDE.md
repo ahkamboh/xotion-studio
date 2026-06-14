@@ -309,6 +309,7 @@ first; only hand-build when nothing fits.
 - `templates/title-card.html` — clean animated title / intro / lower-third starter
 - `templates/thumbnail.html` — designed YouTube thumbnail (render 1 frame)
 - `templates/input-typing.html` — typing-into-a-search-field with a virtual camera (zoom in → type + pan → pull back → mac cursor clicks the enter button to finish; `cursor="hide"` to skip). Variables-driven (`text`, `speed`, colors…) so `:cards` can batch a CSV of queries → one video each.
+- `templates/ai-chat-input.html` — AI chat composer (Agent button + send ↑) types a prompt, it flies up as a user bubble, then an agent status card works through a checklist (spinner→check) while a progress bar climbs to 100% "Done". Light/dark theme. Variables: `prompt`, `steps` (pipe-sep), `agentName`, `accent`. The signature "ask the agent, watch it work" shot.
 - `templates/cursor-click.html` — mac cursor glides to a pill button, clicks it (ripple, squash), label swaps to done state. Variables: label/labelDone/colors.
 - `templates/notification-pop.html` — phone push notification drops in with a spring (app/title/message/emoji, optional stacked ghosts via `count`).
 - `templates/counter-roll.html` — odometer digits roll up to a big stat (value/prefix/suffix/label, dark by default).
