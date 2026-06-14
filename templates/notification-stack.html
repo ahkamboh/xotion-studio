@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"notifications","type":"string","label":"Notifications — pipe-separated, each emoji~app~title~message","default":"🎬~XOTION~Render complete~launch-video.mp4 · 4K · 24s|💬~XOTION~Captions synced~41 languages ready|🎨~XOTION~Color graded~Cinematic LUT applied|📤~XOTION~Exported~Posted to 3 channels"},
+  {"id":"side",   "type":"string","label":"Enter from side (right/left)","default":"right"},
+  {"id":"stagger","type":"string","label":"Seconds between notifications","default":"0.7"},
+  {"id":"bg",     "type":"color", "label":"Background",            "default":"#0b0c10"},
+  {"id":"card",   "type":"color", "label":"Card background",       "default":"#ffffff"},
+  {"id":"iconBg", "type":"color", "label":"App icon background",   "default":"#0a0a0a"},
+  {"id":"ink",    "type":"color", "label":"Card text color",       "default":"#0a0a0a"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <!--
+      NOTIFICATION STACK — push notifications slide in ONE BY ONE from the
+      chosen side (right or left) and stack into a feed, each landing with a
+      springy settle, the icon popping as it arrives. Like a phone/desktop
+      notification center filling up during a video. Loop-friendly hold.
+
+      VARIABLES (npx hyperframes render <proj> --variables '{"side":"left"}'):
+        notifications — pipe-separated list; each item is "emoji~app~title~message"
+                        (use ~ between the four fields). Build as many as you like.
+        side          — "right" (default) or "left" — which edge they fly in from
+                        and which side of frame the stack anchors to.
+        stagger       — seconds between each notification arriving (0.7 default).
+        bg/card/iconBg/ink — colors. Grays derive from ink via hex6 (so #rgb /
+                        #rrggbbaa inputs normalize to #rrggbb before alpha suffix).
+
+      TIMING — completes at ~= 0.4 + stagger*(N-1) + 0.6, then holds. data-duration
+      (7.0) fits ~5 notifications at 0.7s; for more bump it (0.5*N + 2 is safe).
+
+      Determinism contract: each card's entrance is a finite spring tween,
+      staggered, on ONE paused master timeline (window.__timelines["main"]); a
+      single render(t) proxy adds only a slow camera push + a gentle settle
+      bob. All DOM built at construction; initial states via gsap.set. No
+      Math.random / Date / rAF / setTimeout / CSS transitions / @keyframes /
+      infinite repeats. render(0) at boot; final frame padded to data-duration.
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family:"Inter"; font-weight:500; src:url("assets/fonts/inter-500.ttf") format("truetype"); }
+      @font-face { font-family:"Inter"; font-weight:600; src:url("assets/fonts/inter-600.ttf") format("truetype"); }
+      @font-face { font-family:"Inter"; font-weight:700; src:url("assets/fonts/inter-700.ttf") format("truetype"); }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      html,body { width:1920px; height:1080px; overflow:hidden; }
+      #root { position:relative; width:1920px; height:1080px; overflow:hidden;
+        font-family:"Inter",-apple-system,sans-serif; }
+      .cam { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); will-change:transform; }
+      /* the stack column — vertically centered as a group; anchored side set in JS */
+      .stack { display:flex; flex-direction:column; gap:22px; width:760px; }
+      .ncard { display:flex; align-items:flex-start; gap:22px; width:760px;
+        padding:26px 30px; border-radius:30px; will-change:transform;
+        box-shadow:0 24px 60px rgba(0,0,0,0.28); }
+      .icon { width:72px; height:72px; border-radius:20px; flex:0 0 auto;
+        display:flex; align-items:center; justify-content:center; font-size:38px; line-height:1; }
+      .body { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:5px; padding-top:2px; }
+      .row { display:flex; align-items:baseline; gap:10px; }
+      .app { font-size:22px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; }
+      .time { margin-left:auto; font-size:22px; font-weight:500; }
+      .title { font-size:32px; font-weight:700; letter-spacing:-0.01em; }
+      .msg { font-size:28px; font-weight:500; line-height:1.3; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="7" data-width="1920" data-height="1080">
+      <div class="cam" id="cam">
+        <div class="stack" id="stack"></div>
+      </div>
+    </div>
+
+    <script>
+      const V = window.__hyperframes.getVariables();
+      const ITEMS = String(V.notifications).split("|").map(s=>s.trim()).filter(Boolean)
+        .map(s=>{ const p=s.split("~"); return {emoji:(p[0]||"🔔").trim(), app:(p[1]||"").trim(),
+                  title:(p[2]||"").trim(), msg:(p[3]||"").trim()}; });
+      const LEFT = String(V.side).toLowerCase()==="left";
+      const STAG = parseFloat(V.stagger) || 0.7;
+
+      function hex6(c){c=String(c).trim();
+        if(/^#[0-9a-fA-F]{3}$/.test(c)) return "#"+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];
+        if(/^#[0-9a-fA-F]{8}$/.test(c)) return c.slice(0,7); return c; }
+      const INK=hex6(V.ink);
+
+      const root=document.getElementById("root"), cam=document.getElementById("cam"),
+            stack=document.getElementById("stack");
+      root.style.background=V.bg;
+
+      // anchor the stack column to the chosen side of the frame
+      stack.style.alignItems = LEFT ? "flex-start" : "flex-end";
+      // shift the whole .cam toward that side (keep a comfortable margin from the edge)
+      const SIDE_X = LEFT ? -560 : 560;
+
+      // build the cards at construction
+      const cards=[];
+      ITEMS.forEach(it=>{
+        const c=document.createElement("div"); c.className="ncard";
+        c.style.background=V.card; c.style.border=`1px solid ${INK}14`;
+        c.innerHTML =
+          `<div class="icon" style="background:${V.iconBg}">${it.emoji}</div>`+
+          `<div class="body">`+
+            `<div class="row"><span class="app" style="color:${INK}8c">${it.app}</span>`+
+            `<span class="time" style="color:${INK}73">now</span></div>`+
+            `<div class="title" style="color:${INK}">${it.title}</div>`+
+            `<div class="msg" style="color:${INK}b3">${it.msg}</div>`+
+          `</div>`;
+        stack.appendChild(c); cards.push(c);
+      });
+
+      // ── timeline ───────────────────────────────────────────────────
+      const START=0.4, IN_DUR=0.6;
+      const LAST = START + STAG*Math.max(0,ITEMS.length-1);
+      const TOTAL = LAST + IN_DUR + 1.3;
+      const DUR = parseFloat(root.getAttribute("data-duration"))||7;
+      const OFF = LEFT ? -900 : 900;   // start off the chosen edge
+      const clamp01=t=>Math.max(0,Math.min(1,t));
+
+      const tl=gsap.timeline({paused:true});
+      cards.forEach((c,i)=>{
+        const icon=c.querySelector(".icon");
+        gsap.set(c,{x:OFF,opacity:0});
+        gsap.set(icon,{scale:0.6});
+        const at=START+i*STAG;
+        tl.to(c,{x:0,opacity:1,duration:IN_DUR,ease:"back.out(1.5)"},at);
+        tl.to(icon,{scale:1,duration:0.45,ease:"back.out(2.6)"},at+0.12);
+      });
+
+      // per-frame: slow camera push toward the side + a gentle group settle bob
+      function render(t){
+        const z=1.0+0.035*clamp01(t/TOTAL);
+        const bob=Math.sin(t*0.7)*5;
+        cam.style.transform=`translate(calc(-50% + ${SIDE_X}px), calc(-50% + ${bob.toFixed(2)}px)) scale(${z.toFixed(4)})`;
+      }
+      const p={t:0};
+      tl.to(p,{t:TOTAL,duration:TOTAL,ease:"none",onUpdate:()=>render(p.t)},0);
+      tl.set({},{},DUR);
+
+      render(0);
+      window.__timelines=window.__timelines||{};
+      window.__timelines["main"]=tl;
+      window.__timeline=tl;
+    </script>
+  </body>
+</html>
