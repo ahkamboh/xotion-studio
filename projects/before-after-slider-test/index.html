@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"beforeImage",   "type":"string","label":"Before image (path/URL; empty = designed gradient placeholder)", "default":""},
+  {"id":"afterImage",    "type":"string","label":"After image (path/URL; empty = designed gradient placeholder)",  "default":""},
+  {"id":"beforeLabel",   "type":"string","label":"Before label", "default":"BEFORE"},
+  {"id":"afterLabel",    "type":"string","label":"After label",  "default":"AFTER"},
+  {"id":"badgeText",     "type":"string","label":"Result badge (use  ·  to break two lines, e.g. 12 min · 8 sec)", "default":"12 min · 48 sec"},
+  {"id":"caption",       "type":"string","label":"Mono caption under badge (empty = hide)", "default":"rendered with xotion"},
+  {"id":"handleColor",   "type":"color", "label":"Handle / seam color", "default":"#ffffff"},
+  {"id":"accent",        "type":"color", "label":"Accent (badge / glow)", "default":"#6366f1"},
+  {"id":"sweepDirection","type":"string","label":"Sweep direction (ltr / rtl)", "default":"ltr"},
+  {"id":"settlePosition","type":"string","label":"Settle position 0–1 across frame", "default":"0.62"},
+  {"id":"ink",           "type":"color", "label":"Label text color", "default":"#ffffff"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <!--
+      BEFORE / AFTER SLIDER — the signature "proof shot" reveal.
+      A full-frame BEFORE image holds; a vertical handle line sweeps across the
+      frame revealing the AFTER through an animated clip-path. The corner labels
+      crossfade as the seam passes center, the handle OVERSHOOTS past its target
+      and settles back, and a result BADGE stamps over the seam to close it out.
+      Built for fitness / renovation / retouching / AI-tool proof shots — its
+      own Envato Elements category.
+
+      IMAGE FALLBACK (zero asset files for the default render):
+        beforeImage / afterImage empty  → two designed CSS-gradient placeholder
+        scenes (muted slate "before" vs. vivid accent-lit "after"), each with a
+        faint dot-grid + label watermark so the split reads clearly on its own.
+        Set either to a URL/path and that side uses an <img> covering the frame.
+
+      VARIABLE ENCODING / ROBUSTNESS:
+        badgeText  — a single line; insert " · " (thin-space middot) to split
+                     onto two centered lines (handled by splitting on "·").
+        caption    — optional mono line under the badge; empty string hides it.
+        labels     — any length; corner chips size to content (no clipping).
+        sweepDirection ltr → BEFORE on the left, reveal sweeps to the right;
+                       rtl → mirrored (BEFORE on the right).
+        settlePosition 0..1 — where the seam comes to rest after the overshoot.
+
+      CHOREOGRAPHY (data-duration 6.5 — final frame HOLDS, loop-friendly):
+        PHASE            START–END   EASING            WHAT MOVES
+        hold-before      0.00–0.50   none              BEFORE scene full-frame; "BEFORE" chip
+                                                       settled bottom-corner; handle parked at edge.
+        sweep            0.50–3.30   power2.inOut       handle line + dot sweep across; AFTER
+                                                       revealed via clip-path tracking the seam;
+                                                       a soft glow rides the seam edge.
+        label crossfade  1.70–2.30   power2.inOut       as the seam crosses center, BEFORE chip
+                                                       fades/lifts out and AFTER chip fades in
+                                                       (grid-stack mask — no reflow, no clip).
+        overshoot        3.30–3.70   power3.out         seam shoots past settlePosition (to ~+7%).
+        settle           3.70–4.35   back.out(2.4)      seam eases back onto settlePosition; the
+                                                       seam glow pulses once on landing.
+        badge stamp      4.45–4.95   back.out(2.4)      result badge stamps over the seam
+                                                       (scale 1.55→1, rotate -7°→0) + ring ripple
+                                                       + caption rises in under it.
+        idle / hold      4.95–6.50   sine.inOut         whole scene breathes 1.0→1.012→1.0 (one
+                                                       finite cycle) so the hold is never dead-still.
+
+      DETERMINISM CONTRACT (renderer seeks arbitrary frames):
+        ONE paused master timeline (window.__timelines["main"] + window.__timeline).
+        The seam position is driven by ONE proxy {x} via onUpdate so the clip-path,
+        the handle transform, the seam glow AND the label crossfade all read the
+        SAME value and can never drift. Discrete beats (badge stamp, ring ripple,
+        caption, idle breath) are plain finite GSAP tweens on the same timeline.
+        ALL DOM (including the dot-grid cells + the badge's two lines) is built at
+        construction time; every animated element gets its initial state via
+        gsap.set before frame 0; render(0) runs at boot so frame 0 is correct.
+        No Math.random, no Date, no rAF, no setTimeout, no CSS transitions /
+        @keyframes, no infinite repeats.
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family:"Space Grotesk"; font-weight:700;
+        src:url("assets/fonts/space-grotesk-700.ttf") format("truetype"); }
+      @font-face { font-family:"Space Grotesk"; font-weight:500;
+        src:url("assets/fonts/space-grotesk-500.ttf") format("truetype"); }
+      @font-face { font-family:"JetBrains Mono"; font-weight:500;
+        src:url("assets/fonts/jetbrains-500.ttf") format("truetype"); }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      html,body { width:1920px; height:1080px; overflow:hidden; background:#0a0a0f; }
+      #root { position:relative; width:1920px; height:1080px; overflow:hidden; background:#0a0a0f; }
+
+      /* the camera — one transform on this wrapper for the idle breath */
+      .cam { position:absolute; inset:0; will-change:transform; }
+
+      /* both scenes fill the frame and stack; AFTER sits above BEFORE and is
+         revealed by a clip-path inset driven from render(x). */
+      .scene { position:absolute; inset:0; overflow:hidden; }
+      .scene img { position:absolute; inset:0; width:100%; height:100%;
+                   object-fit:cover; display:block; }
+      /* designed gradient fallbacks (no asset files needed) */
+      .ph { position:absolute; inset:0; }
+      .ph .grid { position:absolute; inset:0; opacity:0.5; }
+      .ph .gcell { position:absolute; width:3px; height:3px; border-radius:50%; }
+      .ph .wm {
+        position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+        font-family:"Space Grotesk",sans-serif; font-weight:700;
+        letter-spacing:0.06em; white-space:nowrap; user-select:none;
+      }
+      .afterScene { z-index:2; }
+
+      /* the seam: a vertical line with a circular drag-handle + glow, parented
+         to a full-height column we translate across the frame in render(x). */
+      .seam { position:absolute; top:0; bottom:0; left:0; width:0; z-index:5;
+              will-change:transform; }
+      .seamGlow {
+        position:absolute; top:0; bottom:0; left:-60px; width:120px;
+        pointer-events:none;
+      }
+      .seamLine { position:absolute; top:0; bottom:0; left:-2px; width:4px;
+                  border-radius:2px; }
+      .handle {
+        position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+        width:88px; height:88px; border-radius:50%;
+        display:flex; align-items:center; justify-content:center;
+        backdrop-filter:blur(2px);
+      }
+      .handle svg { display:block; }
+
+      /* corner label chips — grid-stack so BEFORE/AFTER occupy the SAME cell
+         and crossfade without reflow; chip sizes to its text (no clipping). */
+      .labels { position:absolute; left:64px; bottom:64px; z-index:6;
+                display:grid; }
+      .chip {
+        grid-area:1 / 1; justify-self:start; align-self:end;
+        display:inline-flex; align-items:center; gap:16px;
+        padding:18px 30px; border-radius:18px;
+        font-family:"Space Grotesk",sans-serif; font-weight:700;
+        font-size:40px; letter-spacing:0.04em; white-space:nowrap;
+        backdrop-filter:blur(8px); will-change:transform,opacity;
+      }
+      .chip .pip { width:16px; height:16px; border-radius:50%; flex:0 0 auto; }
+
+      /* result badge — stamps over the seam at the end */
+      .badge { position:absolute; left:50%; top:50%; z-index:8;
+               transform:translate(-50%,-50%);
+               display:flex; flex-direction:column; align-items:center;
+               will-change:transform,opacity; }
+      .badgeCard {
+        position:relative;
+        padding:34px 52px; border-radius:28px;
+        font-family:"Space Grotesk",sans-serif; font-weight:700;
+        text-align:center; white-space:nowrap;
+        display:flex; flex-direction:column; align-items:center;
+      }
+      .badgeKicker {
+        font-family:"Space Grotesk",sans-serif; font-weight:500;
+        font-size:24px; letter-spacing:0.34em; text-transform:uppercase;
+        margin-bottom:8px; opacity:0.9;
+      }
+      .badgeLine { font-size:62px; line-height:1.04; letter-spacing:-0.01em; }
+      .ring { position:absolute; left:50%; top:50%; z-index:7;
+              transform:translate(-50%,-50%); border-radius:32px;
+              pointer-events:none; }
+      .caption {
+        margin-top:26px; z-index:8;
+        font-family:"JetBrains Mono",monospace; font-weight:500;
+        font-size:26px; letter-spacing:0.02em; white-space:nowrap;
+        display:flex; align-items:center; gap:14px;
+        will-change:transform,opacity;
+      }
+      .caption .dotc { width:11px; height:11px; border-radius:50%; flex:0 0 auto; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="6.5" data-width="1920" data-height="1080">
+      <div class="cam" id="cam">
+        <!-- BEFORE scene (base layer) -->
+        <div class="scene" id="beforeScene">
+          <div class="ph" id="beforePh">
+            <div class="grid" id="beforeGrid"></div>
+            <div class="wm" id="beforeWm"></div>
+          </div>
+        </div>
+        <!-- AFTER scene (revealed by clip-path) -->
+        <div class="scene afterScene" id="afterScene">
+          <div class="ph" id="afterPh">
+            <div class="grid" id="afterGrid"></div>
+            <div class="wm" id="afterWm"></div>
+          </div>
+        </div>
+
+        <!-- the sweeping seam -->
+        <div class="seam" id="seam">
+          <div class="seamGlow" id="seamGlow"></div>
+          <div class="seamLine" id="seamLine"></div>
+          <div class="handle" id="handle">
+            <svg width="40" height="24" viewBox="0 0 40 24" fill="none">
+              <path d="M14 4 L6 12 L14 20" id="hL" stroke-width="3.4"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M26 4 L34 12 L26 20" id="hR" stroke-width="3.4"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- corner labels (grid-stacked, crossfade) -->
+        <div class="labels" id="labels">
+          <span class="chip" id="chipBefore"><span class="pip" id="pipBefore"></span><span id="chipBeforeTxt"></span></span>
+          <span class="chip" id="chipAfter"><span class="pip" id="pipAfter"></span><span id="chipAfterTxt"></span></span>
+        </div>
+
+        <!-- result badge + ring ripple + caption -->
+        <div class="ring" id="ring"></div>
+        <div class="badge" id="badge">
+          <div class="badgeCard" id="badgeCard">
+            <div class="badgeKicker" id="badgeKicker"></div>
+            <div id="badgeLines"></div>
+          </div>
+          <div class="caption" id="caption"><span class="dotc" id="capDot"></span><span id="capTxt"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const V = window.__hyperframes.getVariables();
+
+      /* normalize a CSS hex color to 6-digit so 2-digit alpha can be appended */
+      function hex6(c){c=String(c).trim();if(/^#[0-9a-fA-F]{3}$/.test(c))return "#"+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];if(/^#[0-9a-fA-F]{8}$/.test(c))return c.slice(0,7);return c;}
+
+      /* ── parameters ─────────────────────────────────────────────────── */
+      const HANDLE = hex6(V.handleColor);
+      const ACCENT = hex6(V.accent);
+      const INK    = String(V.ink);
+      const RTL    = String(V.sweepDirection).toLowerCase() === "rtl";
+      let SETTLE   = parseFloat(V.settlePosition);
+      if (!isFinite(SETTLE)) SETTLE = 0.62;
+      SETTLE = Math.max(0.15, Math.min(0.85, SETTLE));   // keep handle on-frame
+      // settlePosition is the AFTER-reveal FRACTION (same meaning both ways).
+      // ltr: AFTER fills LEFT of the seam, so the seam coord == the fraction.
+      // rtl: AFTER fills RIGHT of the seam, so the seam coord is mirrored
+      // (1 - fraction) — otherwise rtl would reveal only (1 - SETTLE) of AFTER
+      // and the AFTER chip/seam would land on the wrong side of center.
+      const SETTLE_X = RTL ? (1 - SETTLE) : SETTLE;
+      const W = 1920, H = 1080;
+
+      /* ── elements ───────────────────────────────────────────────────── */
+      const cam        = document.getElementById("cam");
+      const beforeScene= document.getElementById("beforeScene");
+      const afterScene = document.getElementById("afterScene");
+      const beforePh   = document.getElementById("beforePh");
+      const afterPh    = document.getElementById("afterPh");
+      const beforeGrid = document.getElementById("beforeGrid");
+      const afterGrid  = document.getElementById("afterGrid");
+      const beforeWm   = document.getElementById("beforeWm");
+      const afterWm    = document.getElementById("afterWm");
+      const seam       = document.getElementById("seam");
+      const seamGlow   = document.getElementById("seamGlow");
+      const seamLine   = document.getElementById("seamLine");
+      const handle     = document.getElementById("handle");
+      const labels     = document.getElementById("labels");
+      const chipBefore = document.getElementById("chipBefore");
+      const chipAfter  = document.getElementById("chipAfter");
+      const pipBefore  = document.getElementById("pipBefore");
+      const pipAfter   = document.getElementById("pipAfter");
+      const badge      = document.getElementById("badge");
+      const badgeCard  = document.getElementById("badgeCard");
+      const badgeKicker= document.getElementById("badgeKicker");
+      const badgeLines = document.getElementById("badgeLines");
+      const ring       = document.getElementById("ring");
+      const caption    = document.getElementById("caption");
+      const capDot     = document.getElementById("capDot");
+
+      /* ── image vs designed fallback ─────────────────────────────────── */
+      function mountScene(scene, ph, url){
+        if (url && String(url).trim()) {
+          const img = document.createElement("img");
+          img.src = String(url).trim();
+          scene.insertBefore(img, ph);
+          ph.style.display = "none";
+        }
+      }
+      mountScene(beforeScene, beforePh, V.beforeImage);
+      mountScene(afterScene,  afterPh,  V.afterImage);
+
+      /* designed gradient placeholder scenes (muted BEFORE, vivid AFTER) */
+      beforePh.style.background =
+        "radial-gradient(120% 120% at 30% 20%, #2b2f3a 0%, #1a1d27 55%, #111319 100%)";
+      afterPh.style.background =
+        `radial-gradient(120% 120% at 70% 30%, ${ACCENT} -10%, #2a2350 45%, #120f24 100%)`;
+
+      /* faint dot-grid in each placeholder — built at construction time */
+      const GX = 30, GY = 17, SPX = W / (GX - 1), SPY = H / (GY - 1);
+      function buildGrid(host, color){
+        let html = "";
+        for (let r = 0; r < GY; r++)
+          for (let c = 0; c < GX; c++)
+            html += `<span class="gcell" style="left:${(c*SPX).toFixed(1)}px;top:${(r*SPY).toFixed(1)}px;background:${color}"></span>`;
+        host.innerHTML = html;
+      }
+      buildGrid(beforeGrid, "#ffffff22");
+      buildGrid(afterGrid,  hex6(HANDLE) + "33");
+      beforeWm.textContent = String(V.beforeLabel || "BEFORE");
+      afterWm.textContent  = String(V.afterLabel  || "AFTER");
+      beforeWm.style.color = "#ffffff14";
+      beforeWm.style.fontSize = "260px";
+      afterWm.style.color  = hex6(HANDLE) + "1f";
+      afterWm.style.fontSize = "260px";
+
+      /* ── seam styling ───────────────────────────────────────────────── */
+      seamLine.style.background = HANDLE;
+      seamLine.style.boxShadow  = `0 0 24px ${ACCENT}cc, 0 0 60px ${ACCENT}66`;
+      seamGlow.style.background =
+        `linear-gradient(90deg, transparent 0%, ${ACCENT}00 35%, ${ACCENT}55 50%, ${ACCENT}00 65%, transparent 100%)`;
+      handle.style.background = HANDLE + "1f";
+      handle.style.border = `3px solid ${HANDLE}`;
+      handle.style.boxShadow = `0 0 30px ${ACCENT}aa, 0 10px 30px #00000066`;
+      document.getElementById("hL").setAttribute("stroke", HANDLE);
+      document.getElementById("hR").setAttribute("stroke", HANDLE);
+
+      /* ── label chips ────────────────────────────────────────────────── */
+      document.getElementById("chipBeforeTxt").textContent = String(V.beforeLabel || "BEFORE");
+      document.getElementById("chipAfterTxt").textContent  = String(V.afterLabel  || "AFTER");
+      chipBefore.style.background = "#0c0e16aa";
+      chipBefore.style.border = "1px solid #ffffff26";
+      chipBefore.style.color = INK;
+      pipBefore.style.background = "#8b93a7";
+      chipAfter.style.background = ACCENT + "33";
+      chipAfter.style.border = `1px solid ${ACCENT}`;
+      chipAfter.style.color = INK;
+      pipAfter.style.background = ACCENT;
+
+      /* ── badge content (split badgeText on the middot into lines) ────── */
+      badgeKicker.textContent = "RESULT";
+      badgeKicker.style.color = ACCENT;
+      const badgeRaw = String(V.badgeText || "DONE");
+      const badgeParts = badgeRaw.split("·").map(s => s.trim()).filter(Boolean);
+      const lines = badgeParts.length ? badgeParts : [badgeRaw];
+      let bl = "";
+      lines.forEach(s => { bl += `<div class="badgeLine">${s}</div>`; });
+      badgeLines.innerHTML = bl;
+      badgeCard.style.background = "#0c0e16f2";
+      badgeCard.style.border = `2px solid ${ACCENT}`;
+      badgeCard.style.color = "#ffffff";
+      badgeCard.style.boxShadow = `0 24px 80px ${ACCENT}66, 0 8px 28px #00000088`;
+      ring.style.border = `4px solid ${ACCENT}`;
+
+      const CAP = String(V.caption || "").trim();
+      const capTxt = document.getElementById("capTxt");
+      if (CAP) {
+        capTxt.textContent = CAP;
+        caption.style.color = "#c9cee0";
+        capDot.style.background = ACCENT;
+        capDot.style.boxShadow = `0 0 12px ${ACCENT}`;
+      } else {
+        caption.style.display = "none";
+      }
+
+      /* ── seam geometry: x in [0..1] across the frame ────────────────── */
+      // ltr: BEFORE on the left, AFTER revealed on the left side of the seam
+      //      as it sweeps right (clip the after scene to [0 .. x*W]).
+      // rtl: mirror — BEFORE on the right, AFTER on the right side.
+      const START_X = RTL ? 1 : 0;
+
+      // place labels in the corner that shows BEFORE first, then it crossfades
+      // to AFTER in place. (left for ltr, right for rtl)
+      if (RTL) {
+        labels.style.left = "auto";
+        labels.style.right = "64px";
+        chipBefore.style.justifySelf = "end";
+        chipAfter.style.justifySelf = "end";
+      }
+
+      /* the ONE function that keeps clip-path + seam + glow + crossfade synced */
+      function render(x){
+        const px = x * W;
+        // reveal AFTER on the swept side via inset clip-path
+        if (RTL) {
+          // seam moves right→left; AFTER fills to the RIGHT of the seam
+          afterScene.style.clipPath = `inset(0 0 0 ${px.toFixed(2)}px)`;
+        } else {
+          // seam moves left→right; AFTER fills to the LEFT of the seam
+          afterScene.style.clipPath = `inset(0 ${(W - px).toFixed(2)}px 0 0)`;
+        }
+        seam.style.transform = `translateX(${px.toFixed(2)}px)`;
+
+        // label crossfade keyed to how far the seam has TRAVELLED from its start
+        // edge (mirrored for rtl) so it crosses center the same way both ways.
+        // ltr: seam runs 0→settle, progress = x.  rtl: seam runs 1→settle, the
+        // reveal grows as x DECREASES, so progress = (1 - x). Keying on raw x
+        // (without the mirror) clamps f to 1 for the whole rtl sweep — the bug.
+        // BEFORE visible until ~0.46 of travel, AFTER from ~0.54 (smooth band).
+        const prog = RTL ? (1 - x) : x;
+        const f = Math.max(0, Math.min(1, (prog - 0.42) / 0.18));
+        chipBefore.style.opacity = (1 - f).toFixed(3);
+        chipAfter.style.opacity  = f.toFixed(3);
+        chipBefore.style.transform = `translateY(${(-10 * f).toFixed(2)}px)`;
+        chipAfter.style.transform  = `translateY(${(10 * (1 - f)).toFixed(2)}px)`;
+      }
+
+      /* ── initial states — frame 0 correct before any tween ──────────── */
+      gsap.set(cam, { scale: 1 });
+      gsap.set(badge, { opacity: 0, scale: 1.55, rotation: -7 });
+      gsap.set(ring,  { opacity: 0, scale: 0.4, width: 520, height: 240,
+                        xPercent: 0, yPercent: 0 });
+      gsap.set(caption, { opacity: 0, y: 18 });
+      // handle idle pulse handled by the seam glow opacity tween below
+      gsap.set(seamGlow, { opacity: 0.55 });
+
+      const seamPos = { x: START_X };
+      render(START_X);                    // frame 0 styled immediately
+
+      /* ── paused master timeline; HyperFrames seeks it ───────────────── */
+      const tl = gsap.timeline({ paused: true });
+
+      const T_SWEEP = 0.50, SWEEP_DUR = 2.80;        // 0.50 → 3.30
+      const T_OVER  = T_SWEEP + SWEEP_DUR;           // 3.30
+      // overshoot PAST the settle coord in the direction of travel:
+      // ltr sweeps 0→SETTLE_X (rightward) so overshoot is +; rtl sweeps
+      // 1→SETTLE_X (leftward) so overshoot is - (further left).
+      const OVER_X  = SETTLE_X + (RTL ? -0.07 : 0.07);
+      const T_SETTLE= T_OVER + 0.40;                 // 3.70
+      const T_BADGE = 4.45;
+      const DUR     = 6.5;
+
+      // 0.00–0.50 hold (nothing scheduled — BEFORE holds full-frame)
+
+      // sweep across to the overshoot point
+      tl.to(seamPos, { x: OVER_X, duration: SWEEP_DUR, ease: "power2.inOut",
+                       onUpdate: () => render(seamPos.x) }, T_SWEEP);
+      // settle back onto the target with a springy back.out
+      tl.to(seamPos, { x: SETTLE_X, duration: 0.65, ease: "back.out(2.4)",
+                       onUpdate: () => render(seamPos.x) }, T_OVER + 0.40);
+
+      // seam glow pulses once on landing (dim → bright → dim) — finite
+      tl.to(seamGlow, { opacity: 1, duration: 0.22, ease: "power2.out" }, T_SETTLE);
+      tl.to(seamGlow, { opacity: 0.5, duration: 0.45, ease: "power2.inOut" }, T_SETTLE + 0.22);
+
+      // badge stamps over the seam
+      tl.fromTo(badge, { opacity: 0, scale: 1.55, rotation: -7 },
+                       { opacity: 1, scale: 1, rotation: 0,
+                         duration: 0.5, ease: "back.out(2.4)",
+                         immediateRender: false }, T_BADGE);
+      // ring ripple expands + fades as the badge lands
+      tl.fromTo(ring, { opacity: 0.7, scale: 0.55 },
+                      { opacity: 0, scale: 1.7,
+                        duration: 0.7, ease: "power2.out",
+                        immediateRender: false }, T_BADGE + 0.06);
+      // caption rises in under the badge
+      tl.fromTo(caption, { opacity: 0, y: 18 },
+                         { opacity: 1, y: 0, duration: 0.45, ease: "power3.out",
+                           immediateRender: false }, T_BADGE + 0.28);
+
+      // idle breath across the hold so the final frame is never dead-still
+      // (one finite out-and-back cycle; overwrite:"auto" keeps the boundary clean)
+      tl.to(cam, { scale: 1.012, duration: 0.9, ease: "sine.inOut", overwrite: "auto" }, 4.95);
+      tl.to(cam, { scale: 1.0,   duration: 0.9, ease: "sine.inOut", overwrite: "auto" }, 5.85);
+
+      // hold the final frame to data-duration
+      tl.set({}, {}, DUR);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      window.__timeline = tl;
+    </script>
+  </body>
+</html>

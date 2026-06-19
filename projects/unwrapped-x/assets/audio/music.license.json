@@ -1,0 +1,10 @@
+{
+  "source": "pixabay-music",
+  "license": "Pixabay Content License (commercial-OK, no attribution required)",
+  "license_url": "https://pixabay.com/service/license-summary/",
+  "query": "upbeat electronic adventure motivational",
+  "source_url": "https://pixabay.com/music/future-bass-stylish-deep-electronic-262632/",
+  "title": "Stylish Deep Electronic | Royalty-free Music",
+  "audio_url": "https://cdn.pixabay.com/download/audio/2024/11/10/audio_593e8523e6.mp3?filename=nveravetyanmusic-stylish-deep-electronic-262632.mp3",
+  "captured_via": "puppeteer-core + Chrome (Pixabay music/SFX has no public API)"
+}

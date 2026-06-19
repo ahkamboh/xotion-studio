@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080,height=1920" />
+    <!-- GAP-FILLER PROOF: glossy, studio-lit 3D objects (three.js PBR + RoomEnvironment/PMREM
+         reflections, ACES tonemapping) + gradient bg + kinetic text + parallax.
+         Deterministic: 3D drawn inside hf-seek as a pure function of time; GSAP timeline for text. -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script type="importmap">
+      { "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+      } }
+    </script>
+    <style>
+      *{margin:0;padding:0;box-sizing:border-box;}
+      html,body{width:1080px;height:1920px;overflow:hidden;
+        /* soft pastel studio gradient bg (the reference look) */
+        background:
+          radial-gradient(1200px 900px at 30% 18%, #fef6ef 0%, rgba(254,246,239,0) 60%),
+          radial-gradient(1100px 1000px at 78% 82%, #eaf1ff 0%, rgba(234,241,255,0) 62%),
+          linear-gradient(160deg,#f3eee9 0%,#e9eef7 55%,#eef2ec 100%);
+        font-family:"Helvetica Neue",Arial,sans-serif;}
+      #root{position:relative;width:1080px;height:1920px;overflow:hidden;}
+      #gl{position:absolute;inset:0;width:1080px;height:1920px;z-index:10;}
+      .layer{position:absolute;left:0;right:0;text-align:center;z-index:20;}
+      .eyebrow{top:300px;font-size:30px;letter-spacing:.42em;text-transform:uppercase;color:#9a7bd6;font-weight:700;}
+      .head{top:360px;font-size:150px;line-height:.92;font-weight:800;letter-spacing:-.03em;color:#23202a;}
+      .head .g{background:linear-gradient(90deg,#7b5cff,#c86bff);-webkit-background-clip:text;background-clip:text;color:transparent;}
+      .sub{top:1560px;font-size:40px;font-weight:500;color:#5a5560;letter-spacing:.01em;}
+      /* a floating glossy UI card (HTML — the engine's strength) */
+      .card{position:absolute;z-index:15;left:50%;top:1180px;width:560px;transform:translateX(-50%);
+        background:rgba(255,255,255,.72);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.9);
+        border-radius:34px;padding:34px 40px;box-shadow:0 40px 90px -30px rgba(70,60,120,.45),0 8px 24px -10px rgba(70,60,120,.3);}
+      .card .t{font-size:34px;font-weight:700;color:#2a2630;}
+      .card .d{font-size:26px;color:#7a7480;margin-top:8px;}
+      .chip{display:inline-block;margin-top:18px;background:linear-gradient(90deg,#7b5cff,#c86bff);color:#fff;
+        font-size:24px;font-weight:700;padding:10px 22px;border-radius:999px;}
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="5" data-width="1080" data-height="1920">
+      <canvas id="gl" width="1080" height="1920"></canvas>
+      <div class="layer eyebrow">Xotion · on-device</div>
+      <div class="layer head">GLOSSY <span class="g">3D</span></div>
+      <div class="card"><div class="t">Rendered on your Mac</div><div class="d">three.js · PBR · studio reflections</div><div class="chip">no cloud</div></div>
+      <div class="layer sub">smooth · reflective · offline</div>
+    </div>
+
+    <script type="module">
+      import * as THREE from "three";
+
+      const W=1080,H=1920;
+      const renderer=new THREE.WebGLRenderer({canvas:document.getElementById("gl"),antialias:true,alpha:true});
+      renderer.setSize(W,H,false);
+      renderer.setClearColor(0x000000,0);                       // transparent → gradient bg shows through
+      renderer.toneMapping=THREE.ACESFilmicToneMapping;          // cinematic tonemap
+      renderer.toneMappingExposure=1.15;
+      renderer.outputColorSpace=THREE.SRGBColorSpace;
+
+      const scene=new THREE.Scene();
+      const camera=new THREE.PerspectiveCamera(38,W/H,0.1,100);
+      camera.position.set(0,0,9);
+
+      // CONTRASTY STUDIO ENVIRONMENT (procedural, offline-safe): a mid-gray stage with bright
+      // emissive "softbox" panels + sharp light strips → crisp specular streaks = the glossy look.
+      function studioEnv(){
+        const s=new THREE.Scene(); s.background=new THREE.Color(0x3a3a44);
+        const panel=(x,y,z,w,h,hex,gain)=>{ const m=new THREE.Mesh(
+          new THREE.PlaneGeometry(w,h),
+          new THREE.MeshBasicMaterial({color:new THREE.Color(hex).multiplyScalar(gain)}));
+          m.position.set(x,y,z); m.lookAt(0,0,0); s.add(m); };
+        panel(0, 9, 7, 26, 16, 0xffffff, 1.6);    // big top key softbox
+        panel(-9, 4, 5,  4, 20, 0xffffff, 6.0);    // bright left strip → crisp streak
+        panel( 9, 1, 4,  3, 18, 0xcad8ff, 5.0);    // cool right strip
+        panel(-3,-8, 5, 18,  6, 0x6a5cff, 2.0);    // purple bounce from below
+        panel( 0, 0,-11, 30, 30, 0x101018, 1.0);   // dark behind → contrast
+        const pm=new THREE.PMREMGenerator(renderer);
+        return pm.fromScene(s, 0.015).texture;
+      }
+      scene.environment=studioEnv();
+      const key=new THREE.DirectionalLight(0xffffff,2.0); key.position.set(5,8,7); scene.add(key);
+      scene.add(new THREE.AmbientLight(0xffffff,0.2));
+
+      // GLOSSY HERO ORB — glossy plastic: mirror-clearcoat, very low roughness, strong reflections
+      const orb=new THREE.Mesh(
+        new THREE.SphereGeometry(2.05,128,128),
+        new THREE.MeshPhysicalMaterial({color:0x6a3df0,metalness:0.0,roughness:0.03,
+          clearcoat:1.0,clearcoatRoughness:0.02,envMapIntensity:2.6,reflectivity:1.0}));
+      orb.position.set(-0.2,2.4,0); scene.add(orb);
+
+      // POLISHED METAL TORUS — chrome-purple (reads strong on the pastel bg, not washed out)
+      const ring=new THREE.Mesh(
+        new THREE.TorusGeometry(1.5,0.45,64,160),
+        new THREE.MeshPhysicalMaterial({color:0x9a78ff,metalness:1.0,roughness:0.06,
+          clearcoat:1.0,clearcoatRoughness:0.04,envMapIntensity:2.4}));
+      ring.position.set(0.1,-3.2,0.4); scene.add(ring);
+
+      // CHROME PILL — polished metal
+      const pill=new THREE.Mesh(
+        new THREE.CapsuleGeometry(0.55,1.4,32,64),
+        new THREE.MeshPhysicalMaterial({color:0xfff2e0,metalness:1.0,roughness:0.05,envMapIntensity:2.6,clearcoat:1}));
+      pill.position.set(3.0,-0.6,-0.5); pill.rotation.z=0.6; scene.add(pill);
+
+      function draw(t){                                          // pure fn of time → deterministic
+        orb.rotation.y=t*0.7; orb.rotation.x=Math.sin(t*0.5)*0.25;
+        orb.position.y=2.4+Math.sin(t*1.1)*0.18;                 // gentle float
+        ring.rotation.x=t*0.9; ring.rotation.y=t*1.4;            // fast spin → shows motion blur
+        ring.position.y=-3.2+Math.sin(t*0.9+1)*0.16;
+        pill.rotation.y=t*1.1; pill.position.y=-0.6+Math.sin(t*1.3+2)*0.2;
+        camera.position.x=Math.sin(t*0.4)*0.35;                  // subtle parallax
+        camera.lookAt(0,0,0);
+        renderer.render(scene,camera);
+      }
+      draw(0);
+      window.addEventListener("hf-seek",(e)=>draw((e.detail&&e.detail.time)||0));
+
+      // kinetic text + card parallax on the GSAP timeline
+      const Q=s=>'[data-composition-id="main"] '+s;
+      const tl=gsap.timeline({paused:true});
+      window.__timelines=window.__timelines||{}; window.__timelines["main"]=tl;
+      gsap.set(Q('.eyebrow'),{opacity:0,y:18}); gsap.set(Q('.head'),{opacity:0,y:40,filter:"blur(10px)"});
+      gsap.set(Q('.card'),{opacity:0,y:60,scale:.96}); gsap.set(Q('.sub'),{opacity:0,y:16});
+      tl.to(Q('.eyebrow'),{opacity:1,y:0,duration:.5,ease:"power2.out"},.2)
+        .to(Q('.head'),{opacity:1,y:0,filter:"blur(0px)",duration:.8,ease:"expo.out"},.35)
+        .to(Q('.card'),{opacity:1,y:0,scale:1,duration:.7,ease:"back.out(1.6)"},.7)
+        .to(Q('.sub'),{opacity:1,y:0,duration:.5,ease:"power2.out"},1.0)
+        .to(Q('.card'),{y:-14,duration:2.6,ease:"sine.inOut"},1.4)     // idle float
+        .to(Q('.head'),{y:-8,duration:2.6,ease:"sine.inOut"},1.4);
+    </script>
+  </body>
+</html>

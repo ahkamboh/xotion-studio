@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"nodes",          "type":"string","label":"Nodes — pipe-separated, each \"Label~icon\" (icon ∈ trigger,http,filter,ai,db,mail,slack,branch,code,check) e.g. \"Webhook~trigger|Enrich Lead~ai|Notify Slack~slack\"","default":"Webhook~trigger|Fetch Record~http|AI Classify~ai|Update CRM~db|Notify Slack~slack"},
+  {"id":"layoutDirection","type":"string","label":"Layout: row | column","default":"row"},
+  {"id":"successLabel",   "type":"string","label":"Success badge label","default":"Workflow active"},
+  {"id":"noodleColor",    "type":"color", "label":"Connector noodle color","default":"#6366f1"},
+  {"id":"pulseColor",     "type":"color", "label":"Data pulse / check-ring color","default":"#22c55e"},
+  {"id":"canvasTheme",    "type":"color", "label":"Canvas background (dotted grid)","default":"#0e1018"},
+  {"id":"nodeColor",      "type":"color", "label":"Node card surface","default":"#1a1d2b"},
+  {"id":"ink",            "type":"color", "label":"Node label / text color","default":"#eef0f6"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <!--
+      WORKFLOW NODE BUILD — the canonical "I automated X" opening shot.
+      Automation nodes drop onto a dotted canvas with bounce-settles, curved
+      connector noodles draw between them, a data pulse then travels the chain
+      lighting each node with a check ring, ending on a success badge that
+      pulses on a seamless loop. The n8n / Make / Zapier / CI-pipeline skeleton.
+
+      DESIGN: dark "node editor" canvas (dotted grid), Space Grotesk node
+      labels + JetBrains Mono icon glyphs, indigo bezier noodles, a green data
+      pulse + check rings. Xotion-flavored default chain (Webhook → Fetch → AI
+      Classify → Update CRM → Notify Slack). 5 nodes by default; 2–7 supported.
+
+      VARIABLES (data-composition-variables):
+        nodes           — pipe-separated list; each item "Label~icon".
+                          icon ∈ {trigger,http,filter,ai,db,mail,slack,branch,code,check}
+                          (unknown icon → a generic dot). Encoding: "|" between
+                          nodes, "~" splits a node's label from its icon key.
+        layoutDirection — "row" (horizontal chain) or "column" (vertical chain).
+        successLabel    — text inside the final success badge.
+        noodleColor     — bezier connector stroke.
+        pulseColor      — travelling data pulse + node check rings + badge.
+        canvasTheme     — dotted-grid canvas background.
+        nodeColor       — node card surface.
+        ink             — node label / badge text color.
+
+      CHOREOGRAPHY (data-duration 7.0 — final frame holds + badge loops):
+        phase            | start–end (s) | easing             | what moves
+        -----------------|---------------|--------------------|---------------------------------
+        canvas settle    | 0.00–0.45     | power2.out         | dotted canvas (visible at frame 0) gentle push-in 1.04→1.0
+        nodes drop       | 0.45–2.30     | back.out(2.2)+bounce| each node falls from y-70 & overshoots, staggered 0.28s; tiny shadow squash
+        noodles draw     | 1.95–3.35     | power1.inOut       | bezier connectors stroke-draw left→right between settled nodes (overlaps tail of drop)
+        data pulse runs  | 3.35–5.55     | none (proxy)       | a glowing dot rides each noodle in turn; as it ARRIVES at a node, that node lights (border→pulseColor) + a check ring scales-in
+        success badge    | 5.45–6.05     | back.out(1.7)      | pill badge pops below the chain: spinner→check + successLabel rises
+        seamless loop    | 6.05–7.00     | sine.inOut         | badge breathes (scale 1→1.04→1) — start==end state so the hold loops clean
+
+      DETERMINISM: ONE paused master timeline. Discrete beats are normal GSAP
+      tweens; the data-pulse position is a single proxy {p:0..1} whose onUpdate
+      moves the pulse dot along a hand-computed multi-segment path AND lights
+      each node the instant the pulse passes its center (text/visual driven by
+      the SAME p, quantized so a node never lights before the dot reaches it).
+      ALL DOM (nodes, noodles, rings, pulse, badge) built at construction from
+      the parsed list — never inside a callback. Every element's frame-0 state
+      set via gsap.set. Noodle path lengths from getTotalLength() (pure SVG
+      geometry). No Math.random / Date / rAF / setTimeout / CSS transitions /
+      keyframes / infinite repeats. The loop "breathe" is a finite sine tween
+      whose endpoints match, so the held final frame is seam-free.
+
+      Variable-length robustness: node count drives how many cards/noodles/rings
+      are built at construction; the chain auto-centers and the canvas scales to
+      fit so 2 or 7 nodes never clip. Long labels wrap inside a max-width card.
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family:"Grotesk"; font-weight:500;
+        src:url("assets/fonts/space-grotesk-500.ttf") format("truetype"); }
+      @font-face { font-family:"Grotesk"; font-weight:700;
+        src:url("assets/fonts/space-grotesk-700.ttf") format("truetype"); }
+      @font-face { font-family:"Mono"; font-weight:500;
+        src:url("assets/fonts/jetbrains-500.ttf") format("truetype"); }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      html,body { width:1920px; height:1080px; overflow:hidden; }
+      #root { position:relative; width:1920px; height:1080px; overflow:hidden;
+              font-family:"Grotesk",sans-serif; }
+      /* camera wrapper — one transform owned by gsap */
+      .cam { position:absolute; left:50%; top:50%; will-change:transform; }
+      /* the node-editor canvas: a fixed stage the chain is centered within */
+      .canvas {
+        position:relative; border-radius:28px; overflow:hidden;
+      }
+      .dots { position:absolute; inset:0; }
+      /* svg layer holding the bezier noodles + the pulse, behind the cards */
+      .wires { position:absolute; left:0; top:0; }
+      /* a node card — height GROWS to fit a wrapped label (min-height floor in
+         JS); flex vertically-centers the icon + meta no matter how tall it is */
+      .node {
+        position:absolute; display:flex; align-items:center; gap:18px;
+        border-radius:18px; padding:18px 26px 18px 22px;
+        will-change:transform;
+      }
+      .node .ico {
+        width:58px; height:58px; flex:0 0 auto; border-radius:14px;
+        display:flex; align-items:center; justify-content:center;
+        font-family:"Mono",monospace; font-weight:500;
+      }
+      .node .ico svg { display:block; }
+      .node .meta { display:flex; flex-direction:column; gap:3px; min-width:0; }
+      .node .kicker {
+        font-family:"Mono",monospace; font-weight:500; font-size:14px;
+        letter-spacing:0.14em; text-transform:uppercase; opacity:0.5;
+        white-space:nowrap;
+      }
+      .node .label {
+        font-family:"Grotesk",sans-serif; font-weight:700; font-size:25px;
+        letter-spacing:-0.01em; line-height:1.12;
+        /* wrap long labels; break a single over-long word rather than overflow */
+        overflow-wrap:anywhere; word-break:break-word;
+      }
+      /* check ring that scales in when the pulse arrives */
+      .ring {
+        position:absolute; border-radius:50%;
+        display:flex; align-items:center; justify-content:center;
+      }
+      .ring svg { display:block; }
+      /* travelling data pulse */
+      .pulse {
+        position:absolute; left:0; top:0; border-radius:50%;
+        pointer-events:none;
+      }
+      /* success badge — a long successLabel WRAPS inside a capped width instead
+         of running off both frame edges. border-radius shrinks to a rounded
+         rect when it grows past one line (set in JS); spinner stays top-aligned */
+      .badge {
+        position:absolute; display:flex; align-items:center; gap:16px;
+        border-radius:9999px; padding:18px 34px 18px 24px;
+        max-width:760px; box-sizing:border-box;
+      }
+      .badge .spin {
+        width:42px; height:42px; flex:0 0 auto; position:relative;
+      }
+      .badge .spin svg { position:absolute; inset:0; display:block; }
+      .badge .btxt {
+        font-family:"Grotesk",sans-serif; font-weight:700; font-size:28px;
+        letter-spacing:-0.01em; line-height:1.16; min-width:0;
+        overflow-wrap:anywhere; word-break:break-word;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="7.0" data-width="1920" data-height="1080">
+      <div class="cam" id="cam">
+        <div class="canvas" id="canvas">
+          <div class="dots" id="dots"></div>
+          <svg class="wires" id="wires"></svg>
+          <!-- node cards, rings, pulse and badge are built in JS at construction -->
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const V = window.__hyperframes.getVariables();
+
+      /* normalize a hex color to 6-digit so 2-digit alpha appends safely */
+      function hex6(c){c=String(c).trim();if(/^#[0-9a-fA-F]{3}$/.test(c))return "#"+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];if(/^#[0-9a-fA-F]{8}$/.test(c))return c.slice(0,7);return c;}
+
+      const NOODLE = hex6(V.noodleColor);
+      const PULSE  = hex6(V.pulseColor);
+      const CANVAS = hex6(V.canvasTheme);
+      const NODEC  = hex6(V.nodeColor);
+      const INK    = hex6(V.ink);
+      const COLUMN = String(V.layoutDirection).toLowerCase().trim() === "column";
+
+      /* ── parse the node list (variable length drives construction) ──────── */
+      const ICON_KICKER = {
+        trigger:"TRIGGER", http:"HTTP", filter:"FILTER", ai:"AI",
+        db:"DATABASE", mail:"EMAIL", slack:"SLACK", branch:"ROUTER",
+        code:"FUNCTION", check:"DONE"
+      };
+      /* inline-SVG glyph per icon key (pure vector — no asset files) */
+      function iconSVG(key, col) {
+        const s = `stroke="${col}" stroke-width="2.1" fill="none" stroke-linecap="round" stroke-linejoin="round"`;
+        const M = {
+          trigger:`<polygon points="13 2 4 14 12 14 11 22 20 10 12 10 13 2" stroke="${col}" stroke-width="2.1" fill="none" stroke-linejoin="round"/>`,
+          http:`<circle cx="12" cy="12" r="9" ${s}/><path d="M3 12h18M12 3c2.6 2.4 2.6 15.6 0 18M12 3c-2.6 2.4-2.6 15.6 0 18" ${s}/>`,
+          filter:`<path d="M3 5h18l-7 8v5l-4 2v-7L3 5z" ${s}/>`,
+          ai:`<rect x="4" y="6" width="16" height="13" rx="3" ${s}/><path d="M9 6V3.5M15 6V3.5M9 12h.01M15 12h.01M9.5 16h5" ${s}/>`,
+          db:`<ellipse cx="12" cy="6" rx="8" ry="3" ${s}/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" ${s}/>`,
+          mail:`<rect x="3" y="5" width="18" height="14" rx="2.5" ${s}/><path d="M3.5 7l8.5 6 8.5-6" ${s}/>`,
+          slack:`<path d="M10 4a2 2 0 1 1-2 2v-2zM10 8h2a2 2 0 1 1 0 4h-2zM20 14a2 2 0 1 1 2-2h-2zM16 14v-2a2 2 0 1 1 4 0v2zM14 20a2 2 0 1 1 2-2v2zM14 16h-2a2 2 0 1 1 0-4h2zM4 10a2 2 0 1 1-2 2h2zM8 10v2a2 2 0 1 1-4 0v-2z" stroke="${col}" stroke-width="1.7" fill="none" stroke-linejoin="round"/>`,
+          branch:`<circle cx="6" cy="6" r="2.5" ${s}/><circle cx="18" cy="6" r="2.5" ${s}/><circle cx="12" cy="19" r="2.5" ${s}/><path d="M6 8.5v3c0 2 1.5 3 3 3.5M18 8.5v3c0 2-1.5 3-3 3.5" ${s}/>`,
+          code:`<path d="M9 7l-5 5 5 5M15 7l5 5-5 5" ${s}/>`,
+          check:`<path d="M5 13l4 4 10-11" ${s}/>`
+        };
+        return `<svg viewBox="0 0 24 24" width="30" height="30">${M[key] || `<circle cx="12" cy="12" r="4.5" stroke="${col}" stroke-width="2.1" fill="none"/>`}</svg>`;
+      }
+
+      const NODES = String(V.nodes).split("|").map(s => s.trim()).filter(Boolean).map(item => {
+        const i = item.lastIndexOf("~");
+        let label = item, key = "code";
+        if (i > 0) { label = item.slice(0, i).trim(); key = item.slice(i + 1).trim().toLowerCase(); }
+        if (!ICON_KICKER[key]) key = "code";
+        return { label, key };
+      });
+      const N = Math.max(2, NODES.length);   // need ≥2 to draw a chain
+      while (NODES.length < N) NODES.push({ label: "Step", key: "code" });
+
+      /* ── layout geometry (auto-fit so 2..7 nodes never clip) ───────────── */
+      const NW = 286;                          // node card WIDTH (fixed)
+      const GAP = COLUMN ? 78 : 96;            // gap between consecutive cards
+      const PAD = 80;                          // canvas inner padding
+      const BADGE_GAP = 64;                    // gap from chain to success badge
+      const BADGE_BOTTOM = 56;                 // real slack BELOW the badge so its
+                                               // rounded bottom border is never
+                                               // grazed by the overflow:hidden edge
+
+      /* ── VARIABLE-LENGTH FIX (node cards): the card HEIGHT is no longer
+         hard-coded — it grows to fit a wrapped label. We estimate the wrapped
+         line count ANALYTICALLY (deterministic, font-load independent: no DOM
+         measurement that could be stale before fonts load), then size every
+         card to the TALLEST label so the row stays aligned and all downstream
+         geometry (noodle endpoints, ring/pulse positions, badge area) is exact.
+         A CSS min-height floor on the box (set below) is the belt-and-braces
+         guarantee that real wrapping can only ever GROW the box, never clip. */
+      const ICO_W = 58, ICO_GAP = 18, PAD_L = 22, PAD_R = 26; // .node internals
+      const LABEL_FS = 25, LABEL_LH = 1.12;     // matches .label CSS
+      // usable text width inside a card, for the label column
+      const TEXT_W = NW - PAD_L - PAD_R - ICO_W - ICO_GAP;   // = 162px
+      // Average glyph advance for Space-Grotesk-700. SAFETY DIRECTION: a LARGER
+      // advance → SMALLER chars-per-line → MORE estimated lines = an OVER-count,
+      // the safe side (never clips). The old 0.56 multiplier under-counted
+      // Space-Grotesk-700 (true advance ≈ 0.62-0.66em incl. inter-word spaces),
+      // so it predicted too FEW lines and the box clipped. 0.64 over-reserves a
+      // touch (harmless: extra height only grows the card) and the lazy DOM
+      // re-measure below corrects any remaining gap once fonts load.
+      const AVG_CH = LABEL_FS * 0.64;
+      const CHARS_PER_LINE = Math.max(1, Math.floor(TEXT_W / AVG_CH));
+      function labelLines(label) {
+        // greedy word-wrap into CHARS_PER_LINE-wide lines; a single word longer
+        // than a line still occupies (and is broken across, via CSS) ⌈len/CPL⌉
+        const words = String(label).split(/\s+/).filter(Boolean);
+        if (!words.length) return 1;
+        let lines = 1, col = 0;
+        for (const w of words) {
+          const wl = w.length;
+          if (wl > CHARS_PER_LINE) {                 // long word breaks across lines
+            if (col > 0) { lines++; col = 0; }
+            lines += Math.ceil(wl / CHARS_PER_LINE) - 1;
+            col = wl % CHARS_PER_LINE || CHARS_PER_LINE;
+          } else if (col === 0) { col = wl; }
+          else if (col + 1 + wl <= CHARS_PER_LINE) { col += 1 + wl; }
+          else { lines++; col = wl; }
+        }
+        return lines;
+      }
+      const KICKER_H = 14 + 3;                   // kicker font + meta gap
+      const VPAD = 18 * 2;                       // .node top+bottom padding
+      const maxLines = Math.max(1, ...NODES.map(n => labelLines(n.label)));
+      const labelBlockH = Math.ceil(maxLines * LABEL_FS * LABEL_LH);
+      // card height = content (kicker + label block) + vertical padding, with a
+      // floor so a 1-line card keeps the original comfortable 92px proportion
+      const NH = Math.max(92, KICKER_H + labelBlockH + VPAD);
+
+      /* ── VARIABLE-LENGTH FIX (success badge): a long successLabel WRAPS in a
+         capped width instead of running off both frame edges. We reserve room
+         below the chain in TWO layers: (1) a CONSERVATIVE analytic estimate of
+         the wrapped height (over-counts lines — see BADGE_AVG_CH below) plus a
+         real bottom margin, and (2) a lazy DOM RE-MEASURE in the first onUpdate
+         (cached once fonts load) that GROWS the canvas if the real badge is even
+         taller. Together the canvas always grows to contain the badge — it never
+         spills past overflow:hidden, for any successLabel, layout, or font. */
+      const BADGE_TXT_FS = 28, BADGE_TXT_LH = 1.16;
+      const BADGE_VPAD = 18 * 2;                 // .badge top+bottom padding
+      const BADGE_SPIN_W = 42 + 16;              // spinner + gap
+      // badge text column width inside the 760px cap (minus h-padding + spinner)
+      const BADGE_MAXW = 760;
+      const BADGE_TXT_W = BADGE_MAXW - 34 - 24 - BADGE_SPIN_W;     // ~616px
+      // Same SAFETY DIRECTION as AVG_CH above: a LARGER advance → fewer chars per
+      // line → MORE estimated lines = OVER-count (safe). The old 0.56 gave
+      // BADGE_CPL≈39 and predicted 2 lines for an 80-char label that really wraps
+      // to 4 lines at Space-Grotesk-700 @28px, so the badge bottom clipped past
+      // overflow:hidden. 0.64 over-reserves; the lazy DOM re-measure below grows
+      // the canvas if even this under-counts for an exotic font/label.
+      const BADGE_AVG_CH = BADGE_TXT_FS * 0.64;
+      const BADGE_CPL = Math.max(1, Math.floor(BADGE_TXT_W / BADGE_AVG_CH));
+      function badgeLines(label) {                // same greedy wrap as labels
+        const words = String(label).split(/\s+/).filter(Boolean);
+        if (!words.length) return 1;
+        let lines = 1, col = 0;
+        for (const w of words) {
+          const wl = w.length;
+          if (wl > BADGE_CPL) {
+            if (col > 0) { lines++; col = 0; }
+            lines += Math.ceil(wl / BADGE_CPL) - 1;
+            col = wl % BADGE_CPL || BADGE_CPL;
+          } else if (col === 0) { col = wl; }
+          else if (col + 1 + wl <= BADGE_CPL) { col += 1 + wl; }
+          else { lines++; col = wl; }
+        }
+        return lines;
+      }
+      const badgeNLines = badgeLines(String(V.successLabel));
+      const BADGE_H = Math.max(80, Math.ceil(badgeNLines * BADGE_TXT_FS * BADGE_TXT_LH) + BADGE_VPAD);
+
+      // chain extent
+      const chainLen = N * (COLUMN ? NH : NW) + (N - 1) * GAP;
+      // canvas width must also contain the (centered) badge: a multi-line badge
+      // can be wider than a narrow 2-node column chain, so widen to fit it.
+      const baseCW = COLUMN ? (NW + PAD * 2) : (chainLen + PAD * 2);
+      const CW = Math.max(baseCW, BADGE_MAXW + PAD * 2);
+      // CH reserves: top PAD + chain + gap-to-badge + badge box + real bottom
+      // slack. `let` so the lazy DOM re-measure can GROW it once fonts load.
+      let CH = COLUMN ? (PAD + chainLen + BADGE_GAP + BADGE_H + BADGE_BOTTOM)
+                      : (PAD + NH + BADGE_GAP + BADGE_H + BADGE_BOTTOM);
+
+      // canvas centered in the 1920×1080 frame, scaled down if it would exceed.
+      // `let` so the lazy DOM re-measure can re-fit after it grows CH.
+      const FRAME_W = 1920, FRAME_H = 1080;
+      let fit = Math.min(1, (FRAME_W - 80) / CW, (FRAME_H - 80) / CH);
+
+      /* per-node TOP-LEFT inside the canvas. The chain is centered horizontally;
+         it sits at the top PAD in BOTH layouts, and the badge zone (gap + badge +
+         bottom slack) sits directly below it, so badgeY = PAD + chainExtent + gap
+         lines up exactly with the chain's bottom edge plus BADGE_GAP — no drift
+         into the badge regardless of node count or badge height. */
+      const chainW = COLUMN ? NW : chainLen;
+      const startX = (CW - chainW) / 2;
+      const rowY  = PAD;
+
+      function nodePos(i) {
+        if (COLUMN) {
+          return { x: startX, y: PAD + i * (NH + GAP) };
+        }
+        // center the row chain horizontally (CW may exceed chainLen because the
+        // canvas widened to contain a multi-line badge)
+        return { x: startX + i * (NW + GAP), y: rowY };
+      }
+      function nodeCenter(i) {
+        const p = nodePos(i);
+        return { cx: p.x + NW / 2, cy: p.y + NH / 2 };
+      }
+
+      /* ── elements ───────────────────────────────────────────────────────── */
+      const root   = document.getElementById("root");
+      const cam    = document.getElementById("cam");
+      const canvas = document.getElementById("canvas");
+      const dots   = document.getElementById("dots");
+      const wires  = document.getElementById("wires");
+
+      document.body.style.background = CANVAS;
+      root.style.background = CANVAS;
+
+      // canvas sizing + position (centered via cam translate(-50%,-50%))
+      canvas.style.width  = CW + "px";
+      canvas.style.height = CH + "px";
+      canvas.style.background =
+        `radial-gradient(120% 120% at 50% 0%, ${NODEC}22, transparent 60%), ${CANVAS}`;
+      canvas.style.boxShadow = `0 40px 120px ${CANVAS}cc, inset 0 0 0 1.5px ${INK}14`;
+
+      // dotted grid texture (CSS — deterministic, no assets)
+      const DOT = 34;
+      dots.style.backgroundImage =
+        `radial-gradient(${INK}1f 1.6px, transparent 1.7px)`;
+      dots.style.backgroundSize = `${DOT}px ${DOT}px`;
+      dots.style.backgroundPosition = `${(CW % DOT) / 2}px ${(CH % DOT) / 2}px`;
+
+      wires.setAttribute("width", CW);
+      wires.setAttribute("height", CH);
+      wires.setAttribute("viewBox", `0 0 ${CW} ${CH}`);
+
+      /* ── build NOODLES (bezier connectors) between consecutive nodes ────── */
+      const svgNS = "http://www.w3.org/2000/svg";
+      const noodlePaths = [];   // {el, len}
+      const pulseSegs = [];     // sampled points per segment for the pulse path
+      for (let i = 0; i < N - 1; i++) {
+        const a = nodeCenter(i), b = nodeCenter(i + 1);
+        // connect from the trailing edge of A to the leading edge of B
+        let x1, y1, x2, y2, d;
+        if (COLUMN) {
+          x1 = a.cx; y1 = a.cy + NH / 2; x2 = b.cx; y2 = b.cy - NH / 2;
+          const my = (y1 + y2) / 2;
+          d = `M ${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}`;
+        } else {
+          x1 = a.cx + NW / 2; y1 = a.cy; x2 = b.cx - NW / 2; y2 = b.cy;
+          const mx = (x1 + x2) / 2;
+          d = `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`;
+        }
+        const path = document.createElementNS(svgNS, "path");
+        path.setAttribute("d", d);
+        path.setAttribute("fill", "none");
+        path.setAttribute("stroke", NOODLE);
+        path.setAttribute("stroke-width", "3.2");
+        path.setAttribute("stroke-linecap", "round");
+        wires.appendChild(path);
+        const len = path.getTotalLength();   // pure SVG geometry
+        noodlePaths.push({ el: path, len });
+
+        // pre-sample the segment for the pulse position (deterministic)
+        const SAMPLES = 40, pts = [];
+        for (let s = 0; s <= SAMPLES; s++) {
+          const pt = path.getPointAtLength((s / SAMPLES) * len);
+          pts.push({ x: pt.x, y: pt.y });
+        }
+        pulseSegs.push(pts);
+      }
+
+      /* ── build NODE CARDS + check RINGS ─────────────────────────────────── */
+      const nodeEls = [], ringEls = [];
+      NODES.forEach((nd, i) => {
+        const p = nodePos(i);
+        const el = document.createElement("div");
+        el.className = "node";
+        el.style.left = p.x + "px";
+        el.style.top  = p.y + "px";
+        el.style.width  = NW + "px";
+        el.style.height = NH + "px";
+        el.style.background = NODEC;
+        el.style.color = INK;
+        el.style.boxShadow = `0 18px 40px ${CANVAS}99, inset 0 0 0 1.5px ${INK}1a`;
+        el.innerHTML =
+          `<div class="ico" style="background:${INK}12">${iconSVG(nd.key, INK)}</div>
+           <div class="meta">
+             <div class="kicker">${ICON_KICKER[nd.key]}</div>
+             <div class="label"></div>
+           </div>`;
+        el.querySelector(".label").textContent = nd.label;
+        canvas.appendChild(el);
+        nodeEls.push(el);
+
+        // check ring — sits at the node's top-right corner, hidden initially
+        const RR = 40;
+        const ring = document.createElement("div");
+        ring.className = "ring";
+        ring.style.width = RR + "px";
+        ring.style.height = RR + "px";
+        ring.style.left = (p.x + NW - RR / 2 - 6) + "px";
+        ring.style.top  = (p.y - RR / 2 + 6) + "px";
+        ring.style.background = PULSE;
+        ring.style.boxShadow = `0 0 0 6px ${PULSE}33, 0 6px 18px ${PULSE}66`;
+        ring.innerHTML =
+          `<svg viewBox="0 0 24 24" width="22" height="22" fill="none"
+                stroke="${CANVAS}" stroke-width="3.2"
+                stroke-linecap="round" stroke-linejoin="round">
+             <path d="M5 13l4 4 10-11"></path>
+           </svg>`;
+        canvas.appendChild(ring);
+        ringEls.push(ring);
+      });
+
+      /* ── travelling PULSE dot ───────────────────────────────────────────── */
+      const PR = 26;
+      const pulse = document.createElement("div");
+      pulse.className = "pulse";
+      pulse.style.width = PR + "px";
+      pulse.style.height = PR + "px";
+      pulse.style.background = PULSE;
+      pulse.style.boxShadow = `0 0 18px 6px ${PULSE}aa, 0 0 40px 14px ${PULSE}55`;
+      canvas.appendChild(pulse);
+
+      /* ── SUCCESS BADGE (below the chain) ────────────────────────────────── */
+      const badge = document.createElement("div");
+      badge.className = "badge";
+      // Anchor the badge TOP at the start of the reserved badge zone (just below
+      // the chain + gap). It grows DOWNWARD from here; CH reserves BADGE_H plus
+      // BADGE_BOTTOM slack below that. If the real wrapped badge is taller than
+      // the analytic BADGE_H, the lazy re-measure (in renderPulse) grows CH so
+      // the badge bottom + a margin always stays inside overflow:hidden.
+      const chainExtent = COLUMN ? chainLen : NH;
+      const badgeY = PAD + chainExtent + BADGE_GAP;
+      badge.style.top = badgeY + "px";
+      badge.style.left = "50%";
+      badge.style.background = `${NODEC}`;
+      badge.style.boxShadow = `0 18px 50px ${CANVAS}cc, inset 0 0 0 2px ${PULSE}`;
+      badge.style.color = INK;
+      badge.innerHTML =
+        `<div class="spin">
+           <svg class="sp-ring" viewBox="0 0 42 42" fill="none">
+             <circle cx="21" cy="21" r="17" stroke="${INK}22" stroke-width="4"/>
+             <circle class="sp-arc" cx="21" cy="21" r="17" fill="none"
+                     stroke="${PULSE}" stroke-width="4" stroke-linecap="round"/>
+           </svg>
+           <svg class="sp-check" viewBox="0 0 42 42" fill="none"
+                stroke="${PULSE}" stroke-width="4.4"
+                stroke-linecap="round" stroke-linejoin="round">
+             <path d="M11 22l6 6 14-15"></path>
+           </svg>
+         </div>
+         <div class="btxt"></div>`;
+      badge.querySelector(".btxt").textContent = String(V.successLabel);
+      canvas.appendChild(badge);
+      const spArc   = badge.querySelector(".sp-arc");
+      const spCheck = badge.querySelector(".sp-check").querySelector("path");
+      // spinner arc: a 3/4 stroke we sweep; check path draws after
+      const arcLen = 2 * Math.PI * 17;
+      spArc.setAttribute("stroke-dasharray", `${arcLen * 0.7} ${arcLen}`);
+      const checkLen = spCheck.getTotalLength();
+
+      /* ── camera: center the canvas, fit-scale once ──────────────────────── */
+      gsap.set(cam, { xPercent: -50, yPercent: -50 });
+
+      /* ── frame-0 initial states (correct opening state before any tween) ── */
+      // canvas visible at frame 0 (no blank opening); a gentle push-in settles it
+      gsap.set(canvas, { opacity: 1, scale: fit * 1.04, transformOrigin: "50% 50%" });
+      // nodes start above their slot, transparent, slightly squashed
+      nodeEls.forEach(el => gsap.set(el, { y: -70, opacity: 0, scale: 0.9,
+                                           transformOrigin: "50% 50%" }));
+      // rings hidden
+      ringEls.forEach(el => gsap.set(el, { scale: 0, opacity: 0,
+                                           transformOrigin: "50% 50%" }));
+      // noodles fully hidden via dashoffset (draw-on)
+      noodlePaths.forEach(n => {
+        n.el.setAttribute("stroke-dasharray", n.len);
+        n.el.setAttribute("stroke-dashoffset", n.len);
+      });
+      // pulse hidden + parked at first node center
+      const c0 = nodeCenter(0);
+      gsap.set(pulse, { opacity: 0, x: c0.cx, y: c0.cy, xPercent: -50, yPercent: -50,
+                        scale: 1, transformOrigin: "50% 50%" });
+      // badge hidden below
+      gsap.set(badge, { opacity: 0, scale: 0, xPercent: -50, yPercent: 20,
+                        transformOrigin: "50% 50%" });
+      gsap.set(spArc,   { rotation: -90, transformOrigin: "50% 50%" });
+      gsap.set(spArc,   { strokeDashoffset: 0 });
+      gsap.set(spCheck, { strokeDasharray: checkLen, strokeDashoffset: checkLen });
+
+      /* ── timing constants (matches the header phase table) ──────────────── */
+      const DROP_START = 0.45, DROP_STAGGER = 0.28, DROP_DUR = 0.62;
+      const NOODLE_START = 1.95, NOODLE_STAGGER = 0.22, NOODLE_DUR = 0.5;
+      const PULSE_START = 3.35, PULSE_DUR = 2.20;
+      const BADGE_AT = 5.45;
+      const LOOP_AT = 6.05, DUR = 7.0;
+
+      /* ── the data-pulse: ONE proxy p (0..1) over the whole chain ────────── */
+      // total path = sum of segment lengths; p maps to a position; as the pulse
+      // crosses each node's center, that node lights + its ring scales in.
+      const segLens = noodlePaths.map(n => n.len);
+      const totalLen = segLens.reduce((a, b) => a + b, 0) || 1;
+      // cumulative arrival fraction at each node (node 0 lit at p=0, last at p=1)
+      const arriveAt = [0];
+      let acc = 0;
+      for (let i = 0; i < segLens.length; i++) { acc += segLens[i]; arriveAt.push(acc / totalLen); }
+      const litState = new Array(N).fill(false);
+
+      function lightNode(i, on) {
+        if (litState[i] === on) return;
+        litState[i] = on;
+        const el = nodeEls[i];
+        el.style.boxShadow = on
+          ? `0 18px 44px ${CANVAS}99, inset 0 0 0 2px ${PULSE}, 0 0 26px ${PULSE}55`
+          : `0 18px 40px ${CANVAS}99, inset 0 0 0 1.5px ${INK}1a`;
+        el.querySelector(".ico").style.background = on ? `${PULSE}26` : `${INK}12`;
+      }
+      /* ── lazy badge re-measure (BELT-AND-BRACES over the analytic estimate) ──
+         The analytic badgeLines() is now conservative (0.64 advance + real
+         bottom slack), but it can still under-reserve for an exotic font or a
+         pathological label. So once fonts are loaded we MEASURE the badge's real
+         height; if it (plus the bottom margin, from its anchored top) would reach
+         past CH, we GROW CH, re-fit the camera scale, and re-lay the dotted grid
+         + wires viewBox. Cached so it runs at most once after fonts settle; until
+         then it re-checks every frame (per the determinism contract). Monotonic:
+         it only ever enlarges the canvas, so the held final frame is stable. */
+      let measuredOnce = false;
+      function applyCanvasSize() {
+        canvas.style.height = CH + "px";
+        wires.setAttribute("height", CH);
+        wires.setAttribute("viewBox", `0 0 ${CW} ${CH}`);
+        dots.style.backgroundPosition = `${(CW % DOT) / 2}px ${(CH % DOT) / 2}px`;
+      }
+      function remeasureBadge() {
+        if (measuredOnce) return;
+        const realH = badge.offsetHeight || 0;     // true wrapped badge height
+        if (realH > 0) {
+          // badge top is anchored at badgeY and grows down; it needs realH plus
+          // a BADGE_BOTTOM margin to clear the overflow:hidden edge.
+          const needed = badgeY + realH + BADGE_BOTTOM;
+          if (needed > CH + 0.5) {
+            CH = Math.ceil(needed);
+            applyCanvasSize();
+            fit = Math.min(1, (FRAME_W - 80) / CW, (FRAME_H - 80) / CH);
+          }
+        }
+        // only LOCK the result once fonts are loaded (else the measurement is of
+        // the fallback face and may change); re-measure each frame until then.
+        if (document.fonts && document.fonts.status === "loaded") measuredOnce = true;
+      }
+
+      // Driven by ABSOLUTE time so it is a pure function of the playhead under
+      // arbitrary seeks: positions the pulse during its window and lights each
+      // node the instant the pulse passes its center. Before the pulse window
+      // every node is forced unlit; after it, every node stays lit. The canvas
+      // settle-scale + lazy badge re-measure run EVERY frame (a pure function of
+      // time + the cached fit), so they survive out-of-order seeks.
+      function renderPulse(tAbs) {
+        remeasureBadge();
+        gsap.set(canvas, { scale: settleScale(tAbs) });
+        if (tAbs < PULSE_START) {           // pulse hasn't spawned → all unlit
+          for (let i = 0; i < N; i++) lightNode(i, false);
+          return;
+        }
+        const p = Math.max(0, Math.min(1, (tAbs - PULSE_START) / PULSE_DUR));
+        // which segment are we on, and local t within it?
+        const target = p * totalLen;
+        let walked = 0, seg = 0, localT = 0;
+        for (let i = 0; i < segLens.length; i++) {
+          if (target <= walked + segLens[i] || i === segLens.length - 1) {
+            seg = i; localT = segLens[i] ? (target - walked) / segLens[i] : 0; break;
+          }
+          walked += segLens[i];
+        }
+        localT = Math.max(0, Math.min(1, localT));
+        // sample the pre-computed points (linear interp between samples)
+        const pts = pulseSegs[seg];
+        const f = localT * (pts.length - 1);
+        const lo = Math.floor(f), hi = Math.min(pts.length - 1, lo + 1), k = f - lo;
+        const x = pts[lo].x + (pts[hi].x - pts[lo].x) * k;
+        const y = pts[lo].y + (pts[hi].y - pts[lo].y) * k;
+        gsap.set(pulse, { x, y });
+        // light each node whose arrival fraction p has reached (quantized:
+        // never lights ahead of the dot, since arriveAt[i] is the dot's exact
+        // position at that node's center)
+        for (let i = 0; i < N; i++) lightNode(i, p >= arriveAt[i] - 1e-6);
+      }
+
+      /* ── paused master timeline; HyperFrames seeks it ───────────────────── */
+      const tl = gsap.timeline({ paused: true });
+
+      // phase 1 — canvas settle (gentle push-in 1.04→1.0; canvas already visible).
+      // Scale is COMPUTED in renderPulse from the live `fit` (rather than a baked
+      // tween) so the lazy badge re-measure can grow CH + re-fit and have every
+      // frame — including ones re-seeked earlier — reflect the corrected scale.
+      const SETTLE_DUR = 0.45;
+      function settleScale(tAbs) {
+        const u = Math.max(0, Math.min(1, tAbs / SETTLE_DUR));
+        // power2.out: 1 - (1-u)^2
+        const e = 1 - Math.pow(1 - u, 2);
+        return fit * (1.04 - 0.04 * e);     // 1.04*fit → 1.00*fit
+      }
+
+      // phase 2 — nodes drop with bounce-settle (staggered)
+      nodeEls.forEach((el, i) => {
+        const at = DROP_START + i * DROP_STAGGER;
+        tl.to(el, { opacity: 1, duration: 0.18, ease: "power1.out" }, at);
+        tl.to(el, { y: 0, scale: 1, duration: DROP_DUR, ease: "back.out(2.2)" }, at);
+        // tiny squash-on-land for weight
+        tl.to(el, { scaleY: 0.9, scaleX: 1.06, duration: 0.1, ease: "power2.in" },
+              at + DROP_DUR * 0.62);
+        tl.to(el, { scaleY: 1, scaleX: 1, duration: 0.22, ease: "elastic.out(1,0.5)" },
+              at + DROP_DUR * 0.72);
+      });
+
+      // phase 3 — noodles draw between settled nodes (overlaps tail of drops)
+      noodlePaths.forEach((n, i) => {
+        const at = NOODLE_START + i * NOODLE_STAGGER;
+        tl.to(n.el, { strokeDashoffset: 0, duration: NOODLE_DUR, ease: "power1.inOut" }, at);
+      });
+
+      // phase 4 — data pulse rides the chain; nodes light + rings pop on arrival.
+      // ONE proxy spans the WHOLE timeline (0→DUR) carrying absolute seconds, so
+      // renderPulse fires on EVERY frame and is a pure function of the playhead:
+      // a direct seek to any frame (in any order) lights exactly the right nodes
+      // and parks the pulse correctly — no stale lit-state can survive a seek.
+      tl.set(pulse, { opacity: 1 }, PULSE_START);
+      const pp = { t: 0 };
+      tl.to(pp, { t: DUR, duration: DUR, ease: "none",
+                  onUpdate: () => renderPulse(pp.t) }, 0);
+      // rings scale-in exactly when the pulse reaches each node center
+      ringEls.forEach((ring, i) => {
+        const ringAt = PULSE_START + arriveAt[i] * PULSE_DUR;
+        tl.to(ring, { scale: 1, opacity: 1, duration: 0.34, ease: "back.out(2.6)" }, ringAt);
+      });
+      // pulse fades out as it reaches the last node
+      tl.to(pulse, { opacity: 0, scale: 1.6, duration: 0.3, ease: "power2.out" },
+            PULSE_START + PULSE_DUR - 0.05);
+
+      // phase 5 — success badge pops; spinner sweeps → check draws → text settles
+      tl.fromTo(badge, { opacity: 0, scale: 0, yPercent: 20 },
+                       { opacity: 1, scale: 1, yPercent: 0, duration: 0.5,
+                         ease: "back.out(1.7)", immediateRender: false }, BADGE_AT);
+      // spinner arc sweeps ~0.45s (finite), then the check draws over it
+      tl.to(spArc, { rotation: 270, duration: 0.5, ease: "power1.inOut" }, BADGE_AT + 0.05);
+      tl.to(spArc, { opacity: 0, duration: 0.18, ease: "power2.out" }, BADGE_AT + 0.5);
+      tl.fromTo(spCheck, { strokeDashoffset: checkLen },
+                         { strokeDashoffset: 0, duration: 0.34, ease: "power2.out",
+                           immediateRender: false }, BADGE_AT + 0.46);
+
+      // phase 6 — seamless loop: badge breathes (1→1.04→1) over the hold
+      // finite tween whose start == end so the held final frame is seam-free
+      tl.to(badge, { scale: 1.04, duration: (DUR - LOOP_AT) / 2, ease: "sine.inOut" }, LOOP_AT);
+      tl.to(badge, { scale: 1.0,  duration: (DUR - LOOP_AT) / 2, ease: "sine.inOut" },
+            LOOP_AT + (DUR - LOOP_AT) / 2);
+
+      // pad the hold to data-duration
+      tl.set({}, {}, DUR);
+
+      // frame 0 styled immediately (tAbs=0 → all nodes unlit, pulse parked)
+      renderPulse(0);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      window.__timeline = tl;
+    </script>
+  </body>
+</html>

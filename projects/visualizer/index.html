@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>KAMBOJH — Reusable Visualizer</title>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<!-- per-song data: window.__TITLE / __DUR / __THEME -->
+<script src="assets/song.js"></script>
+<!-- per-song beats + energy: window.__BEATS / __ENV @30Hz -->
+<script src="assets/beats.js"></script>
+<style>
+@font-face{font-family:'Mont';src:url('assets/fonts/montserrat-600.ttf');font-weight:600;font-display:block}
+@font-face{font-family:'Mont';src:url('assets/fonts/montserrat-700.ttf');font-weight:700;font-display:block}
+@font-face{font-family:'Mont';src:url('assets/fonts/montserrat-800.ttf');font-weight:800;font-display:block}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1920px;height:1080px;overflow:hidden;background:#000}
+#root{position:relative;width:1920px;height:1080px;overflow:hidden;font-family:'Mont',sans-serif;color:#ece7df;
+  --accent:#e9c98a; --title:#fff7ea;}
+.fill{position:absolute;inset:0;width:1920px;height:1080px}
+/* ---- BACKGROUND ---- */
+#bgWrap{position:absolute;inset:0;overflow:hidden;z-index:0;background:#000}
+#bgv{position:absolute;inset:-3%;width:106%;height:106%;object-fit:cover;z-index:1;will-change:transform}
+#bg{position:absolute;inset:-4%;width:108%;height:108%;background-image:url('assets/bg.jpg');background-size:cover;background-position:center;will-change:transform;z-index:0}
+#tint{z-index:2}
+/* beat-reactive glow behind the title (Dil-Bemaar style) */
+#core{position:absolute;left:50%;top:47%;width:1500px;height:1500px;transform:translate(-50%,-50%);z-index:3;
+  filter:blur(10px);opacity:0;will-change:transform,opacity;pointer-events:none}
+#grain{z-index:6;opacity:.06;mix-blend-mode:overlay;pointer-events:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");background-size:520px 520px}
+#vig{z-index:5;box-shadow:inset 0 0 300px 60px rgba(0,0,0,.72);pointer-events:none}
+#tscrim{z-index:4;background:radial-gradient(ellipse 46% 32% at 50% 47%, rgba(0,0,0,.58) 0%, rgba(0,0,0,.22) 54%, transparent 80%)}
+/* ---- TITLE BLOCK (Dil-Bemaar layout) ---- */
+#titleWrap{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;z-index:7}
+.eyebrow{font-family:'Mont';font-weight:600;font-size:27px;letter-spacing:13px;color:var(--accent);opacity:0;text-transform:uppercase}
+#title{font-family:'Mont';font-weight:800;font-size:140px;line-height:1.02;margin:16px 0 6px;letter-spacing:3px;text-transform:uppercase;
+  background:var(--titlegrad);-webkit-background-clip:text;background-clip:text;color:transparent;
+  will-change:transform,filter}
+#divider{display:flex;align-items:center;justify-content:center;gap:18px;margin:6px 0 16px;opacity:0}
+#divider .ln{height:2px;width:90px;background:linear-gradient(90deg,transparent,var(--accent))}
+#divider .ln.r{background:linear-gradient(90deg,var(--accent),transparent)}
+#divider .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+#artist{font-family:'Mont';font-weight:700;font-size:40px;letter-spacing:18px;text-transform:uppercase;color:#eee7d8;opacity:0;padding-left:18px;text-shadow:0 2px 14px rgba(0,0,0,.85)}
+#fade{z-index:30;background:#000;opacity:0;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="193.304966" data-width="1920" data-height="1080">
+  <div id="bgWrap">
+    <video id="bgv" class="clip" data-start="0" data-duration="193.304966" muted playsinline src="assets/bgvideo.mp4"></video>
+    <div id="bg"></div>
+  </div>
+  <div id="tint" class="fill"></div>
+  <div id="core"></div>
+  <div id="tscrim" class="fill"></div>
+
+  <div id="titleWrap">
+    <div class="eyebrow" id="eyebrow">Official Audio</div>
+    <div id="title">Dhundla</div>
+    <div id="divider"><span class="ln"></span><span class="dot"></span><span class="ln r"></span></div>
+    <div id="artist">KAMBOJH</div>
+  </div>
+
+  <div id="grain" class="fill"></div>
+  <div id="vig" class="fill"></div>
+  <div id="fade" class="fill"></div>
+</div>
+
+<script>
+const root=document.querySelector('[data-composition-id="main"]');
+const Q=s=>root.querySelector(s);
+const DUR=(window.__DUR||+root.dataset.duration);
+root.dataset.duration=DUR;
+if(window.__TITLE) Q('#title').textContent=window.__TITLE;
+if(window.__EYEBROW) Q('#eyebrow').textContent=window.__EYEBROW;
+// ---- THEME ----
+const TH=window.__THEME||{};
+const GLOW=TH.glow||'255,185,95';
+if(TH.accent) root.style.setProperty('--accent',TH.accent);
+root.style.setProperty('--titlegrad', TH.titlegrad || 'linear-gradient(180deg,#fff7e2 0%,#f6d98a 46%,#c89244 100%)');
+if(TH.tint) Q('#tint').style.background=TH.tint;
+else Q('#tint').style.background='linear-gradient(180deg,rgba(0,0,0,.4) 0%,rgba(0,0,0,.06) 34%,rgba(0,0,0,.46) 76%,rgba(0,0,0,.86) 100%)';
+Q('#core').style.background=`radial-gradient(circle, rgba(${GLOW},.42) 0%, rgba(${GLOW},.18) 30%, rgba(${GLOW},0) 64%)`;
+
+const ENV=window.__ENV||[], ENVHZ=window.__ENVHZ||30;
+const BEATS=window.__BEATS||[];
+const DOWN=BEATS.filter((_,i)=>i%2===0);
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const ease=t=>1-Math.pow(1-t,3);
+function envAt(t){ if(t<0||!ENV.length)return 0; const i=t*ENVHZ,a=Math.floor(i); if(a>=ENV.length-1)return ENV[ENV.length-1]||0; return lerp(ENV[a]||0,ENV[a+1]||0,i-a); }
+let bi=0;
+function beatPulse(t){ while(bi<DOWN.length-1 && DOWN[bi+1]<=t) bi++; while(bi>0 && DOWN[bi]>t) bi--; const b=DOWN[bi]; if(b===undefined||b>t)return 0; return Math.exp(-(t-b)/0.13); }
+
+function render(t){
+  const env=envAt(t);
+  const bp=beatPulse(t);
+  const prog=clamp(t/DUR,0,1);
+  const bgEl=Q('#bgv')||Q('#bg');
+  bgEl.style.transform=`scale(${(1.0+prog*0.05).toFixed(4)})`;
+  Q('#grain').style.backgroundPosition=`${(Math.sin(t*7)*40)|0}px ${(Math.cos(t*6)*40)|0}px`;
+  Q('#core').style.opacity=(0.20+env*0.34+bp*0.30).toFixed(3);
+  Q('#core').style.transform=`translate(-50%,-50%) scale(${(0.92+env*0.32+bp*0.26).toFixed(3)})`;
+  // title: smooth reveal + beat punch + glow
+  const tIn=ease(clamp((t-0.5)/2.4,0,1));
+  const punch=1+env*0.012+bp*0.05;
+  Q('#title').style.opacity=tIn.toFixed(3);
+  Q('#title').style.transform=`translateY(${lerp(40,0,tIn).toFixed(1)}px) scale(${punch.toFixed(4)})`;
+  Q('#title').style.filter=`drop-shadow(0 0 ${(16+env*30+bp*46).toFixed(0)}px rgba(${GLOW},${(0.16+env*0.3+bp*0.4).toFixed(2)}))`;
+  const eIn=ease(clamp((t-0.2)/1.4,0,1)); Q('#eyebrow').style.opacity=(eIn*0.9).toFixed(3);
+  Q('#eyebrow').style.transform=`translateY(${lerp(16,0,eIn).toFixed(1)}px)`;
+  const dIn=ease(clamp((t-1.4)/0.9,0,1)); Q('#divider').style.opacity=dIn.toFixed(3);
+  Q('#divider').style.transform=`scaleX(${(0.6+0.4*dIn).toFixed(3)})`;
+  const aIn=ease(clamp((t-1.7)/1.1,0,1)); Q('#artist').style.opacity=(aIn*0.95).toFixed(3);
+  Q('#artist').style.transform=`translateY(${lerp(18,0,aIn).toFixed(1)}px)`;
+  let fade=0;
+  if(t<0.7) fade=1-t/0.7;
+  else if(t>DUR-1.4) fade=clamp((t-(DUR-1.4))/1.4,0,1);
+  Q('#fade').style.opacity=fade.toFixed(3);
+}
+
+const tl=gsap.timeline({paused:true});
+window.__timelines=window.__timelines||{}; window.__timelines["main"]=tl;
+const CLK={t:0};
+tl.to(CLK,{t:DUR,duration:DUR,ease:'none',onUpdate:()=>render(CLK.t)},0);
+tl.pause(0); render(0);
+</script>
+</body>
+</html>
