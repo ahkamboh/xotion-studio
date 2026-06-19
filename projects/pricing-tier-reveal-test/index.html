@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"eyebrow",          "type":"string","label":"Eyebrow (small caps line above heading)",            "default":"Pricing"},
+  {"id":"heading",          "type":"string","label":"Heading",                                            "default":"Pick the plan that fits"},
+  {"id":"tierNames",        "type":"string","label":"Tier names, pipe-separated (A|B|C)",                 "default":"Starter|Pro|Studio"},
+  {"id":"prices",           "type":"string","label":"Prices, pipe-separated; numbers count up, non-numbers (e.g. Custom) fade in", "default":"9|29|99"},
+  {"id":"pricePrefix",      "type":"string","label":"Price prefix (currency)",                            "default":"$"},
+  {"id":"priceSuffix",      "type":"string","label":"Price suffix",                                       "default":"/mo"},
+  {"id":"featureLists",     "type":"string","label":"Feature lists: tiers split by | , rows within a tier split by ~", "default":"3 active projects~720p exports~Community support~Starter templates|Unlimited projects~4K exports~AI agents via MCP~Priority support~No watermark|Everything in Pro~White-label renders~5 team seats~SLA + SSO~Dedicated support"},
+  {"id":"featuredTierIndex","type":"string","label":"Featured tier index (0-based)",                      "default":"1"},
+  {"id":"badgeText",        "type":"string","label":"Ribbon text on the featured tier",                   "default":"Most Popular"},
+  {"id":"ctaText",          "type":"string","label":"CTA button text (all tiers)",                        "default":"Get started"},
+  {"id":"accentColor",      "type":"color", "label":"Accent",                                             "default":"#635bff"},
+  {"id":"bg",               "type":"color", "label":"Background",                                         "default":"#0a0c14"},
+  {"id":"cardBg",           "type":"color", "label":"Card background",                                    "default":"#131726"},
+  {"id":"ink",              "type":"color", "label":"Text color",                                         "default":"#f4f5fa"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <!--
+      PRICING TIER REVEAL — the single most reused shot in SaaS launch videos:
+      three pricing cards rise with a soft overshoot, the featured tier lifts
+      and scales as a "Most Popular" ribbon swings down on a hinge, prices
+      count up, feature rows tick in with popping checkmarks, and the featured
+      CTA settles into a loopable glow pulse.
+
+      CHOREOGRAPHY (data-duration 7.0 — final frame HOLDS, loop-friendly):
+      ┌────┬──────────────────────┬───────────┬──────────────────┬──────────────────────────────────────────────┐
+      │ #  │ phase                │ start–end │ easing           │ what moves                                   │
+      ├────┼──────────────────────┼───────────┼──────────────────┼──────────────────────────────────────────────┤
+      │ 1  │ Backdrop wash        │ 0.00–0.70 │ power2.out       │ two accent glow blobs fade 0→on; slow drift  │
+      │    │                      │ 0.00–5.20 │ power1.out       │ (drift fully settles before the CTA pulse)   │
+      │ 2  │ Heading reveal       │ 0.10–0.95 │ power3.out       │ eyebrow rises y18→0; heading y34→0, blur 6→0 │
+      │ 3  │ Cards rise staggered │ 0.55–1.95 │ back.out(1.3)    │ each card y120→0, scale .96→1, fade; stagger │
+      │    │                      │           │                  │ 0.16s left→right (soft overshoot)            │
+      │ 4  │ Featured lift        │ 1.85–2.45 │ power2.inOut     │ featured card scales 1→1.06 and rises 12px;  │
+      │    │                      │           │                  │ accent ring + ambient glow fade in           │
+      │ 5  │ Ribbon swing         │ 2.30–3.20 │ elastic.out(1,.55)│ badge swings down on a top hinge −72°→0°    │
+      │ 6  │ Prices count up      │ 2.55–3.55 │ power2.out proxy │ all prices 0→value (floor-quantized, exact   │
+      │    │                      │           │                  │ at the end); number settles scale .94→1      │
+      │ 7  │ Features tick in     │ 3.25–4.85 │ power2.out /     │ rows slide x−16→0 + fade, stagger .085/row,  │
+      │    │                      │           │ back.out(2.5)    │ cards offset .12s; checkmarks pop scale 0→1  │
+      │ 8  │ CTA arrival          │ 4.70–5.30 │ power3.out       │ buttons rise y16→0 + fade, stagger .08;      │
+      │    │                      │           │                  │ featured glow eases to its resting level     │
+      │ 9  │ CTA glow pulse       │ 5.30–6.70 │ sine.inOut ×2    │ featured CTA scale 1→1.03→1 and glow .45→1→  │
+      │    │                      │           │ (finite yoyo)    │ .45, two full cycles, ends at rest state     │
+      │ 10 │ Hold                 │ 6.70–7.00 │ —                │ static; matches pulse rest → clean loop seam │
+      └────┴──────────────────────┴───────────┴──────────────────┴──────────────────────────────────────────────┘
+
+      VARIABLE ENCODING:
+        tierNames     "Starter|Pro|Studio"           pipe between tiers (any count; 2–4 lay out best)
+        prices        "9|29|99"                      one per tier; numeric → counts up; non-numeric
+                                                     (e.g. "Custom") → fades in, prefix/suffix hidden
+        featureLists  "rowA~rowB|rowA~rowB~rowC|…"   "|" between tiers, "~" between rows of a tier
+        featuredTierIndex  "1"                       0-based; clamped into range
+      Robustness: card width adapts to tier count; heading / tier names / CTA /
+      feature text all wrap (no nowrap boxes sized to defaults); price font
+      shrinks for >4-digit values; cards stretch to the tallest list so longer
+      feature lists never clip.
+
+      Determinism contract: ONE paused master timeline registered as
+      window.__timelines["main"]. Prices are a single eased proxy tween whose
+      onUpdate writes every price label with Math.floor(value*k) — text can
+      never read ahead, and k ends exactly at 1 so the final price is exact.
+      All DOM (N cards, rows, checks) is built at script-construction time
+      from the variables; every animated element gets its initial state via
+      gsap.set before frame 0. No Math.random, no Date, no rAF, no CSS
+      transitions/keyframes, finite repeats only (the glow pulse is a
+      repeat:3 yoyo that ends at its rest state).
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family:"Gabarito"; font-weight:800;
+        src:url("assets/fonts/gabarito-800.ttf") format("truetype"); }
+      @font-face { font-family:"Gabarito"; font-weight:600;
+        src:url("assets/fonts/gabarito-600.ttf") format("truetype"); }
+      @font-face { font-family:"Figtree"; font-weight:600;
+        src:url("assets/fonts/figtree-600.ttf") format("truetype"); }
+      @font-face { font-family:"Figtree"; font-weight:500;
+        src:url("assets/fonts/figtree-500.ttf") format("truetype"); }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      html,body { width:1920px; height:1080px; overflow:hidden; }
+      #root { position:relative; width:1920px; height:1080px; overflow:hidden;
+              display:flex; flex-direction:column; align-items:center; }
+      .blob { position:absolute; border-radius:50%; filter:blur(160px);
+              pointer-events:none; }
+      .header { position:relative; margin-top:88px; text-align:center;
+                max-width:1500px; }
+      .eyebrow { font-family:"Figtree",sans-serif; font-weight:600;
+                 font-size:24px; letter-spacing:0.32em; text-transform:uppercase; }
+      .heading { font-family:"Gabarito",sans-serif; font-weight:800;
+                 font-size:72px; letter-spacing:-0.02em; line-height:1.08;
+                 margin-top:18px; }
+      .row { position:relative; flex:1; display:flex; align-items:center;
+             justify-content:center; gap:44px; padding-bottom:64px; }
+      .cardWrap { display:flex; align-items:stretch; }
+      .card { position:relative; display:flex; flex-direction:column;
+              border-radius:24px; padding:44px 40px 40px;
+              border:1px solid; min-height:540px; width:100%; }
+      .featRing { position:absolute; inset:-2px; border-radius:26px;
+                  border:2px solid; pointer-events:none; }
+      .badge { position:absolute; top:-26px; left:50%; /* gsap xPercent:-50 centers it */
+               font-family:"Figtree",sans-serif; font-weight:600; font-size:21px;
+               letter-spacing:0.06em; text-transform:uppercase;
+               padding:13px 30px; border-radius:999px; white-space:nowrap; }
+      .tierName { font-family:"Figtree",sans-serif; font-weight:600;
+                  font-size:25px; letter-spacing:0.14em; text-transform:uppercase; }
+      .priceRow { display:flex; align-items:baseline; margin-top:22px;
+                  font-family:"Gabarito",sans-serif; }
+      .pricePre { font-weight:600; font-size:34px; margin-right:4px; }
+      .priceNum { font-weight:800; font-size:88px; letter-spacing:-0.02em;
+                  line-height:1; font-variant-numeric:tabular-nums;
+                  display:inline-block; }
+      .priceSuf { font-family:"Figtree",sans-serif; font-weight:500;
+                  font-size:26px; margin-left:8px; }
+      .divider { height:1px; margin:30px 0 28px; }
+      .feats { display:flex; flex-direction:column; gap:18px; }
+      .feat { display:flex; align-items:flex-start; gap:14px;
+              font-family:"Figtree",sans-serif; font-weight:500;
+              font-size:23px; line-height:1.35; }
+      .feat svg { flex:0 0 auto; width:24px; height:24px; margin-top:3px; }
+      .cta { margin-top:auto; position:relative; }
+      .ctaPad { height:34px; } /* breathing room between list and CTA */
+      .ctaBtn { position:relative; display:flex; align-items:center;
+                justify-content:center; min-height:66px; padding:14px 20px;
+                border-radius:15px; font-family:"Figtree",sans-serif;
+                font-weight:600; font-size:25px; text-align:center;
+                line-height:1.2; }
+      .ctaGlow { position:absolute; inset:-3px; border-radius:18px;
+                 pointer-events:none; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="7.0" data-width="1920" data-height="1080">
+      <div class="blob" id="blobA"></div>
+      <div class="blob" id="blobB"></div>
+      <div class="header">
+        <div class="eyebrow" id="eyebrow"></div>
+        <div class="heading" id="heading"></div>
+      </div>
+      <div class="row" id="row"></div>
+    </div>
+
+    <script>
+      const V = window.__hyperframes.getVariables();
+
+      /* normalize a CSS hex color to 6-digit form so 2-digit alpha can be
+         appended safely (#abc → #aabbcc, #rrggbbaa → #rrggbb) */
+      function hex6(c){c=String(c).trim();if(/^#[0-9a-fA-F]{3}$/.test(c))return "#"+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];if(/^#[0-9a-fA-F]{8}$/.test(c))return c.slice(0,7);return c;}
+      const ACCENT = hex6(V.accentColor);
+      const INK    = hex6(V.ink);
+      const CARDBG = hex6(V.cardBg);
+
+      /* ── parse variables (robust to any tier count / list length) ────── */
+      const NAMES  = String(V.tierNames).split("|").map(s => s.trim()).filter(Boolean);
+      const N      = Math.max(1, NAMES.length);
+      const PRICES = String(V.prices).split("|").map(s => s.trim());
+      const LISTS  = String(V.featureLists).split("|")
+                       .map(s => s.split("~").map(t => t.trim()).filter(Boolean));
+      while (PRICES.length < N) PRICES.push("");
+      while (LISTS.length  < N) LISTS.push([]);
+      let FEAT = parseInt(V.featuredTierIndex, 10);
+      if (isNaN(FEAT)) FEAT = Math.min(1, N - 1);
+      FEAT = Math.max(0, Math.min(N - 1, FEAT));
+
+      /* ── elements & static styling ──────────────────────────────────── */
+      const root    = document.getElementById("root");
+      const blobA   = document.getElementById("blobA");
+      const blobB   = document.getElementById("blobB");
+      const eyebrow = document.getElementById("eyebrow");
+      const heading = document.getElementById("heading");
+      const row     = document.getElementById("row");
+
+      document.body.style.background = V.bg;
+      root.style.background = V.bg;
+      eyebrow.textContent = String(V.eyebrow);
+      eyebrow.style.color = ACCENT;
+      heading.textContent = String(V.heading);
+      heading.style.color = INK;
+
+      blobA.style.cssText += `width:900px;height:900px;left:-260px;top:-340px;
+        background:${ACCENT}40;`;
+      blobB.style.cssText += `width:820px;height:820px;right:-240px;bottom:-380px;
+        background:${ACCENT}30;`;
+
+      /* card width adapts to tier count so any N fits the 1920 frame */
+      const GAP = 44;
+      const CW  = Math.min(432, Math.floor((1780 - GAP * (N - 1)) / N));
+
+      /* ── build ALL card DOM now, at construction time ───────────────── */
+      const cards = [];   // {wrap, card, ring, badge, numEl, numeric, raw, rows, checks, btn, glow}
+      for (let i = 0; i < N; i++) {
+        const isFeat = i === FEAT;
+        const wrap = document.createElement("div");
+        wrap.className = "cardWrap";
+        wrap.style.width = CW + "px";
+
+        const card = document.createElement("div");
+        card.className = "card";
+        card.style.background = CARDBG;
+        card.style.borderColor = INK + "1f";
+        card.style.boxShadow = "0 30px 80px #00000059";
+
+        let ring = null, badge = null;
+        if (isFeat) {
+          ring = document.createElement("div");
+          ring.className = "featRing";
+          ring.style.borderColor = ACCENT;
+          ring.style.boxShadow = `0 0 70px ${ACCENT}59, 0 24px 90px ${ACCENT}33`;
+          card.appendChild(ring);
+
+          badge = document.createElement("div");
+          badge.className = "badge";
+          badge.textContent = String(V.badgeText);
+          badge.style.background = ACCENT;
+          badge.style.color = "#ffffff";
+          badge.style.boxShadow = `0 12px 36px ${ACCENT}66`;
+          card.appendChild(badge);
+        }
+
+        const name = document.createElement("div");
+        name.className = "tierName";
+        name.textContent = NAMES[i] || "";
+        name.style.color = isFeat ? ACCENT : INK + "b3";
+        card.appendChild(name);
+
+        /* price row — numeric prices count up; non-numeric fade in */
+        const raw = PRICES[i];
+        const numeric = raw !== "" && !isNaN(parseFloat(raw)) && /^[\d.,]+$/.test(raw);
+        const priceRow = document.createElement("div");
+        priceRow.className = "priceRow";
+        priceRow.style.color = INK;
+        const numEl = document.createElement("span");
+        numEl.className = "priceNum";
+        if (numeric) {
+          const pre = document.createElement("span");
+          pre.className = "pricePre";
+          pre.textContent = String(V.pricePrefix);
+          pre.style.color = INK + "cc";
+          priceRow.appendChild(pre);
+          numEl.textContent = "0";
+          /* shrink for >4-digit prices so they never overflow the card */
+          const digits = raw.replace(/[^0-9]/g, "").length;
+          if (digits > 4) numEl.style.fontSize =
+            Math.max(48, Math.floor(88 * 4 / digits)) + "px";
+          priceRow.appendChild(numEl);
+          const suf = document.createElement("span");
+          suf.className = "priceSuf";
+          suf.textContent = String(V.priceSuffix);
+          suf.style.color = INK + "80";
+          priceRow.appendChild(suf);
+        } else {
+          numEl.textContent = raw || "—";
+          numEl.style.fontSize = "64px";
+          priceRow.appendChild(numEl);
+        }
+        card.appendChild(priceRow);
+
+        const div = document.createElement("div");
+        div.className = "divider";
+        div.style.background = INK + "1a";
+        card.appendChild(div);
+
+        /* feature rows + popping checkmarks */
+        const feats = document.createElement("div");
+        feats.className = "feats";
+        const rows = [], checks = [];
+        for (const f of LISTS[i]) {
+          const r = document.createElement("div");
+          r.className = "feat";
+          r.style.color = INK + "d9";
+          r.innerHTML =
+            `<svg viewBox="0 0 24 24" fill="none" stroke="${ACCENT}"
+                  stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+               <path d="M4.5 12.5 L10 18 L19.5 6.5"></path></svg><span></span>`;
+          r.lastElementChild.textContent = f;
+          feats.appendChild(r);
+          rows.push(r);
+          checks.push(r.firstElementChild);
+        }
+        card.appendChild(feats);
+
+        const pad = document.createElement("div");
+        pad.className = "ctaPad";
+        card.appendChild(pad);
+
+        /* CTA — featured is filled with a glow layer, others are outlined */
+        const cta = document.createElement("div");
+        cta.className = "cta";
+        let glow = null;
+        if (isFeat) {
+          glow = document.createElement("div");
+          glow.className = "ctaGlow";
+          glow.style.boxShadow = `0 0 44px ${ACCENT}cc, 0 10px 50px ${ACCENT}80`;
+          cta.appendChild(glow);
+        }
+        const btn = document.createElement("div");
+        btn.className = "ctaBtn";
+        btn.textContent = String(V.ctaText);
+        if (isFeat) {
+          btn.style.background = ACCENT;
+          btn.style.color = "#ffffff";
+        } else {
+          btn.style.background = "transparent";
+          btn.style.border = `1.5px solid ${INK}40`;
+          btn.style.color = INK;
+        }
+        cta.appendChild(btn);
+        card.appendChild(cta);
+
+        wrap.appendChild(card);
+        row.appendChild(wrap);
+        cards.push({ wrap, card, ring, badge, numEl,
+                     numeric, raw, value: numeric ? parseFloat(raw) : 0,
+                     rows, checks, btn, glow });
+      }
+
+      /* ── initial states — frame 0 is the correct opening state ─────── */
+      gsap.set(blobA, { opacity: 0, y: 40 });
+      gsap.set(blobB, { opacity: 0, y: 40 });
+      gsap.set(eyebrow, { opacity: 0, y: 18 });
+      gsap.set(heading, { opacity: 0, y: 34, filter: "blur(6px)" });
+      for (const c of cards) {
+        gsap.set(c.wrap, { opacity: 0, y: 120, scale: 0.96 });
+        gsap.set(c.card, { transformOrigin: "50% 60%" }); // hero lift pivots here
+        if (c.ring)  gsap.set(c.ring,  { opacity: 0 });
+        if (c.badge) gsap.set(c.badge, { xPercent: -50, opacity: 0, rotation: -72,
+                                         transformOrigin: "50% -16px" });
+        for (const r of c.rows)   gsap.set(r, { opacity: 0, x: -16 });
+        for (const k of c.checks) gsap.set(k, { scale: 0,
+                                                transformOrigin: "50% 50%" });
+        gsap.set(c.btn, { opacity: 0, y: 16 });
+        if (c.glow) gsap.set(c.glow, { opacity: 0 });
+      }
+
+      /* ── phase clock (matches the header table) ─────────────────────── */
+      const T_CARDS = 0.55;
+      const T_LIFT  = 1.85;
+      const T_BADGE = 2.30;
+      const T_COUNT = 2.55;
+      const T_FEATS = 3.25;
+      const T_CTA   = 4.70;
+      const T_PULSE = 5.30;
+      const DUR     = 7.0;
+
+      /* ── price counter: ONE eased proxy drives every numeric label;
+            floor-quantized so text never reads ahead; k ends exactly at 1
+            so the final frame prints the exact price ───────────────────── */
+      const cnt = { k: 0 };
+      function renderPrices() {
+        for (const c of cards) {
+          if (!c.numeric) continue;
+          c.numEl.textContent = cnt.k >= 1 ? c.raw
+                                           : String(Math.floor(c.value * cnt.k));
+        }
+      }
+
+      /* ── paused master timeline; HyperFrames seeks it ───────────────── */
+      const tl = gsap.timeline({ paused: true });
+
+      /* 1 · backdrop wash */
+      tl.to(blobA, { opacity: 1, duration: 0.7, ease: "power2.out" }, 0);
+      tl.to(blobB, { opacity: 1, duration: 0.7, ease: "power2.out" }, 0.08);
+      tl.to(blobA, { y: 0, duration: 5.2, ease: "power1.out" }, 0);
+      tl.to(blobB, { y: 0, duration: 5.2, ease: "power1.out" }, 0);
+
+      /* 2 · heading reveal */
+      tl.to(eyebrow, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 0.10);
+      tl.to(heading, { opacity: 1, y: 0, filter: "blur(0px)",
+                       duration: 0.85, ease: "power3.out" }, 0.18);
+
+      /* 3 · cards rise staggered with a soft overshoot */
+      cards.forEach((c, i) => {
+        tl.to(c.wrap, { opacity: 1, y: 0, scale: 1, duration: 0.9,
+                        ease: "back.out(1.3)" }, T_CARDS + i * 0.16);
+      });
+
+      /* 4 · featured lift — the hero tier grows and glows */
+      const fc = cards[FEAT];
+      tl.to(fc.card, { scale: 1.06, y: -12, duration: 0.6,
+                       ease: "power2.inOut" }, T_LIFT);
+      if (fc.ring) tl.to(fc.ring, { opacity: 1, duration: 0.55,
+                                    ease: "power2.out" }, T_LIFT + 0.1);
+
+      /* 5 · ribbon swings down on its hinge */
+      if (fc.badge) {
+        tl.to(fc.badge, { opacity: 1, duration: 0.12, ease: "none" }, T_BADGE);
+        tl.to(fc.badge, { rotation: 0, duration: 0.9,
+                          ease: "elastic.out(1, 0.55)" }, T_BADGE);
+      }
+
+      /* 6 · prices count up (one proxy, floor-quantized) + settle pop */
+      tl.to(cnt, { k: 1, duration: 1.0, ease: "power2.out",
+                   onUpdate: renderPrices }, T_COUNT);
+      cards.forEach(c => {
+        tl.fromTo(c.numEl, { scale: 0.94, transformOrigin: "0% 100%" },
+                           { scale: 1, duration: 1.0, ease: "power2.out",
+                             immediateRender: false }, T_COUNT);
+        if (!c.numeric) tl.fromTo(c.numEl, { opacity: 0 },
+                                  { opacity: 1, duration: 0.6,
+                                    ease: "power2.out",
+                                    immediateRender: false }, T_COUNT);
+      });
+
+      /* 7 · feature rows tick in, checkmarks pop */
+      cards.forEach((c, i) => {
+        c.rows.forEach((r, j) => {
+          const at = T_FEATS + i * 0.12 + j * 0.085;
+          tl.to(r, { opacity: 1, x: 0, duration: 0.45,
+                     ease: "power2.out" }, at);
+          tl.to(c.checks[j], { scale: 1, duration: 0.5,
+                               ease: "back.out(2.5)" }, at + 0.05);
+        });
+      });
+
+      /* 8 · CTA arrival */
+      cards.forEach((c, i) => {
+        tl.to(c.btn, { opacity: 1, y: 0, duration: 0.5,
+                       ease: "power3.out" }, T_CTA + i * 0.08);
+      });
+      if (fc.glow) tl.to(fc.glow, { opacity: 0.45, duration: 0.5,
+                                    ease: "power2.out" }, T_CTA + FEAT * 0.08);
+
+      /* 9 · loopable CTA glow pulse — two full finite cycles, ends at rest */
+      if (fc.glow) {
+        tl.to(fc.glow, { opacity: 1, duration: 0.35, ease: "sine.inOut",
+                         repeat: 3, yoyo: true }, T_PULSE);
+        tl.to(fc.btn,  { scale: 1.03, duration: 0.35, ease: "sine.inOut",
+                         repeat: 3, yoyo: true,
+                         transformOrigin: "50% 50%" }, T_PULSE);
+      }
+
+      /* 10 · hold the final frame to the end of data-duration */
+      tl.set({}, {}, DUR);
+
+      renderPrices(); /* frame 0 styled immediately */
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      window.__timeline = tl;
+    </script>
+  </body>
+</html>

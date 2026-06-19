@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"prompt",   "type":"string","label":"Typed prompt",                "default":"Make a 15-second launch video from these clips"},
+  {"id":"speed",    "type":"string","label":"Seconds per character",        "default":"0.045"},
+  {"id":"agentName","type":"string","label":"Agent name",                   "default":"Xotion Agent"},
+  {"id":"steps",    "type":"string","label":"Agent steps (pipe-separated)", "default":"Scripted the hook|Animated 6 scenes|Captioned + color-graded|Rendered in 4K"},
+  {"id":"doneLabel","type":"string","label":"Done status label",            "default":"Done"},
+  {"id":"theme",    "type":"string","label":"Theme (light/dark)",           "default":"light"},
+  {"id":"accent",   "type":"color", "label":"Send + accent color",          "default":"#0a84ff"},
+  {"id":"check",    "type":"color", "label":"Checkmark color",              "default":"#22c55e"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <!--
+      AI CHAT INPUT — "ask the agent, watch it work."
+      A chat composer pill (Agent button + blue send arrow) types out a prompt,
+      the send button activates and presses, the prompt flies up as a user
+      bubble, then an AGENT STATUS CARD rises in and works through a checklist
+      (spinner -> green check per step) while a progress bar + percent climb to
+      100% and the header flips to "Done". Loop-friendly hold at the end.
+
+      Slot-driven via data-composition-variables (works with :cards):
+        npx hyperframes render <proj> --variables '{"prompt":"caption this reel","steps":"Transcribed|Synced karaoke|Burned in"}'
+
+      TIMING — completes at ~= 5.2s + 0.045s*chars + 0.9s*steps, then holds.
+      data-duration below (9.5) fits the default (~44 chars, 4 steps). For
+      longer prompts / more steps bump data-duration to (4 + 0.05*chars + 1*steps).
+
+      Determinism contract: one render(t) drives typing + caret blink + the
+      progress counter + the per-step spinner, called from a GSAP proxy tween's
+      onUpdate on the paused master timeline; all discrete moves (entrances,
+      send press, check pops, header swap) are finite tweens on the SAME
+      timeline. No Math.random, no Date, no rAF. render(0) runs at boot.
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family:"Inter"; font-weight:400; src:url("assets/fonts/inter-400.ttf") format("truetype"); }
+      @font-face { font-family:"Inter"; font-weight:500; src:url("assets/fonts/inter-500.ttf") format("truetype"); }
+      @font-face { font-family:"Inter"; font-weight:600; src:url("assets/fonts/inter-600.ttf") format("truetype"); }
+      @font-face { font-family:"Inter"; font-weight:700; src:url("assets/fonts/inter-700.ttf") format("truetype"); }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      html,body { width:1920px; height:1080px; overflow:hidden; }
+      #root { position:relative; width:1920px; height:1080px; overflow:hidden;
+        font-family:"Inter",-apple-system,sans-serif; }
+      .stage { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+        width:1180px; display:flex; flex-direction:column; align-items:stretch; gap:26px; }
+
+      /* user prompt bubble (appears after send, top-right) */
+      .userbubble { align-self:flex-end; max-width:760px; padding:22px 30px;
+        border-radius:30px 30px 8px 30px; font-size:34px; font-weight:500;
+        line-height:1.35; opacity:0; }
+
+      /* agent status card */
+      .card { border-radius:30px; padding:38px 40px 34px; position:relative;
+        opacity:0; }
+      .cardhead { display:flex; align-items:center; gap:16px; margin-bottom:8px; }
+      .avatar { width:54px; height:54px; border-radius:16px; flex:0 0 auto;
+        display:flex; align-items:center; justify-content:center; }
+      .avatar svg { width:30px; height:30px; display:block; }
+      .agentmeta { display:flex; flex-direction:column; gap:3px; }
+      .agentname { font-size:30px; font-weight:700; letter-spacing:-0.01em; }
+      .agentstatus { font-size:24px; font-weight:500; }
+      .pct { margin-left:auto; font-size:30px; font-weight:700;
+        font-variant-numeric:tabular-nums; letter-spacing:-0.01em; }
+
+      /* progress track */
+      .track { height:10px; border-radius:6px; margin:22px 0 30px; overflow:hidden; }
+      .fill  { height:100%; border-radius:6px; transform-origin:left center; transform:scaleX(0); }
+
+      /* checklist */
+      .steps { display:flex; flex-direction:column; gap:22px; }
+      .step  { display:flex; align-items:center; gap:20px; opacity:0; }
+      .dot   { width:40px; height:40px; border-radius:50%; flex:0 0 auto; position:relative;
+        display:flex; align-items:center; justify-content:center; }
+      .spin  { position:absolute; width:40px; height:40px; }
+      .spin svg { width:40px; height:40px; display:block; }
+      .tick  { position:absolute; width:40px; height:40px; }
+      .tick svg { width:40px; height:40px; display:block; }
+      .steplabel { font-size:32px; font-weight:500; letter-spacing:-0.005em; }
+
+      /* composer pill */
+      .composer { display:flex; align-items:center; gap:18px; padding:18px 18px 18px 22px;
+        border-radius:9999px; position:relative; }
+      .agentbtn { display:flex; align-items:center; gap:10px; flex:0 0 auto;
+        padding:14px 22px; border-radius:9999px; font-size:28px; font-weight:600; }
+      .agentbtn svg { width:26px; height:26px; display:block; }
+      .input { flex:1 1 auto; font-size:32px; font-weight:500; white-space:nowrap;
+        overflow:hidden; min-width:0; }
+      .ph { opacity:0.45; }
+      .caret { display:inline-block; }
+      .send { width:64px; height:64px; border-radius:50%; flex:0 0 auto;
+        display:flex; align-items:center; justify-content:center; }
+      .send svg { width:32px; height:32px; display:block; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="9.5" data-width="1920" data-height="1080">
+      <div class="stage" id="stage">
+
+        <div class="userbubble" id="userbubble"></div>
+
+        <div class="card" id="card">
+          <div class="cardhead">
+            <div class="avatar" id="avatar">
+              <!-- 4-point sparkle = "agent" mark -->
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 2 L13.6 9.2 L21 11 L13.6 12.8 L12 20 L10.4 12.8 L3 11 L10.4 9.2 Z" fill="currentColor"/></svg>
+            </div>
+            <div class="agentmeta">
+              <div class="agentname" id="agentname"></div>
+              <div class="agentstatus" id="agentstatus">Working…</div>
+            </div>
+            <div class="pct" id="pct">0%</div>
+          </div>
+          <div class="track" id="track"><div class="fill" id="fill"></div></div>
+          <div class="steps" id="steps"></div>
+        </div>
+
+        <div class="composer" id="composer">
+          <div class="agentbtn" id="agentbtn">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 3 L13.3 8.7 L19 10 L13.3 11.3 L12 17 L10.7 11.3 L5 10 L10.7 8.7 Z" fill="currentColor"/></svg>
+            <span>Agent</span>
+          </div>
+          <div class="input" id="input"><span class="ph" id="ph">Ask the agent to edit…</span><span class="txt" id="txt"></span><span class="caret" id="caret">|</span></div>
+          <div class="send" id="send">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19 V5"/><path d="M6 11 l6-6 6 6"/></svg>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <script>
+      const V = window.__hyperframes.getVariables();
+      const PROMPT = String(V.prompt);
+      const SPEED  = parseFloat(V.speed) || 0.045;
+      const STEPS  = String(V.steps).split("|").map(s=>s.trim()).filter(Boolean);
+      const DARK   = String(V.theme) === "dark";
+      const ACCENT = String(V.accent);
+      const CHECK  = String(V.check);
+      const N = PROMPT.length, NS = STEPS.length;
+
+      function hex6(c){c=String(c).trim();
+        if(/^#[0-9a-fA-F]{3}$/.test(c)) return "#"+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];
+        if(/^#[0-9a-fA-F]{8}$/.test(c)) return c.slice(0,7); return c; }
+      const AC = hex6(ACCENT), CK = hex6(CHECK);
+
+      /* ── theme palette ─────────────────────────────────────────────── */
+      const T = DARK ? {
+        bg:"#0b0c0e", text:"#f5f5f7", sub:"#9aa0a6", card:"#16181c", cardBd:"#26282e",
+        comp:"#16181c", compBd:"#2c2f36", ph:"#6b7178", track:"#23262c",
+        agBtn:"#23262c", agBtnTx:"#f5f5f7", bubble:"#23262c", dotBd:"#3a3d44"
+      } : {
+        bg:"#f4f5f7", text:"#0a0a0a", sub:"#6b7178", card:"#ffffff", cardBd:"#ececf0",
+        comp:"#ffffff", compBd:"#e3e4e8", ph:"#9aa0a6", track:"#eceef1",
+        agBtn:"#f1f2f4", agBtnTx:"#0a0a0a", bubble:"#eceef1", dotBd:"#d6d8dd"
+      };
+
+      const $ = id => document.getElementById(id);
+      const root=$("root"), userbubble=$("userbubble"), card=$("card"), avatar=$("avatar"),
+            agentname=$("agentname"), agentstatus=$("agentstatus"), pct=$("pct"),
+            track=$("track"), fill=$("fill"), stepsWrap=$("steps"),
+            composer=$("composer"), agentbtn=$("agentbtn"), input=$("input"),
+            ph=$("ph"), txt=$("txt"), caret=$("caret"), send=$("send");
+
+      /* ── static styling from theme + vars ──────────────────────────── */
+      root.style.background = T.bg;
+      agentname.textContent = String(V.agentName);
+      userbubble.style.background = AC; userbubble.style.color = "#fff";
+      card.style.background = T.card; card.style.border = `1.5px solid ${T.cardBd}`;
+      card.style.boxShadow = DARK ? "0 30px 80px rgba(0,0,0,0.5)" : "0 30px 80px rgba(15,23,42,0.10)";
+      avatar.style.background = AC; avatar.style.color = "#fff";
+      agentstatus.style.color = T.sub; pct.style.color = T.text;
+      track.style.background = T.track; fill.style.background = AC;
+      composer.style.background = T.comp; composer.style.border = `1.5px solid ${T.compBd}`;
+      composer.style.boxShadow = DARK ? "0 16px 50px rgba(0,0,0,0.45)" : "0 16px 50px rgba(15,23,42,0.08)";
+      agentbtn.style.background = T.agBtn; agentbtn.style.color = T.agBtnTx;
+      input.style.color = T.text; ph.style.color = T.ph; caret.style.color = AC;
+      send.style.background = T.track; // starts disabled-grey, turns accent when text present
+
+      /* build the checklist rows up-front (count from the steps variable) */
+      const rowEls=[];
+      STEPS.forEach(label=>{
+        const row=document.createElement("div"); row.className="step";
+        const dot=document.createElement("div"); dot.className="dot";
+        dot.style.border=`2.5px solid ${T.dotBd}`;
+        const spin=document.createElement("div"); spin.className="spin";
+        spin.innerHTML=`<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="${T.dotBd}" stroke-width="2.5"/><path d="M12 3 a9 9 0 0 1 9 9" stroke="${AC}" stroke-width="2.5" stroke-linecap="round"/></svg>`;
+        const tick=document.createElement("div"); tick.className="tick";
+        tick.innerHTML=`<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="${CK}"/><path class="tickpath" d="M7 12.5 l3.2 3.2 L17 8.5" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`;
+        const lab=document.createElement("div"); lab.className="steplabel";
+        lab.style.color=T.sub; lab.textContent=label;
+        dot.appendChild(spin); dot.appendChild(tick);
+        row.appendChild(dot); row.appendChild(lab);
+        stepsWrap.appendChild(row);
+        rowEls.push({row,dot,spin,tick,lab,
+          tickPath:tick.querySelector(".tickpath")});
+      });
+
+      /* ── timeline phases (all derived so it stays variable-robust) ──── */
+      const COMP_IN = 0.7;
+      const TYPE_S  = 0.95;
+      const TYPE_D  = N * SPEED;
+      const TYPE_E  = TYPE_S + TYPE_D;
+      const SEND_AT = TYPE_E + 0.35;
+      const BUBBLE  = SEND_AT + 0.12;
+      const CARD_AT = BUBBLE + 0.55;
+      const STEP_GAP= 0.9;
+      const STEP0   = CARD_AT + 0.55;             // first step completes here
+      const LAST    = STEP0 + (NS-1)*STEP_GAP;    // last step completes
+      const DONE_AT = LAST + 0.25;
+      const HOLD    = 1.3;
+      const TOTAL   = DONE_AT + HOLD;
+      const DUR     = parseFloat(root.getAttribute("data-duration")) || 9.5;
+
+      const outExpo = t => t>=1?1:1-Math.pow(2,-10*t);
+      const clamp01 = t => Math.max(0,Math.min(1,t));
+      const SPIN_FR = 12; // spinner advances in discrete steps for a mechanical feel
+
+      /* per-frame: typing, caret, placeholder, send color, progress %, spinners */
+      function render(t){
+        if (t < BUBBLE){
+          // typing the prompt into the composer
+          const shown = Math.min(N, Math.max(0, Math.floor((t-TYPE_S)/SPEED)));
+          txt.textContent = PROMPT.slice(0,shown);
+          ph.style.display = shown>0 ? "none" : "inline";
+          const typing = t>=TYPE_S && t<=TYPE_E;
+          caret.style.opacity = typing ? (Math.sin(t*Math.PI*2)+1)/2 : (t<TYPE_S?0:0.55);
+          send.style.background = shown>0 ? AC : T.track;
+        } else {
+          // after send: composer clears back to its empty placeholder state
+          txt.textContent = "";
+          ph.style.display = "inline";
+          caret.style.opacity = 0;
+          send.style.background = T.track;
+        }
+        // progress: climbs from card-in to last step, floor-quantized, in lockstep with checks
+        let p;
+        if (t < CARD_AT) p = 0;
+        else if (t >= LAST) p = 100;
+        else p = clamp01((t-CARD_AT)/(LAST-CARD_AT))*100;
+        const pv = Math.floor(p);
+        pct.textContent = pv + "%";
+        fill.style.transform = `scaleX(${(pv/100).toFixed(4)})`;
+        // per-step spinner: spin only while that step is active (appeared, not yet complete)
+        rowEls.forEach((r,i)=>{
+          const complete = STEP0 + i*STEP_GAP;
+          const appear   = complete - STEP_GAP*0.85;
+          if (t>=appear && t<complete){
+            const k = Math.floor((t-appear)*SPIN_FR);
+            r.spin.style.transform = `rotate(${(k*(360/ SPIN_FR)).toFixed(1)}deg)`;
+          }
+        });
+      }
+
+      /* ── master timeline (paused; HyperFrames seeks it) ────────────── */
+      const tl = gsap.timeline({ paused:true });
+
+      // initial states
+      gsap.set(composer,{y:60,opacity:0});
+      gsap.set(card,{y:70,opacity:0});
+      gsap.set(userbubble,{y:40,opacity:0,scale:0.9,transformOrigin:"100% 100%"});
+      rowEls.forEach(r=>{
+        gsap.set(r.row,{opacity:0,y:16});
+        gsap.set(r.spin,{opacity:1});
+        gsap.set(r.tick,{opacity:0,scale:0.4});
+        gsap.set(r.tickPath,{strokeDasharray:30,strokeDashoffset:30});
+      });
+
+      // composer in
+      tl.to(composer,{y:0,opacity:1,duration:COMP_IN,ease:"expo.out"},0);
+      // send press at SEND_AT (squash + pop)
+      tl.to(send,{scale:0.82,duration:0.12,ease:"power2.in"},SEND_AT)
+        .to(send,{scale:1,duration:0.3,ease:"back.out(3)"},SEND_AT+0.12);
+      // prompt flies up as a user bubble; composer input clears
+      tl.add(()=>{ userbubble.textContent = PROMPT; }, BUBBLE-0.01);
+      tl.to(userbubble,{y:0,opacity:1,scale:1,duration:0.5,ease:"back.out(1.6)"},BUBBLE);
+      // (render() clears the composer back to placeholder for t >= BUBBLE)
+      // card rises in
+      tl.to(card,{y:0,opacity:1,duration:0.6,ease:"expo.out"},CARD_AT);
+      // rows stagger in just after the card
+      rowEls.forEach((r,i)=>{
+        tl.to(r.row,{opacity:1,y:0,duration:0.4,ease:"power3.out"},CARD_AT+0.25+i*0.1);
+      });
+      // each step completes: spinner out, check pops + draws, label brightens
+      rowEls.forEach((r,i)=>{
+        const at = STEP0 + i*STEP_GAP;
+        tl.to(r.spin,{opacity:0,scale:0.5,duration:0.2,ease:"power2.in"},at-0.02);
+        tl.to(r.tick,{opacity:1,scale:1,duration:0.32,ease:"back.out(2.4)"},at);
+        tl.to(r.tickPath,{strokeDashoffset:0,duration:0.28,ease:"power2.out"},at+0.04);
+        tl.to(r.lab,{color:T.text,duration:0.3},at);
+      });
+      // header flips to done
+      tl.add(()=>{ agentstatus.textContent = String(V.doneLabel); agentstatus.style.color = CK; }, DONE_AT);
+      tl.fromTo(agentstatus,{scale:0.8},{scale:1,duration:0.3,ease:"back.out(2)"},DONE_AT);
+
+      // proxy tween drives render() every frame across the whole clip
+      const p = { t:0 };
+      tl.to(p,{ t:TOTAL, duration:TOTAL, ease:"none", onUpdate:()=>render(p.t) }, 0);
+      // pad to data-duration so the final frame holds
+      tl.set({},{}, DUR);
+
+      render(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      window.__timeline = tl;
+    </script>
+  </body>
+</html>

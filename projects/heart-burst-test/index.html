@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"heartColor",    "type":"color", "label":"Heart fill (liked)",                       "default":"#ff3b6b"},
+  {"id":"particleColors","type":"string","label":"Confetti colors (| pipe-separated hex; cycles)","default":"#ff3b6b|#ff8fab|#ffd166|#9b8cff|#5ad1ff"},
+  {"id":"particleCount", "type":"string","label":"Confetti dots (12-16)",                     "default":"14"},
+  {"id":"startCount",    "type":"string","label":"Like count before tap",                     "default":"1268"},
+  {"id":"buttonStyle",   "type":"string","label":"Button style: card | bare",                 "default":"card"},
+  {"id":"iconType",      "type":"string","label":"Icon: heart | star | thumb",                "default":"heart"},
+  {"id":"label",         "type":"string","label":"Caption above the button",                  "default":"Shipped the editor for AI agents"},
+  {"id":"handle",        "type":"string","label":"Author handle",                             "default":"@xotion"},
+  {"id":"bg",            "type":"color", "label":"Background",                                 "default":"#0e0f13"},
+  {"id":"card",          "type":"color", "label":"Card surface",                              "default":"#1a1c22"},
+  {"id":"ink",           "type":"color", "label":"Text color",                                "default":"#f4f5f7"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <!--
+      HEART BURST LIKE — the most-cloned micro-interaction, done as a first-party preset.
+      A heart like-button sits on a Xotion-flavored social card. A mac cursor dips onto it;
+      the heart SQUASHES on press, then POPS up with overshoot as color floods it bottom-to-top
+      through a clip mask. At the pop, a ring expands out of the heart and SHATTERS into 12-16
+      confetti dots that fly along a hand-coded vector table, while the like count TICKS UP by
+      the burst amount with a tiny per-digit flip. Then everything settles into a loop-friendly
+      idle breathe. Set iconType to star/thumb for the same beats on a different glyph;
+      buttonStyle "bare" drops the card chrome for a transparent sticker.
+
+      Slot-driven via data-composition-variables:
+        heartColor      — liked fill + glow + ring                  (#ff3b6b)
+        particleColors  — confetti palette, "|"-separated, cycles   (5 hexes)
+        particleCount   — number of confetti dots, clamped 12..16   (14)
+        startCount      — like count shown before the tap           (1268)  → ticks to start + burstAmt
+        buttonStyle     — "card" (post chrome) | "bare" (sticker)
+        iconType        — "heart" | "star" | "thumb"
+        label / handle  — caption + author shown on the card
+        bg / card / ink — page bg / card surface / text color
+
+      ENCODING: particleColors is a single string with "|" between hex colors; the table cycles
+      through them so any count (12-16) is fully colored. All list/count vars are robust to being
+      longer/shorter than the default — the card sizes to content (max-width + wrap on the caption),
+      the count flip rebuilds its digit columns from the actual final value, nothing is hard-coded
+      to the default width.
+
+      ── CHOREOGRAPHY (data-duration 6.0s; motion ≈ 0.0–2.05s, then a loop-friendly idle hold) ──
+      phase | start–end (s) | easing            | what moves
+      ------+---------------+-------------------+--------------------------------------------------
+      0 in  | 0.00–0.55     | back.out(1.6)/exp | card scales 0.92→1 + fades; cursor glides in from
+            |               |                   |   lower-right; heart is OUTLINE (unliked), idle.
+      1 press| 0.55–0.92    | power2.in         | cursor dips to the heart; heart SQUASHES
+            |               |                   |   (scaleX 1.12 / scaleY 0.84) — anticipation.
+      2 pop | 0.92–1.42     | back.out(3.2)     | release: heart overshoots to 1.32 then settles to 1;
+            |               |                   |   cursor lifts off. Outline cross-fades to fill.
+      3 fill| 0.95–1.45     | power2.out (proxy)| color floods the heart BOTTOM→TOP via a clip mask
+            |               |                   |   (inset bottom 100%→0); liked glow blooms in.
+      4 ring| 1.00–1.55     | power3.out        | a ring expands 0.2→2.6 out of the heart and fades.
+      5 burst| 1.06–1.85    | power2.out (table)| ring shatters into N confetti dots flying their
+            |               |                   |   hand-coded vectors (angle/dist/size/spin/delay),
+            |               |                   |   scaling 1→0 with a slight gravity sag on Y.
+      6 count| 1.02–1.62    | power3.out (proxy)| like count ticks startCount → startCount+burstAmt;
+            |               |                   |   the changed low digits do a tiny vertical flip.
+      H hold| 2.05–6.00     | sine idle (proxy) | heart + count gently breathe so no frame is dead-still
+            |               |                   |   (≈3px float + 0.6% scale); loops cleanly.
+
+      DETERMINISM: ONE paused master timeline (window.__timelines["main"] / window.__timeline).
+      Per-frame values (color flood, count value+flip, idle breathe) come from proxy onUpdate;
+      discrete moves (press/pop/ring/confetti) are normal tweens on the SAME timeline. Confetti is
+      a HAND-CODED constant table (no RNG). All DOM (card, heart, N dots, count digit columns) is
+      built at construction; every animated node gets its initial state via gsap.set before frame 0;
+      render(0)+drawCount() run at boot so frame 0 is the correct unliked opening state. No
+      Math.random / Date / rAF / setTimeout / CSS transitions or keyframes / infinite repeats.
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family:"DM Sans"; font-weight:400;
+        src:url("assets/fonts/dm-sans-400.ttf") format("truetype"); }
+      @font-face { font-family:"DM Sans"; font-weight:500;
+        src:url("assets/fonts/dm-sans-500.ttf") format("truetype"); }
+      @font-face { font-family:"DM Sans"; font-weight:700;
+        src:url("assets/fonts/dm-sans-700.ttf") format("truetype"); }
+      @font-face { font-family:"Sora"; font-weight:700;
+        src:url("assets/fonts/sora-700.ttf") format("truetype"); }
+      @font-face { font-family:"Sora"; font-weight:800;
+        src:url("assets/fonts/sora-800.ttf") format("truetype"); }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      html,body { width:1920px; height:1080px; overflow:hidden; }
+      #root { position:relative; width:1920px; height:1080px; overflow:hidden;
+              font-family:"DM Sans",sans-serif; }
+      /* centering stage */
+      .stage { position:absolute; left:50%; top:50%;
+               transform:translate(-50%,-50%); }
+      /* the post card */
+      .card {
+        position:relative;
+        display:flex; flex-direction:column; gap:30px;
+        padding:54px 60px 50px;
+        border-radius:34px;
+        max-width:760px;
+        will-change:transform, opacity;
+      }
+      .head { display:flex; align-items:center; gap:20px; }
+      .avatar {
+        width:72px; height:72px; border-radius:50%;
+        flex:0 0 auto;
+        display:flex; align-items:center; justify-content:center;
+        font-family:"Sora",sans-serif; font-weight:800; font-size:30px;
+        color:#fff;
+      }
+      .who { display:flex; flex-direction:column; gap:4px; line-height:1.1; }
+      .who .name { font-family:"Sora",sans-serif; font-weight:700; font-size:30px; }
+      .who .sub  { font-weight:500; font-size:22px; opacity:0.5; }
+      .caption {
+        font-weight:500; font-size:34px; line-height:1.32;
+        letter-spacing:-0.01em;
+        /* wraps; never clipped — width follows max-width on .card */
+        word-break:break-word;
+      }
+      /* the action row: heart button + count */
+      .actions { display:flex; align-items:center; gap:26px; margin-top:6px; }
+      .likeBtn {
+        position:relative;
+        width:118px; height:118px;
+        flex:0 0 auto;
+        display:flex; align-items:center; justify-content:center;
+        border-radius:28px;
+      }
+      /* the heart/icon wrapper that we scale/squash */
+      .iconWrap {
+        position:relative; width:84px; height:84px;
+        display:flex; align-items:center; justify-content:center;
+        will-change:transform;
+      }
+      .iconWrap svg { position:absolute; inset:0; width:84px; height:84px; display:block; }
+      /* outline layer (unliked) and fill layer (liked, revealed by clip mask) */
+      .glyphOutline { }
+      .glyphFill   { }
+      /* expanding ring + confetti origin sit centered on the icon */
+      .ring {
+        position:absolute; left:50%; top:50%;
+        width:84px; height:84px; border-radius:50%;
+        transform:translate(-50%,-50%) scale(0.2);
+        opacity:0; pointer-events:none; will-change:transform,opacity;
+      }
+      .burst { position:absolute; left:50%; top:50%; width:0; height:0; z-index:20; }
+      .dot   { position:absolute; left:0; top:0; will-change:transform,opacity; }
+      /* like count — number flips old→new in a self-sizing vertical window.
+         A grid-stack holds BOTH the full old and full new number in one cell so
+         the window WIDTH follows the wider of the two (no hard-coded width, never
+         clips); overflow:hidden + a one-line height crop the vertical slide. */
+      .count {
+        position:relative; display:flex; align-items:center;
+        font-family:"Sora",sans-serif; font-weight:800;
+        font-size:60px; line-height:1; letter-spacing:-0.02em;
+        font-variant-numeric:tabular-nums; white-space:nowrap;
+        will-change:transform;
+      }
+      .count .flip {                                     /* the changing number window */
+        position:relative; display:inline-block;
+        height:64px; overflow:hidden;                    /* width auto = content; no clip */
+        vertical-align:bottom;
+      }
+      /* grid-stack: both rows in the same cell → container sizes to the wider one */
+      .count .flip .stack {
+        display:grid; grid-template-columns:1fr;
+        justify-items:start; will-change:transform;
+      }
+      .count .flip .cell {
+        grid-row:1; grid-column:1;                       /* both occupy one cell */
+        height:64px; line-height:64px; white-space:nowrap; will-change:transform;
+      }
+      .count .flip .cell.bot { transform:translateY(64px); }  /* new value starts below */
+      .countLabel { margin-left:14px; font-family:"DM Sans",sans-serif; font-weight:500;
+                    font-size:26px; opacity:0.5; align-self:center; }
+      /* mac pointer */
+      .pointer { position:absolute; left:0; top:0; width:52px; height:52px;
+                 opacity:0; pointer-events:none; will-change:transform,opacity; }
+      .pointer svg { display:block; width:52px; height:52px;
+                     filter:drop-shadow(0 6px 14px rgba(0,0,0,0.45)); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="6.0" data-width="1920" data-height="1080">
+      <div class="stage" id="stage">
+        <div class="card" id="card">
+          <div class="head" id="head">
+            <div class="avatar" id="avatar"></div>
+            <div class="who">
+              <span class="name" id="name"></span>
+              <span class="sub" id="sub"></span>
+            </div>
+          </div>
+          <div class="caption" id="caption"></div>
+          <div class="actions">
+            <div class="likeBtn" id="likeBtn">
+              <div class="ring" id="ring"></div>
+              <div class="iconWrap" id="iconWrap">
+                <!-- outline + fill glyphs injected at construction by iconType -->
+              </div>
+              <div class="burst" id="burst"></div>
+            </div>
+            <div class="count" id="count"></div>
+            <div class="countLabel" id="countLabel">likes</div>
+          </div>
+        </div>
+        <svg class="pointer" id="pointer" viewBox="0 0 24 24">
+          <path d="M5.6 2.2 L5.6 18.6 L9.8 14.9 L12.2 20.6 L15.1 19.4 L12.7 13.8 L18.2 13.4 Z"
+                fill="#ffffff" stroke="#0a0a0a" stroke-width="1.4" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </div>
+
+    <script>
+      const V = window.__hyperframes.getVariables();
+
+      /* normalize a CSS hex to 6-digit so 2-digit alpha appends safely */
+      function hex6(c){c=String(c).trim();if(/^#[0-9a-fA-F]{3}$/.test(c))return "#"+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];if(/^#[0-9a-fA-F]{8}$/.test(c))return c.slice(0,7);return c;}
+
+      /* ── parameters ─────────────────────────────────────────────────── */
+      const HEART  = hex6(V.heartColor) || "#ff3b6b";
+      const PCOLS  = String(V.particleColors || "").split("|")
+                       .map(s => s.trim()).filter(Boolean).map(hex6);
+      const PALETTE = PCOLS.length ? PCOLS : [HEART];
+      const PCOUNT = Math.max(12, Math.min(16, parseInt(V.particleCount, 10) || 14));
+      const START  = Math.max(0, parseInt(String(V.startCount).replace(/[^0-9]/g, ""), 10) || 0);
+      const BARE   = String(V.buttonStyle).toLowerCase() === "bare";
+      const ICON   = ["heart", "star", "thumb"].includes(String(V.iconType).toLowerCase())
+                       ? String(V.iconType).toLowerCase() : "heart";
+      const LABEL  = String(V.label);
+      const HANDLE = String(V.handle);
+      const INK    = V.ink;
+      const CARDC  = V.card;
+      const BGC    = V.bg;
+      const BURST_AMT = 1;                       // a tap adds one like
+      const END    = START + BURST_AMT;
+
+      /* ── elements ───────────────────────────────────────────────────── */
+      const root      = document.getElementById("root");
+      const card      = document.getElementById("card");
+      const head      = document.getElementById("head");
+      const avatar    = document.getElementById("avatar");
+      const nameEl    = document.getElementById("name");
+      const subEl     = document.getElementById("sub");
+      const captionEl = document.getElementById("caption");
+      const likeBtn   = document.getElementById("likeBtn");
+      const iconWrap  = document.getElementById("iconWrap");
+      const ring      = document.getElementById("ring");
+      const burst     = document.getElementById("burst");
+      const countEl   = document.getElementById("count");
+      const countLbl  = document.getElementById("countLabel");
+      const pointerEl = document.getElementById("pointer");
+
+      /* ── static styles from variables ───────────────────────────────── */
+      document.body.style.background = BGC;
+      root.style.background          = BGC;
+      root.style.color               = INK;
+
+      // initials-on-gradient avatar fallback (no asset files needed)
+      const h = HANDLE.replace(/^@/, "");
+      avatar.textContent = (h[0] || "X").toUpperCase();
+      avatar.style.background = `linear-gradient(135deg, ${HEART}, ${PALETTE[Math.min(2, PALETTE.length-1)]})`;
+      nameEl.textContent = h ? (h.charAt(0).toUpperCase() + h.slice(1)) : "Xotion";
+      subEl.textContent  = HANDLE.startsWith("@") ? HANDLE : ("@" + HANDLE);
+      captionEl.textContent = LABEL;
+      nameEl.style.color = INK;
+      captionEl.style.color = INK;
+
+      if (BARE) {
+        card.style.background = "transparent";
+        card.style.boxShadow  = "none";
+        head.style.display    = "none";
+        captionEl.style.display = "none";
+      } else {
+        card.style.background = CARDC;
+        card.style.boxShadow  = "0 40px 120px rgba(0,0,0,0.45), 0 4px 18px rgba(0,0,0,0.35)";
+      }
+      // like-button surface (subtle pressable chip; transparent in bare mode)
+      likeBtn.style.background = BARE ? "transparent" : (CARDC === "transparent" ? "transparent" : "rgba(255,255,255,0.05)");
+      countLbl.style.color = INK;
+
+      /* ── icon glyphs (outline + fill layers) per iconType ───────────── */
+      const PATHS = {
+        heart: "M50 86 C18 64 8 44 8 30 C8 16 19 8 31 8 C40 8 47 13 50 20 C53 13 60 8 69 8 C81 8 92 16 92 30 C92 44 82 64 50 86 Z",
+        star:  "M50 8 L61 38 L93 39 L67 59 L77 90 L50 71 L23 90 L33 59 L7 39 L39 38 Z",
+        thumb: "M30 44 L44 44 L52 14 C60 14 64 20 60 32 L58 40 L84 40 C90 40 92 46 90 52 L82 84 C81 88 78 90 74 90 L30 90 Z M14 44 L30 44 L30 90 L14 90 Z"
+      };
+      const D = PATHS[ICON];
+      // outline (unliked) + solid fill (liked) share the same vector; fill is masked
+      iconWrap.innerHTML =
+        `<svg class="glyphOutline" id="glyphOutline" viewBox="0 0 100 100" fill="none"
+              stroke="${INK}" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+           <path d="${D}"></path>
+         </svg>
+         <svg class="glyphFill" id="glyphFill" viewBox="0 0 100 100" fill="${HEART}"
+              stroke="${HEART}" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+           <path d="${D}"></path>
+         </svg>`;
+      const glyphOutline = document.getElementById("glyphOutline");
+      const glyphFill    = document.getElementById("glyphFill");
+      glyphOutline.style.opacity = "0.62";          // unliked outline a touch muted
+
+      // ring styled from the heart color
+      ring.style.border = `5px solid ${HEART}`;
+      ring.style.boxShadow = `0 0 24px ${hex6(HEART)}80`;
+
+      /* ── confetti: HAND-CODED deterministic table (no randomness) ───── */
+      /* base ring of 16 angle/dist/size/spin/delay tuples; we take PCOUNT of them
+         (12-16) and color them by cycling PALETTE. shapes alternate dot/square. */
+      const BASE = [
+        { a:  -90, d: 300, s: 22, spin:  220, dl: 0.00, sag: 34 },
+        { a:  -58, d: 262, s: 16, spin: -180, dl: 0.05, sag: 40 },
+        { a:  -26, d: 286, s: 19, spin:  140, dl: 0.02, sag: 46 },
+        { a:    6, d: 250, s: 15, spin: -260, dl: 0.07, sag: 52 },
+        { a:   38, d: 296, s: 21, spin:  190, dl: 0.01, sag: 56 },
+        { a:   70, d: 258, s: 16, spin: -150, dl: 0.06, sag: 60 },
+        { a:  102, d: 280, s: 18, spin:  240, dl: 0.03, sag: 64 },
+        { a:  134, d: 244, s: 14, spin: -200, dl: 0.08, sag: 60 },
+        { a:  166, d: 298, s: 21, spin:  170, dl: 0.00, sag: 56 },
+        { a: -158, d: 256, s: 16, spin: -230, dl: 0.06, sag: 50 },
+        { a: -126, d: 284, s: 19, spin:  210, dl: 0.02, sag: 46 },
+        { a: -106, d: 236, s: 13, spin: -160, dl: 0.09, sag: 40 },
+        { a:  -74, d: 292, s: 18, spin:  250, dl: 0.04, sag: 36 },
+        { a:  -42, d: 246, s: 15, spin: -190, dl: 0.07, sag: 42 },
+        { a:   22, d: 276, s: 18, spin:  160, dl: 0.03, sag: 48 },
+        { a:   54, d: 240, s: 14, spin: -240, dl: 0.08, sag: 54 }
+      ];
+      const CONFETTI = BASE.slice(0, PCOUNT);
+      const dots = CONFETTI.map((c, i) => {
+        const el = document.createElement("div");
+        el.className = "dot";
+        el.style.width  = c.s + "px";
+        el.style.height = c.s + "px";
+        const dc = PALETTE[i % PALETTE.length];
+        el.style.background = dc;
+        // glow so each dot pops off the dark card surface
+        el.style.boxShadow = `0 0 10px ${hex6(dc)}cc`;
+        // alternate round dots and little squares for confetti variety
+        el.style.borderRadius = (i % 3 === 0) ? "3px" : "50%";
+        burst.appendChild(el);
+        return el;
+      });
+
+      /* ── like count: the WHOLE formatted number flips old→new ─────────────
+         a like adds BURST_AMT. We stack the full OLD number and full NEW number
+         in a single grid cell inside an overflow-hidden window; the stack slides
+         up one line so the old value exits the top and the new value arrives.
+         The window WIDTH is the wider of the two full numbers (grid auto-sizing),
+         so it NEVER clips regardless of length — 8→9, 999,999→1,000,000, any
+         carry, any START length all render fully. No hard-coded width, no
+         same-length guard. */
+      const cellH = 64;
+      function fmt(n) { return n.toLocaleString("en-US"); }   // 1268 → "1,268"
+      const startFmt = fmt(START), endFmt = fmt(END);
+      const flip = document.createElement("span");
+      flip.className = "flip";
+      const stack = document.createElement("span");
+      stack.className = "stack";
+      const cellTop = document.createElement("span");      // OLD value, slides up & out
+      cellTop.className = "cell top"; cellTop.textContent = startFmt;
+      const cellBot = document.createElement("span");      // NEW value, slides up & in
+      cellBot.className = "cell bot"; cellBot.textContent = endFmt;
+      stack.appendChild(cellTop); stack.appendChild(cellBot);
+      flip.appendChild(stack);
+      countEl.appendChild(flip);
+      countEl.style.color = INK;
+      // (no manual width sizing needed — the grid-stack auto-sizes to the wider
+      //  full number; kept as a no-op so existing call sites stay valid.)
+      function sizeDigits() {}
+
+      /* ── easings ────────────────────────────────────────────────────── */
+      const clamp01  = t => Math.max(0, Math.min(1, t));
+      const outCubic = t => 1 - Math.pow(1 - t, 3);
+      const outQuad  = t => 1 - (1 - t) * (1 - t);
+
+      /* ── timing (spec) ─────────────────────────────────────────────── */
+      const PRESS_AT  = 0.55, PRESS_DUR = 0.37;
+      const POP_AT    = 0.92, POP_DUR   = 0.50;
+      const FILL_AT   = 0.95, FILL_DUR  = 0.50;
+      const RING_AT   = 1.00, RING_DUR  = 0.55;
+      const BURST_AT  = 1.06, BURST_DUR = 1.05;
+      const COUNT_AT  = 1.02, COUNT_DUR = 0.60;
+      const SETTLE_AT = 2.05;                       // idle breathe begins
+      const DUR       = 6.0;
+
+      /* ── initial states — frame 0 = correct UNLIKED opening (card visible) ── */
+      gsap.set(card,     { scale: 0.965, opacity: 1, transformOrigin: "50% 55%" });
+      gsap.set(iconWrap, { scale: 1, transformOrigin: "50% 60%" });
+      gsap.set(glyphFill,{ opacity: 0 });
+      gsap.set(ring,     { opacity: 0 });
+      gsap.set(pointerEl,{ opacity: 0 });
+      dots.forEach(el => gsap.set(el, { x: 0, y: 0, scale: 1, rotation: 0, opacity: 0,
+                                        xPercent: -50, yPercent: -50 }));
+
+      /* ── per-frame proxy drivers ────────────────────────────────────── */
+      // color flood: clip the fill glyph bottom→top
+      function drawFill(t) {
+        const k = outQuad(clamp01((t - FILL_AT) / FILL_DUR));
+        glyphFill.style.opacity = k > 0 ? 1 : 0;
+        // reveal from bottom: inset(top right BOTTOM left) — bottom shrinks 100%→0
+        glyphFill.style.clipPath = `inset(${(100 * (1 - k)).toFixed(2)}% 0% 0% 0%)`;
+        // unliked outline fades as fill takes over
+        glyphOutline.style.opacity = (0.62 * (1 - k)).toFixed(3);
+        // liked glow blooms with the fill
+        iconWrap.style.filter = k > 0
+          ? `drop-shadow(0 0 ${(26 * k).toFixed(1)}px ${hex6(HEART)}99)` : "none";
+      }
+      // like count: the whole number flips old→new with a tiny scale-pop.
+      // cellTop starts at 0 (showing OLD), cellBot starts at +64px (NEW, below);
+      // sliding the stack up by k*64px moves OLD out the top and NEW into view.
+      function drawCount(t) {
+        const k = outCubic(clamp01((t - COUNT_AT) / COUNT_DUR));
+        stack.style.transform = `translateY(${(-k * cellH).toFixed(2)}px)`;
+        // brief pop as it lands (peaks mid-flip, settles to 1)
+        const pop = 1 + 0.12 * Math.sin(k * Math.PI);
+        countEl.style.transform = `scale(${pop.toFixed(4)})`;
+      }
+      // pointer path: glide in from lower-right → dip onto heart on press → lift away
+      function drawPointer(t) {
+        const bx = likeBtn.offsetLeft + likeBtn.offsetWidth * 0.5;   // heart center in stage coords
+        const by = likeBtn.offsetTop  + likeBtn.offsetHeight * 0.5;
+        const kIn = clamp01(t / 0.5);
+        let cx = bx + 360 * (1 - outCubic(kIn));     // arc in from lower-right
+        let cy = by + 300 * (1 - outCubic(kIn));
+        if (t >= PRESS_AT) {                          // dip down onto the heart
+          const kp = clamp01((t - PRESS_AT) / PRESS_DUR);
+          cy = by + 14 * kp;
+        }
+        if (t >= POP_AT) {                            // lift up and drift away after the tap
+          const kl = clamp01((t - POP_AT) / 0.45);
+          cy = (by + 14) - (14 + 70 * outCubic(kl));
+          cx = bx + 90 * outCubic(kl);
+        }
+        // arrow hotspot ≈ top-left tip; offset so the tip lands on the target
+        pointerEl.style.transform = `translate(${(cx - 12).toFixed(2)}px, ${(cy - 8).toFixed(2)}px)`;
+      }
+      // idle breathe so no frame after the action is dead-still; loops cleanly.
+      // breathes likeBtn (GSAP never touches it) so it can't fight the heart's scale tween.
+      let measured = false;
+      function drawIdle(t) {
+        if (!measured) { sizeDigits(); if (document.fonts.status === "loaded") measured = true; }
+        if (t < SETTLE_AT) { likeBtn.style.transform = "translateY(0px) scale(1)"; return; }
+        const u = (t - SETTLE_AT) / (DUR - SETTLE_AT);          // 0..1 across the hold
+        const ph = Math.sin(u * Math.PI * 2);                  // one full cycle → loop-safe
+        likeBtn.style.transform =
+          `translateY(${(-3 * ((ph + 1) / 2)).toFixed(2)}px) scale(${(1 + 0.006 * ph).toFixed(4)})`;
+      }
+
+      function render(t) { drawFill(t); drawCount(t); drawPointer(t); drawIdle(t); }
+
+      /* ── paused master timeline ─────────────────────────────────────── */
+      const tl = gsap.timeline({ paused: true });
+
+      // proxy clock drives flood + count + idle every frame
+      const p = { t: 0 };
+      tl.to(p, { t: DUR, duration: DUR, ease: "none", onUpdate: () => render(p.t) }, 0);
+
+      // 0 — card settles in (already visible at frame 0); cursor glides in
+      tl.fromTo(card, { scale: 0.965, opacity: 1 },
+                      { scale: 1, duration: 0.55, ease: "back.out(2.2)" }, 0);
+      tl.fromTo(pointerEl, { opacity: 0 }, { opacity: 1, duration: 0.18, ease: "none" }, 0.08);
+
+      // 1 — press squash (anticipation)
+      tl.to(iconWrap, { scaleX: 1.12, scaleY: 0.84, duration: PRESS_DUR,
+                        ease: "power2.in" }, PRESS_AT);
+      // 2 — pop release with overshoot, then settle
+      tl.to(iconWrap, { scaleX: 1.32, scaleY: 1.32, duration: 0.22,
+                        ease: "power3.out" }, POP_AT);
+      tl.to(iconWrap, { scaleX: 1, scaleY: 1, duration: POP_DUR - 0.22,
+                        ease: "back.out(3.2)" }, POP_AT + 0.22);
+
+      // 4 — ring expands out of the heart and fades
+      tl.fromTo(ring, { scale: 0.2, opacity: 0.0 },
+                      { scale: 1.2, opacity: 0.85, duration: 0.16, ease: "power1.out",
+                        immediateRender: false }, RING_AT);
+      tl.to(ring,     { scale: 2.6, opacity: 0, duration: RING_DUR - 0.16,
+                        ease: "power3.out" }, RING_AT + 0.16);
+
+      // 5 — confetti shatter: each dot flies its hand-coded vector (+ gravity sag)
+      CONFETTI.forEach((c, i) => {
+        const rad = c.a * Math.PI / 180;
+        const tx = Math.cos(rad) * c.d;
+        const ty = Math.sin(rad) * c.d + c.sag;          // sag pulls the end down
+        // travel + spin on a fast-out ease; fade is a SEPARATE, later/slower
+        // tween so the dots stay visible long enough to clear the card before
+        // they wink out (the "shatter" reads instead of fading at the origin).
+        tl.fromTo(dots[i],
+          { x: 0, y: 0, scale: 1.15, rotation: 0, opacity: 1 },
+          { x: tx, y: ty, scale: 0.85, rotation: c.spin, opacity: 1,
+            duration: BURST_DUR, ease: "power2.out", immediateRender: false },
+          BURST_AT + c.dl);
+        // fade wink-out happens LATE so dots stay lit during their whole flight
+        tl.to(dots[i], { opacity: 0, duration: 0.42, ease: "power1.in" },
+          BURST_AT + c.dl + BURST_DUR - 0.42);
+      });
+
+      // (pointer path + idle breathe are folded into render() above, so the single
+      //  proxy clock at t=0 drives them on every seek — no separate tween needed.)
+
+      // hold the final frame to data-duration
+      tl.set({}, {}, DUR);
+
+      // frame 0 correct before any seek
+      sizeDigits();
+      render(0);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      window.__timeline = tl;
+    </script>
+  </body>
+</html>

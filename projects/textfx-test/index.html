@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- textfx-test — verifies the 'pressure' variable-font weight sweep. -->
+<head>
+<meta charset="UTF-8" />
+<meta name="hf-duration" content="3" />
+<meta name="hf-fps" content="30" />
+<meta name="hf-width" content="1280" />
+<meta name="hf-height" content="720" />
+<style>
+  @font-face { font-family:"Roboto Flex"; font-weight:100 1000; font-style:normal;
+    src:url("assets/fonts/roboto-flex-variable.ttf") format("truetype-variations"); }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { width:1280px; height:720px; overflow:hidden; background:#000; }
+  #main { position:relative; width:1280px; height:720px; background:#000; overflow:hidden;
+    display:flex; align-items:center; justify-content:center; }
+  .word { font-family:"Roboto Flex", sans-serif; font-size:120px; color:#fff;
+    letter-spacing:0.02em; white-space:nowrap;
+    font-variation-settings:'wght' 100; }
+</style>
+</head>
+<body>
+  <div id="main" data-composition-id="main" data-start="0" data-duration="3" data-width="1280" data-height="720">
+    <div class="word" id="w">PRESSURE</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script src="textfx.js"></script>
+  <script>
+    const Q = s => document.querySelector('[data-composition-id="main"] ' + s);
+    const tl = gsap.timeline({ paused: true });
+    TextFX.enter(Q('#w'), tl, 0.3, 'pressure', { dur: 2 });
+    tl.set({}, {}, 3); // pad to full duration
+    window.__timelines = window.__timelines || {}; window.__timelines["main"] = tl;
+    window.__timeline = tl;
+  </script>
+</body>
+</html>

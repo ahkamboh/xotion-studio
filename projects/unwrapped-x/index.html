@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GitHub Unwrapped — ahkamboh (Xotion)</title>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+<style>
+@font-face{font-family:'Inter';src:url('assets/fonts/inter-400.ttf');font-weight:400;font-display:block}
+@font-face{font-family:'Inter';src:url('assets/fonts/inter-600.ttf');font-weight:600;font-display:block}
+@font-face{font-family:'Inter';src:url('assets/fonts/inter-700.ttf');font-weight:700;font-display:block}
+@font-face{font-family:'Inter';src:url('assets/fonts/inter-800.ttf');font-weight:800;font-display:block}
+@font-face{font-family:'Inter';src:url('assets/fonts/inter-900.ttf');font-weight:900;font-display:block}
+@font-face{font-family:'Sora';src:url('assets/fonts/sora-700.ttf');font-weight:700;font-display:block}
+@font-face{font-family:'Sora';src:url('assets/fonts/sora-800.ttf');font-weight:800;font-display:block}
+@font-face{font-family:'Archivo';src:url('assets/fonts/archivo-800.ttf');font-weight:800;font-display:block}
+@font-face{font-family:'Archivo';src:url('assets/fonts/archivo-900.ttf');font-weight:900;font-display:block}
+@font-face{font-family:'Anton';src:url('assets/fonts/anton-400.ttf');font-weight:400;font-display:block}
+@font-face{font-family:'JBMono';src:url('assets/fonts/jetbrains-500.ttf');font-weight:500;font-display:block}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1080px;overflow:hidden;background:#000}
+#root{position:relative;width:1080px;height:1080px;overflow:hidden;font-family:'Inter',sans-serif}
+.fill{position:absolute;inset:0;width:1080px;height:1080px}
+/* ---- background layers (z0) ---- */
+#bgSpace{background:linear-gradient(180deg,#060842 0%,#2a2766 42%,#396A91 100%);z-index:0}
+#bgGreen{background:linear-gradient(180deg,#051F0F 0%,#1A4F2E 50%,#39B77F 100%);z-index:0;opacity:0}
+#bgDark{background:radial-gradient(120% 90% at 50% 30%,#10112b 0%,#080817 60%,#000 100%);z-index:0;opacity:0}
+#vign{box-shadow:inset 0 0 360px 60px rgba(0,0,0,.65);z-index:1;pointer-events:none;opacity:0}
+#gl{position:absolute;inset:0;z-index:2;pointer-events:none}
+/* ---- scenes (z5) ---- */
+.scene{z-index:5;opacity:0}
+.center{display:flex;align-items:center;justify-content:center;flex-direction:column}
+/* glass pane */
+.pane{background:rgba(230,225,252,.82);border:2px solid rgba(255,255,255,.35);border-radius:46px;
+  box-shadow:0 30px 80px rgba(2,4,40,.45);backdrop-filter:blur(2px)}
+.txtdark{color:#01064A}
+/* ===== Scene 1 opening ===== */
+#openPane{position:absolute;left:90px;top:430px;width:900px;height:220px;display:flex;align-items:center;gap:34px;padding:0 40px}
+#openPane img{width:160px;height:160px;border-radius:30px;border:2px solid rgba(255,255,255,.25);object-fit:cover}
+.op-l1{font:600 38px Inter;color:#01064A;opacity:.92}
+.op-l1 b{font-weight:900}
+.op-l2{font:900 84px/0.95 Inter;background:linear-gradient(270deg,#000 8%,#01064A 60%);-webkit-background-clip:text;background-clip:text;color:transparent;margin-top:4px}
+/* ===== Scene 2 languages ===== */
+#langTitle{position:absolute;inset:0}
+.lt-card{position:absolute;left:240px;top:380px;width:600px;height:320px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+.lt-1{font:700 56px Sora;color:#01064A;opacity:.8}
+.lt-2{font:800 96px Sora;color:#01064A}
+.langCard{position:absolute;inset:0;opacity:0}
+.lc-glow{position:absolute;left:50%;top:40%;width:560px;height:560px;transform:translate(-50%,-50%);border-radius:50%;filter:blur(10px)}
+.lc-pill{position:absolute;left:50%;bottom:150px;transform:translateX(-50%);display:flex;align-items:center;gap:24px;
+  background:#191c29;border-radius:90px;padding:22px 44px 22px 24px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.lc-rank{width:78px;height:78px;border-radius:20px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font:800 46px Sora;color:#fff}
+.lc-name{font:800 60px Sora;color:#fff}
+.lc-pct{font:800 50px JBMono;color:#fff;margin-left:8px;font-variant-numeric:tabular-nums}
+/* ===== Scene 3 issues ===== */
+.iss-ufo{position:absolute;left:50%;top:300px;transform:translateX(-50%)}
+.iss-rocketTip{position:absolute;left:50%;bottom:-40px;transform:translateX(-50%)}
+.iss-panel{position:absolute;bottom:120px;width:380px;height:200px;border-radius:34px;background:rgba(176,224,186,.16);
+  border:2px solid rgba(255,255,255,.36);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+#issLeft{left:80px}#issRight{right:80px}
+.iss-lab{font:700 30px Inter;color:#eafff0;opacity:.8}
+.lcd{font-family:'JBMono';color:#fff;letter-spacing:6px;font-variant-numeric:tabular-nums;
+  text-shadow:0 0 14px rgba(180,255,210,.7),0 0 4px rgba(255,255,255,.9)}
+/* ===== Scene 4 stars cockpit ===== */
+#starsLabel{position:absolute;left:0;right:0;top:120px;text-align:center;font:700 40px JBMono;letter-spacing:10px;color:#cfe0ff;opacity:.85;text-shadow:0 0 18px rgba(120,170,255,.6)}
+.cock-screen{position:absolute;bottom:120px;width:300px;height:230px;border-radius:26px;background:#0A111B;
+  border:2px solid rgba(120,150,210,.4);box-shadow:inset 0 0 40px rgba(0,40,90,.6),0 18px 50px rgba(0,0,0,.6);
+  display:flex;align-items:center;justify-content:center}
+#cockLeft{left:90px}#cockRight{right:90px}
+#cockLeft .lcd{font-size:150px;letter-spacing:10px;color:#eaf2ff;text-shadow:0 0 22px rgba(120,170,255,.8)}
+.cock-star{font-size:150px;color:#9FB8DE;text-shadow:0 0 30px rgba(150,180,240,.9)}
+#hud{position:absolute;left:50%;top:300px;transform:translateX(-50%);width:560px;height:120px;border-radius:18px;
+  background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.22);display:flex;flex-direction:column;align-items:center;justify-content:center}
+#hudAuthor{font:600 26px JBMono;color:#9fb8de;letter-spacing:2px;opacity:.85}
+#hudName{font:800 40px Inter;color:#fff;margin-top:6px;max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* ===== Scene 5 productivity ===== */
+.prod-pane{position:absolute;left:70px;width:940px;height:190px;border-radius:42px;display:flex;align-items:center;padding:0 50px}
+#prodDay{top:150px}#prodTime{top:370px}
+.pp-lab{font:800 40px Inter;color:#01064A;flex:1}
+.wheel{width:450px;height:80px;overflow:hidden;position:relative;-webkit-mask-image:linear-gradient(180deg,transparent,#000 30%,#000 70%,transparent);mask-image:linear-gradient(180deg,transparent,#000 30%,#000 70%,transparent)}
+.wheel-col{position:absolute;right:0;top:0;text-align:right;width:100%}
+.wheel-col div{height:80px;line-height:80px;font:800 46px Inter;color:rgba(1,6,74,.32);white-space:nowrap}
+.wheel-col div.sel{color:#01064A}
+#barGraph{position:absolute;left:70px;right:70px;bottom:120px;height:300px;display:flex;align-items:flex-end;gap:9px;padding:0 6px}
+.bar{flex:1;background:#181B28;border:2px solid rgba(255,255,255,.12);border-radius:5px 5px 0 0;transform-origin:bottom;transform:scaleY(0)}
+.bar.peak{background:rgba(230,225,252,.92)}
+.bar-lab{position:absolute;bottom:90px;left:70px;right:70px;display:flex;gap:9px;padding:0 6px}
+.bar-lab span{flex:1;text-align:center;font:700 16px Inter;color:#fff;opacity:.7}
+#prodTitle{position:absolute;left:0;right:0;top:60px;text-align:center;font:800 36px Sora;color:#dfe2ff;opacity:.0}
+/* ===== Scene 6 PRs ===== */
+#prSvg{position:absolute;inset:0}
+#prBadge{position:absolute;left:390px;top:417px;width:300px;height:300px;border-radius:50%;background:#E6E1FC;
+  border:2px solid rgba(255,255,255,.4);display:flex;flex-direction:column;align-items:center;justify-content:center;
+  box-shadow:0 0 0 30px rgba(255,255,255,.08),0 30px 90px rgba(0,0,0,.5);overflow:hidden}
+#prBadge .mergeIco{font-size:60px;color:#01064A;margin-bottom:2px}
+#prCount{font:800 92px Archivo;color:#01064A;font-variant-numeric:tabular-nums;line-height:1}
+#prSub{font:800 24px Inter;color:#01064A;text-align:center;margin-top:6px;letter-spacing:.5px}
+#prShine{position:absolute;inset:0;background:conic-gradient(from 0deg,transparent 0deg,rgba(255,255,255,.55) 18deg,transparent 40deg)}
+/* ===== Scene 7 contributions ===== */
+#contribPane{position:absolute;left:72px;top:300px;width:936px;border-radius:40px;background:rgba(10,14,45,.5);
+  border:2px solid rgba(255,255,255,.22);padding:34px 40px;backdrop-filter:blur(3px)}
+.cp-head{display:flex;align-items:center;gap:30px;margin-bottom:24px}
+.cp-cell{display:flex;flex-direction:column}
+.cp-num{font:500 40px Inter;color:#fff;font-variant-numeric:tabular-nums;line-height:1}
+.cp-lab{font:400 19px Inter;color:rgba(255,255,255,.7);margin-top:4px}
+.cp-spacer{flex:1}
+#heat{display:flex;flex-direction:column;gap:4px}
+#heat .hrow{display:flex;gap:4px}
+.hc{width:14px;height:14px;border-radius:4px;background:#c6ccff;opacity:0}
+#sweepHead{position:absolute;top:300px;width:120px;height:200px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,180,90,.85),rgba(255,120,40,0) 70%);filter:blur(6px);opacity:0;z-index:6}
+/* ===== Scene 8 end ===== */
+#endThreads{position:absolute;inset:0;opacity:0}
+#cta{position:absolute;left:140px;top:760px;height:150px;display:flex;align-items:center;gap:28px;
+  background:#291C0B;border:2px solid rgba(255,255,255,.22);border-radius:75px 26px 26px 75px;padding:0 60px 0 24px;
+  box-shadow:0 30px 90px rgba(0,0,0,.6)}
+#cta .octo{width:110px;height:110px;color:#F7E99A}
+.cta-1{font:600 30px Inter;background:linear-gradient(270deg,#AD8C52 20%,#F7E99A 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.cta-2{font:800 50px Sora;background:linear-gradient(270deg,#AD8C52 10%,#F7E99A 100%);-webkit-background-clip:text;background-clip:text;color:transparent;margin-top:2px}
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="38" data-width="1080" data-height="1080">
+  <div id="bgSpace" class="fill"></div>
+  <div id="bgGreen" class="fill"></div>
+  <div id="bgDark"  class="fill"></div>
+  <div id="vign"    class="fill"></div>
+  <canvas id="gl" width="1080" height="1080"></canvas>
+
+  <!-- SCENE 1 Opening -->
+  <div id="s1" class="scene fill">
+    <div id="openPane" class="pane">
+      <img src="assets/avatar.png" alt="">
+      <div>
+        <div class="op-l1">This is my <b>#GitHubUnwrapped</b></div>
+        <div class="op-l2">ahkamboh</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENE 2 Languages -->
+  <div id="s2" class="scene fill">
+    <div id="langTitle">
+      <div class="lt-card pane"><div class="lt-1">My Top</div><div class="lt-2">Languages</div></div>
+    </div>
+    <div class="langCard" id="lcCSS">
+      <div class="lc-glow" style="background:radial-gradient(circle,#563d7c 0%,rgba(86,61,124,0) 68%)"></div>
+      <div class="lc-pill"><div class="lc-rank">3</div><div class="lc-name">CSS</div><div class="lc-pct"><span class="pv">0</span>%</div></div>
+    </div>
+    <div class="langCard" id="lcTS">
+      <div class="lc-glow" style="background:radial-gradient(circle,#3178c6 0%,rgba(49,120,198,0) 68%)"></div>
+      <div class="lc-pill"><div class="lc-rank">2</div><div class="lc-name">TypeScript</div><div class="lc-pct"><span class="pv">0</span>%</div></div>
+    </div>
+    <div class="langCard" id="lcHTML">
+      <div class="lc-glow" style="background:radial-gradient(circle,#e34c26 0%,rgba(227,76,38,0) 68%)"></div>
+      <div class="lc-pill"><div class="lc-rank">1</div><div class="lc-name">HTML</div><div class="lc-pct"><span class="pv">0</span>%</div></div>
+    </div>
+  </div>
+
+  <!-- SCENE 3 Issues -->
+  <div id="s3" class="scene fill">
+    <svg class="iss-ufo" id="issUfo" width="300" height="150" viewBox="0 0 300 150">
+      <ellipse cx="150" cy="95" rx="140" ry="42" fill="#cfd8e6"/>
+      <ellipse cx="150" cy="95" rx="140" ry="42" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2"/>
+      <ellipse cx="150" cy="64" rx="66" ry="50" fill="#8fd6c8"/>
+      <ellipse cx="150" cy="64" rx="66" ry="50" fill="url(#dome)"/>
+      <circle cx="80" cy="100" r="9" fill="#7fe6c0"/><circle cx="150" cy="110" r="9" fill="#7fe6c0"/><circle cx="220" cy="100" r="9" fill="#7fe6c0"/>
+      <defs><radialGradient id="dome" cx="40%" cy="30%"><stop offset="0" stop-color="#d6fff4"/><stop offset="1" stop-color="#3aa085"/></radialGradient></defs>
+    </svg>
+    <div id="issLeft" class="iss-panel"><div class="iss-lab">Opened issues</div><div class="lcd" id="issOpen" style="font-size:90px">0</div></div>
+    <div id="issRight" class="iss-panel"><div class="iss-lab">Closed issues</div><div class="lcd" id="issClosed" style="font-size:90px">0</div></div>
+  </div>
+
+  <!-- SCENE 4 Stars cockpit -->
+  <div id="s4" class="scene fill">
+    <div id="starsLabel">REPOS STARRED</div>
+    <div id="hud"><div id="hudAuthor">repos</div><div id="hudName">starred</div></div>
+    <div id="cockLeft" class="cock-screen"><div class="lcd" id="starCount">0</div></div>
+    <div id="cockRight" class="cock-screen"><div class="cock-star">★</div></div>
+  </div>
+
+  <!-- SCENE 5 Productivity -->
+  <div id="s5" class="scene fill">
+    <div id="prodTitle">Productivity</div>
+    <div id="prodDay" class="prod-pane pane">
+      <div class="pp-lab">Most productive day</div>
+      <div class="wheel"><div class="wheel-col" id="dayCol"></div></div>
+    </div>
+    <div id="prodTime" class="prod-pane pane">
+      <div class="pp-lab">Most productive time</div>
+      <div class="wheel"><div class="wheel-col" id="timeCol"></div></div>
+    </div>
+    <div id="barGraph"></div>
+    <div class="bar-lab" id="barLab"></div>
+  </div>
+
+  <!-- SCENE 6 PRs -->
+  <div id="s6" class="scene fill">
+    <svg id="prSvg" width="1080" height="1080" viewBox="0 0 1080 1080">
+      <defs>
+        <linearGradient id="prg1" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#000"/><stop offset=".5" stop-color="#3A2A73"/><stop offset="1" stop-color="#7E52E4"/></linearGradient>
+        <linearGradient id="prg2" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#000"/><stop offset=".5" stop-color="#2a2050"/><stop offset="1" stop-color="#9a6cf2"/></linearGradient>
+      </defs>
+      <path id="prPath1" d="M540 1080 C 380 860, 360 720, 540 567" fill="none" stroke="url(#prg1)" stroke-width="5" stroke-linecap="round"/>
+      <path id="prPath2" d="M540 1080 C 720 880, 700 700, 540 567" fill="none" stroke="url(#prg2)" stroke-width="5" stroke-linecap="round"/>
+      <circle id="prDot1" r="9" fill="#cdb8ff" opacity="0"/>
+      <circle id="prDot2" r="9" fill="#cdb8ff" opacity="0"/>
+    </svg>
+    <div id="prBadge">
+      <div id="prShine"></div>
+      <svg class="mergeIco" viewBox="0 0 24 24" width="58" height="58" fill="none" stroke="#01064A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></svg>
+      <div id="prCount">0</div>
+      <div id="prSub">pull requests<br>merged</div>
+    </div>
+  </div>
+
+  <!-- SCENE 7 Contributions -->
+  <div id="s7" class="scene fill">
+    <div id="contribPane">
+      <div class="cp-head">
+        <div class="cp-cell"><div class="cp-num">2025</div><div class="cp-lab">@ahkamboh</div></div>
+        <div class="cp-spacer"></div>
+        <div class="cp-cell"><div class="cp-num">69d</div><div class="cp-lab">Longest streak</div></div>
+        <div class="cp-cell" style="margin-left:40px"><div class="cp-num" id="contribNum">0</div><div class="cp-lab">Contributions</div></div>
+      </div>
+      <div id="heat"></div>
+    </div>
+    <div id="sweepHead"></div>
+  </div>
+
+  <!-- SCENE 8 End -->
+  <div id="s8" class="scene fill">
+    <div id="cta">
+      <svg class="octo" viewBox="0 0 496 512" fill="currentColor"><path d="M165 397c0 2-2 4-5 4-3 0-5-1-5-4 0-2 2-4 5-4 2 0 5 2 5 4zm-29-4c-1 2 1 5 4 5 2 1 5 0 5-2 1-2-1-4-4-5-2-1-4 0-5 2zm41-2c-3 1-5 3-4 5 0 2 3 3 6 2 2 0 4-2 4-4-1-2-3-4-6-3zM244 8C106 8 0 113 0 251c0 110 70 204 169 237 13 2 17-5 17-12v-42c-69 15-84-33-84-33-11-29-28-37-28-37-22-15 2-15 2-15 25 2 38 26 38 26 22 38 58 27 72 21 2-16 9-27 16-33-55-6-113-28-113-122 0-27 10-49 25-66-2-6-11-31 3-65 0 0 21-7 68 25 20-5 41-8 62-8s42 3 62 8c47-32 68-25 68-25 14 34 5 59 3 65 15 17 25 39 25 66 0 94-58 116-113 122 9 8 17 23 17 47v69c0 7 4 14 17 12C426 455 496 361 496 251 496 113 390 8 244 8z"/></svg>
+      <div>
+        <div class="cta-1">Get your Year in Review</div>
+        <div class="cta-2">GitHubUnwrapped.com</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="assets/data.js"></script>
+<script type="module">
+import * as THREE from 'three';
+const D = window.DATA;
+const Q = s => document.querySelector('[data-composition-id="main"] ' + s);
+const QA = s => Array.from(document.querySelectorAll('[data-composition-id="main"] ' + s));
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+const rnd = mulberry32(0x1A2B3C);
+
+/* ============ THREE.JS LAYER ============ */
+const canvas = Q('#gl');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+renderer.setSize(1080,1080,false); renderer.setPixelRatio(1);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15;
+const scene = new THREE.Scene();
+const cam = new THREE.PerspectiveCamera(42, 1, 0.1, 100); cam.position.set(0,0,9);
+scene.add(new THREE.AmbientLight(0xafc4ff, 0.7));
+const key = new THREE.DirectionalLight(0xffffff, 1.5); key.position.set(4,6,8); scene.add(key);
+const rim = new THREE.DirectionalLight(0xff9a5a, 0.9); rim.position.set(-6,-2,4); scene.add(rim);
+const fill = new THREE.PointLight(0x88aaff, 0.6, 60); fill.position.set(-5,4,6); scene.add(fill);
+
+/* starfield */
+const STARN = 700;
+const sg = new THREE.BufferGeometry(); const sp = new Float32Array(STARN*3); const sb = new Float32Array(STARN);
+for(let i=0;i<STARN;i++){ sp[i*3]=(rnd()*2-1)*30; sp[i*3+1]=(rnd()*2-1)*30; sp[i*3+2]=-rnd()*40-2; sb[i]=0.5+rnd()*0.6; }
+sg.setAttribute('position', new THREE.BufferAttribute(sp,3));
+const stars = new THREE.Points(sg, new THREE.PointsMaterial({color:0xcfe0ff, size:0.09, sizeAttenuation:true, transparent:true, opacity:0.9}));
+scene.add(stars);
+
+/* rocket (procedural orange) */
+function mkRocket(){
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.62,0.62,2.0,40),
+    new THREE.MeshPhysicalMaterial({color:0xff7a2e, metalness:0.35, roughness:0.28, clearcoat:0.8, clearcoatRoughness:0.25}));
+  g.add(body);
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.62,0.95,40),
+    new THREE.MeshPhysicalMaterial({color:0xd9531a, metalness:0.4, roughness:0.3, clearcoat:0.7}));
+  nose.position.y=1.47; g.add(nose);
+  const bandMat = new THREE.MeshStandardMaterial({color:0x2a2a35, metalness:0.5, roughness:0.4});
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(0.635,0.635,0.18,40), bandMat); band.position.y=0.35; g.add(band);
+  const win = new THREE.Mesh(new THREE.CircleGeometry(0.3,32),
+    new THREE.MeshPhysicalMaterial({color:0x2fd6c8, metalness:0.2, roughness:0.05, clearcoat:1, emissive:0x0a3a38, emissiveIntensity:0.5}));
+  win.position.set(0,0.55,0.63); g.add(win);
+  const finMat = new THREE.MeshPhysicalMaterial({color:0xc6431a, metalness:0.4, roughness:0.35, clearcoat:0.6});
+  for(let i=0;i<3;i++){ const f=new THREE.Mesh(new THREE.ConeGeometry(0.34,0.9,4), finMat);
+    f.position.y=-0.95; f.rotation.y=i*Math.PI*2/3; f.position.x=Math.sin(i*Math.PI*2/3)*0.62; f.position.z=Math.cos(i*Math.PI*2/3)*0.62; f.rotation.x=0.5; g.add(f); }
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(0.42,1.3,24),
+    new THREE.MeshBasicMaterial({color:0xffb24a, transparent:true, opacity:0.92}));
+  flame.position.y=-1.65; flame.rotation.x=Math.PI; g.add(flame); g.userData.flame=flame;
+  const flame2 = new THREE.Mesh(new THREE.ConeGeometry(0.22,0.8,20),
+    new THREE.MeshBasicMaterial({color:0xfff1c2, transparent:true, opacity:0.95}));
+  flame2.position.y=-1.4; flame2.rotation.x=Math.PI; g.add(flame2); g.userData.flame2=flame2;
+  return g;
+}
+const rocket = mkRocket(); scene.add(rocket);
+
+/* planet sphere (recolored per use) */
+function mkPlanet(){
+  const g = new THREE.Group();
+  const m = new THREE.Mesh(new THREE.SphereGeometry(1.6,64,64),
+    new THREE.MeshStandardMaterial({color:0xe34c26, metalness:0.2, roughness:0.55}));
+  g.add(m); g.userData.core=m;
+  const atmo = new THREE.Mesh(new THREE.SphereGeometry(1.78,48,48),
+    new THREE.MeshBasicMaterial({color:0xe34c26, transparent:true, opacity:0.14, side:THREE.BackSide}));
+  g.add(atmo); g.userData.atmo=atmo;
+  return g;
+}
+const planet = mkPlanet(); scene.add(planet);
+
+function setPlanetColor(hex){ planet.userData.core.material.color.set(hex); planet.userData.atmo.material.color.set(hex); }
+
+/* ---- per-frame draw (deterministic, pure fn of time) ---- */
+const lerp=(a,b,t)=>a+(b-a)*t;
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const inv=(x,a,b)=>clamp((x-a)/(b-a),0,1);
+const easeOut=t=>1-Math.pow(1-t,3);
+const easeIO=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+
+function draw(t){
+  // starfield drift / warp
+  let warp = inv(t,15.4,16.2)*inv(20.4-t,0,1.0); // strong during stars scene
+  for(let i=0;i<STARN;i++){
+    let z = sp[i*3+2] + (t*0.6 + (warp>0? t*6*warp:0)) % 42;
+    if(z> -1) z -= 42;
+    // not mutating buffer; approximate drift via points position offset:
+  }
+  stars.position.z = (t*0.5) % 6;
+  stars.rotation.z = t*0.01;
+  const sm = stars.material;
+
+  // defaults
+  rocket.visible=false; planet.visible=false;
+  rocket.userData.flame.scale.set(1,1,1); rocket.userData.flame2.scale.set(1,1,1);
+
+  if(t < 3.7){ /* OPENING — rocket center, rise + shake, camera dolly out */
+    rocket.visible=true;
+    const p = inv(t,0,2.2);
+    cam.position.set(0,0, lerp(5.5,9.5,easeOut(p)));
+    const shx=Math.sin(t*22)*0.02, shy=Math.cos(t*18)*0.015;
+    rocket.position.set(shx, lerp(-0.3,0.5,easeOut(inv(t,0,3.0)))+shy, 0);
+    rocket.rotation.set(0,0,Math.sin(t*1.3)*0.03);
+    const fl = 1+Math.sin(t*30)*0.12; rocket.userData.flame.scale.set(1,fl,1); rocket.userData.flame2.scale.set(1,fl*1.1,1);
+    // warp out
+    if(t>3.3){ const w=inv(t,3.3,3.7); rocket.position.y += w*6; rocket.scale.setScalar(1-w*0.6); }
+    else rocket.scale.setScalar(1);
+    sm.opacity=0.9; cam.lookAt(0,0.2,0);
+  }
+  else if(t < 11.4){ /* LANGUAGES — planet recolor per subwindow */
+    cam.position.set(0,0,9); cam.lookAt(0,0,0);
+    sm.opacity=0.5;
+    let show=null,col='#e34c26',sz=1;
+    if(t>=5.0 && t<7.0){ show='CSS'; col='#563d7c'; sz=inv(t,5.0,5.7); }
+    else if(t>=7.0 && t<9.2){ show='TS'; col='#3178c6'; sz=inv(t,7.0,7.7); }
+    else if(t>=9.2){ show='HTML'; col='#e34c26'; sz=inv(t,9.2,9.9); }
+    if(show){ planet.visible=true; setPlanetColor(col);
+      const s=lerp(2.4,1.0,easeIO(sz)); planet.scale.setScalar(s);
+      planet.position.set(0,0.2,0); planet.rotation.y=t*0.5; planet.rotation.x=Math.sin(t*0.4)*0.15;
+    }
+  }
+  else if(t < 15.4){ /* ISSUES — green DOM scene, fade stars */
+    sm.opacity = 0.18; stars.position.z=0;
+  }
+  else if(t < 20.4){ /* STARS cockpit — warp starfield */
+    cam.position.set(0,0,8); cam.lookAt(0,0,0);
+    sm.opacity = 0.95; sm.size = lerp(0.09,0.22,inv(t,15.4,16.2)) * (1-inv(t,19.6,20.4)*0.6);
+    stars.position.z = (t*4) % 8;
+  }
+  else if(t < 28.4){ /* PRODUCTIVITY + PRs — dim 3D */
+    sm.opacity = 0.12; sm.size=0.09;
+  }
+  else if(t < 33.4){ /* CONTRIBUTIONS — gold planet rising as a low horizon behind pane */
+    cam.position.set(0,0,9); cam.lookAt(0,0,0);
+    sm.opacity=0.3;
+    planet.visible=true; setPlanetColor(0xE9B949);
+    const rise=easeIO(inv(t,28.8,31.5));
+    planet.scale.setScalar(lerp(2.7,3.15,rise));
+    planet.position.set(0, lerp(-7.0,-4.95,rise), -1);
+    planet.rotation.y=t*0.25;
+  }
+  else { /* END — gold planet horizon + orange rocket lands on top */
+    cam.position.set(0,0,9); cam.lookAt(0,0,0);
+    sm.opacity=0.25;
+    planet.visible=true; setPlanetColor(0xE9B949);
+    planet.scale.setScalar(3.15); planet.position.set(0,-4.95,-1); planet.rotation.y=t*0.2;
+    rocket.visible=true;
+    const land=easeOut(inv(t,33.4,35.4));
+    rocket.scale.setScalar(0.5);
+    rocket.position.set(0, lerp(4.0,0.35,land), 0.8);
+    rocket.rotation.set(0,0,0);
+    const fl=(1-land)*1.0 + 0.12; rocket.userData.flame.scale.set(1,Math.max(0.12,fl),1); rocket.userData.flame2.scale.set(1,Math.max(0.12,fl),1);
+    // exit zoom
+    if(t>36.6){ const w=inv(t,36.6,38); planet.scale.setScalar(3.15*(1-w*0.4)); rocket.scale.setScalar(0.5*(1-w)); rocket.position.y=lerp(0.35,2.5,w); }
+  }
+  renderer.render(scene, cam);
+}
+window.addEventListener('hf-seek', e => draw((e.detail&&e.detail.time)||0));
+
+/* ============ DATA-DRIVEN DOM SETUP ============ */
+// productivity wheels
+const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday','Wednesday'];
+const HOURS=['9 am','10 am','11 am','12 pm','1 pm','2 pm','4 pm','6 pm','8 pm','10 pm','11 am','1 pm','5 pm','11 pm','3 pm'];
+function fillCol(el,list){ el.innerHTML=list.map((v,i)=>`<div class="${i===list.length-1?'sel':''}">${v}</div>`).join(''); }
+fillCol(Q('#dayCol'),DAYS); fillCol(Q('#timeCol'),HOURS);
+// 24h bar graph
+const bg=Q('#barGraph'), bl=Q('#barLab'); const gmax=Math.max(...D.graph,1);
+D.graph.forEach((v,i)=>{ const b=document.createElement('div'); b.className='bar'+(i===D.topHourIndex?' peak':''); b.style.height=(8+v/gmax*92)+'%'; bg.appendChild(b);
+  const s=document.createElement('span'); s.textContent=i; bl.appendChild(s); });
+// heatmap 7x52
+const heat=Q('#heat');
+for(let r=0;r<7;r++){ const row=document.createElement('div'); row.className='hrow';
+  for(let c=0;c<52;c++){ const idx=c*7+r; const v=D.contrib[idx]||0; const op=Math.max(0.08, Math.min(1, v/D.maxContrib));
+    const cell=document.createElement('div'); cell.className='hc'; cell.dataset.op=op.toFixed(3); cell.dataset.col=c; row.appendChild(cell);} heat.appendChild(row); }
+
+/* ============ TIMELINE ============ */
+const tl = gsap.timeline({paused:true});
+window.__timelines = window.__timelines || {}; window.__timelines["main"] = tl;
+
+function fade(sel,start,end,dIn=0.35,dOut=0.4){ tl.fromTo(sel,{opacity:0},{opacity:1,duration:dIn,ease:'power2.out'},start); tl.to(sel,{opacity:0,duration:dOut,ease:'power2.in'},end-dOut); }
+function countUp(el,to,at,dur,comma){ const o={v:0}; tl.to(o,{v:to,duration:dur,ease:'power2.out',onUpdate:()=>{const n=Math.round(o.v); el.textContent=comma?n.toLocaleString('en-US'):n;}},at); }
+
+/* bg crossfades */
+tl.set('#bgSpace',{opacity:1},0);
+tl.to('#bgGreen',{opacity:1,duration:.4},11.3); tl.to('#bgGreen',{opacity:0,duration:.4},15.2);
+tl.to('#bgSpace',{opacity:0,duration:.4},20.2); tl.to('#bgDark',{opacity:1,duration:.4},20.2);
+tl.to('#bgDark',{opacity:0,duration:.4},24.2); tl.to('#bgSpace',{opacity:1,duration:.4},24.2);
+tl.to('#bgSpace',{opacity:0,duration:.4},28.3); tl.to('#bgDark',{opacity:1,duration:.4},28.3);
+tl.to('#vign',{opacity:1,duration:.4},15.4); tl.to('#vign',{opacity:0,duration:.4},20.0);
+
+/* SCENE 1 — Opening */
+fade('#s1',0.0,3.7);
+tl.fromTo('#openPane',{y:160,opacity:0,rotationY:-30,transformPerspective:900},{y:0,opacity:1,rotationY:0,duration:.9,ease:'back.out(1.4)'},1.1);
+tl.to('#openPane',{rotationY:8,duration:1.0,ease:'sine.inOut',yoyo:true,repeat:1,transformPerspective:900},1.9);
+tl.to('#openPane',{y:-260,opacity:0,scale:1.4,rotationX:18,duration:.4,ease:'power3.in',transformPerspective:900},3.3);
+
+/* SCENE 2 — Languages */
+fade('#s2',3.6,11.4);
+tl.fromTo('.lt-card',{scale:1.3,opacity:0,y:60},{scale:1,opacity:1,y:0,duration:.6,ease:'back.out(1.5)'},3.8);
+tl.to('.lt-card',{opacity:0,scale:.9,duration:.35},4.7);
+function langCard(sel,pct,at){ fade(sel,at,at+2.0,0.35,0.35);
+  tl.fromTo(sel+' .lc-pill',{y:120,opacity:0},{y:0,opacity:1,duration:.55,ease:'back.out(1.6)'},at+0.25);
+  const pv=Q(sel+' .pv'); const o={v:0}; tl.to(o,{v:pct,duration:.9,ease:'power2.out',onUpdate:()=>pv.textContent=Math.round(o.v)},at+0.4); }
+langCard('#lcCSS',11,5.0); langCard('#lcTS',32,7.0); langCard('#lcHTML',38,9.2);
+
+/* SCENE 3 — Issues */
+fade('#s3',11.4,15.4);
+tl.fromTo('#issUfo',{y:-260,opacity:0,scale:.6},{y:0,opacity:1,scale:1,duration:.6,ease:'back.out(1.4)'},11.8);
+tl.to('#issUfo',{y:-8,duration:.8,ease:'sine.inOut',yoyo:true,repeat:2},12.6);
+tl.fromTo(['#issLeft','#issRight'],{y:240,opacity:0},{y:0,opacity:1,duration:.5,ease:'power3.out',stagger:.08},12.4);
+countUp(Q('#issOpen'),1,13.0,.6,false);
+tl.to('#issUfo',{y:-900,x:120,opacity:0,duration:.7,ease:'power2.in'},14.5);
+
+/* SCENE 4 — Stars cockpit */
+fade('#s4',15.4,20.4);
+tl.fromTo(['#cockLeft','#cockRight'],{y:260,opacity:0},{y:0,opacity:1,duration:.55,ease:'power3.out',stagger:.1},15.7);
+tl.fromTo('#hud',{y:-60,opacity:0},{y:0,opacity:1,duration:.5,ease:'power2.out'},15.9);
+tl.fromTo('#starsLabel',{opacity:0,y:-20},{opacity:.85,y:0,duration:.5},15.7);
+countUp(Q('#starCount'),D.starsGiven,16.2,2.7,false);
+// HUD swaps through real starred repos as the count climbs
+const hudA=Q('#hudAuthor'), hudN=Q('#hudName');
+D.repos.forEach((r,i)=>{ const at=16.4 + i*(2.4/D.repos.length);
+  tl.add(()=>{ hudA.textContent=r.author; hudN.textContent=r.name; },at);
+  tl.fromTo('#hud',{scale:.96},{scale:1,duration:.18,ease:'power2.out'},at); });
+tl.to(['#cockLeft','#cockRight','#hud','#starsLabel'],{opacity:0,duration:.4},20.0);
+
+/* SCENE 5 — Productivity */
+fade('#s5',20.4,24.4);
+tl.fromTo(['#prodDay','#prodTime'],{y:520,opacity:0},{y:0,opacity:1,duration:.6,ease:'power3.out',stagger:.12},20.7);
+tl.fromTo('#prodTitle',{opacity:0,y:-16},{opacity:.85,y:0,duration:.5},20.7);
+// slot wheels spin + lock
+tl.fromTo('#dayCol',{y:0},{y:-(DAYS.length-1)*80,duration:1.5,ease:'power4.out'},21.0);
+tl.fromTo('#timeCol',{y:0},{y:-(HOURS.length-1)*80,duration:1.7,ease:'power4.out'},21.2);
+// bars rise staggered, peak last
+QA('#barGraph .bar').forEach((b,i)=>{ tl.to(b,{scaleY:1,duration:.5,ease:'back.out(1.6)'},21.6 + i*0.03); });
+tl.to(['#prodDay','#prodTime','#barGraph','.bar-lab','#prodTitle'],{opacity:0,duration:.4},24.0);
+
+/* SCENE 6 — PRs */
+fade('#s6',24.4,28.4);
+const p1=Q('#prPath1'), p2=Q('#prPath2'); const L1=p1.getTotalLength(), L2=p2.getTotalLength();
+gsap.set(p1,{strokeDasharray:L1,strokeDashoffset:L1}); gsap.set(p2,{strokeDasharray:L2,strokeDashoffset:L2});
+const d1=Q('#prDot1'), d2=Q('#prDot2'); const o1={d:L1},o2={d:L2};
+tl.to(o1,{d:0,duration:1.8,ease:'power2.out',onUpdate:()=>{p1.style.strokeDashoffset=o1.d; const pt=p1.getPointAtLength(L1-o1.d); d1.setAttribute('cx',pt.x); d1.setAttribute('cy',pt.y); d1.setAttribute('opacity', o1.d>4?1:0);}},24.7);
+tl.to(o2,{d:0,duration:2.0,ease:'power2.out',onUpdate:()=>{p2.style.strokeDashoffset=o2.d; const pt=p2.getPointAtLength(L2-o2.d); d2.setAttribute('cx',pt.x); d2.setAttribute('cy',pt.y); d2.setAttribute('opacity', o2.d>4?1:0);}},24.9);
+tl.fromTo('#prBadge',{scale:0,opacity:0},{scale:1,opacity:1,duration:.6,ease:'back.out(1.5)'},26.2);
+countUp(Q('#prCount'),D.totalPullRequests,26.5,1.1,false);
+tl.fromTo('#prShine',{rotation:0},{rotation:360,duration:2.0,ease:'none',transformOrigin:'50% 50%'},26.2);
+tl.to(['#prDot1','#prDot2'],{opacity:0,duration:.3},27.6);
+tl.to('#prBadge',{scale:1.3,opacity:0,y:-40,duration:.4,ease:'power2.in'},28.0);
+
+/* SCENE 7 — Contributions */
+fade('#s7',28.4,33.4);
+tl.fromTo('#contribPane',{y:80,opacity:0},{y:0,opacity:1,duration:.6,ease:'power3.out'},28.7);
+countUp(Q('#contribNum'),D.totalContributions,29.0,2.0,true);
+// heatmap wave reveal + sweep head
+gsap.set('#heat .hc',{opacity:0});
+const sweepStart=29.3;
+for(let c=0;c<52;c++){ const cells=QA('#heat .hc[data-col="'+c+'"]');
+  tl.to(cells,{opacity:(i,el)=>+el.dataset.op,duration:.25,ease:'power1.out'},sweepStart + c*0.028); }
+tl.fromTo('#sweepHead',{left:60,opacity:0},{opacity:.9,duration:.3},sweepStart);
+tl.to('#sweepHead',{left:980,duration:52*0.028,ease:'none'},sweepStart);
+tl.to('#sweepHead',{opacity:0,duration:.3},sweepStart+52*0.028);
+tl.to('#contribPane',{y:-40,opacity:0,scale:1.05,duration:.4,ease:'power2.in'},33.0);
+
+/* SCENE 8 — End */
+fade('#s8',33.4,38.0,0.4,0.5);
+tl.fromTo('#cta',{y:600,opacity:0,scale:.2},{y:0,opacity:1,scale:1,duration:.9,ease:'back.out(1.3)'},34.6);
+tl.to('#cta',{scale:1.6,opacity:0,y:-30,duration:.5,ease:'power2.in'},37.2);
+
+/* seek to 0 */
+tl.pause(0); draw(0);
+window.addEventListener('hf-seek',()=>{}); // ensure listener exists
+</script>
+</body>
+</html>

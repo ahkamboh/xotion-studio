@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"notifications","type":"string","label":"Notifications — pipe-separated, each emoji~app~title~message","default":"🎬~XOTION~Render complete~launch-video.mp4 · 4K · 24s|💬~XOTION~Captions synced~41 languages ready|🎨~XOTION~Color graded~Cinematic LUT applied|📤~XOTION~Exported~Posted to 3 channels"},
+  {"id":"side",   "type":"string","label":"Enter from side (right/left)","default":"right"},
+  {"id":"stagger","type":"string","label":"Seconds between notifications","default":"0.7"},
+  {"id":"hold",   "type":"string","label":"Seconds to hold before closing","default":"1.6"},
+  {"id":"close",  "type":"string","label":"Close one-by-one after hold (yes/no)","default":"yes"},
+  {"id":"bg",     "type":"color", "label":"Background",            "default":"#0b0c10"},
+  {"id":"card",   "type":"color", "label":"Card background",       "default":"#ffffff"},
+  {"id":"iconBg", "type":"color", "label":"App icon background",   "default":"#0a0a0a"},
+  {"id":"ink",    "type":"color", "label":"Card text color",       "default":"#0a0a0a"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <!--
+      NOTIFICATION STACK — push notifications slide in ONE BY ONE from the
+      chosen side (right or left) and stack into a feed, each landing with a
+      springy settle, the icon popping as it arrives. Like a phone/desktop
+      notification center filling up during a video. Loop-friendly hold.
+
+      VARIABLES (npx hyperframes render <proj> --variables '{"side":"left"}'):
+        notifications — pipe-separated list; each item is "emoji~app~title~message"
+                        (use ~ between the four fields). Build as many as you like.
+        side          — "right" (default) or "left" — which edge they fly in from
+                        and which side of frame the stack anchors to.
+        stagger       — seconds between each notification arriving (0.7 default).
+        hold          — seconds the full stack stays up before dismissing (1.6).
+        close         — "yes" (default): notifications close one-by-one after the
+                        hold, flicking back out the side. "no": they stay up.
+        bg/card/iconBg/ink — colors. Grays derive from ink via hex6 (so #rgb /
+                        #rrggbbaa inputs normalize to #rrggbb before alpha suffix).
+
+      TIMING — arrive (0.4 + stagger*(N-1) + 0.6) → hold (`hold` s) → dismiss
+      one-by-one (0.45*(N-1) + 0.5). data-duration (8.0) fits ~4-5 at the
+      defaults; for more / longer hold bump it. Set close="no" to stay up.
+
+      Determinism contract: each card's entrance is a finite spring tween,
+      staggered, on ONE paused master timeline (window.__timelines["main"]); the
+      camera is static (set once, no zoom/drift) so the only motion is cards
+      arriving + dismissing. All DOM built at construction; gsap.set initials. No
+      Math.random / Date / rAF / setTimeout / CSS transitions / @keyframes /
+      infinite repeats. render(0) at boot; final frame padded to data-duration.
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family:"Inter"; font-weight:500; src:url("assets/fonts/inter-500.ttf") format("truetype"); }
+      @font-face { font-family:"Inter"; font-weight:600; src:url("assets/fonts/inter-600.ttf") format("truetype"); }
+      @font-face { font-family:"Inter"; font-weight:700; src:url("assets/fonts/inter-700.ttf") format("truetype"); }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      html,body { width:1920px; height:1080px; overflow:hidden; }
+      #root { position:relative; width:1920px; height:1080px; overflow:hidden;
+        font-family:"Inter",-apple-system,sans-serif; }
+      .cam { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); will-change:transform; }
+      /* the stack column — vertically centered as a group; anchored side set in JS */
+      .stack { display:flex; flex-direction:column; gap:22px; width:760px; }
+      .ncard { display:flex; align-items:flex-start; gap:22px; width:760px;
+        padding:26px 30px; border-radius:30px; will-change:transform;
+        box-shadow:0 24px 60px rgba(0,0,0,0.28); }
+      .icon { width:72px; height:72px; border-radius:20px; flex:0 0 auto;
+        display:flex; align-items:center; justify-content:center; font-size:38px; line-height:1; }
+      .body { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:5px; padding-top:2px; }
+      .row { display:flex; align-items:baseline; gap:10px; }
+      .app { font-size:22px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; }
+      .time { margin-left:auto; font-size:22px; font-weight:500; }
+      .title { font-size:32px; font-weight:700; letter-spacing:-0.01em; }
+      .msg { font-size:28px; font-weight:500; line-height:1.3; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="8" data-width="1920" data-height="1080">
+      <div class="cam" id="cam">
+        <div class="stack" id="stack"></div>
+      </div>
+    </div>
+
+    <script>
+      const V = window.__hyperframes.getVariables();
+      const ITEMS = String(V.notifications).split("|").map(s=>s.trim()).filter(Boolean)
+        .map(s=>{ const p=s.split("~"); return {emoji:(p[0]||"🔔").trim(), app:(p[1]||"").trim(),
+                  title:(p[2]||"").trim(), msg:(p[3]||"").trim()}; });
+      const LEFT = String(V.side).toLowerCase()==="left";
+      const STAG = parseFloat(V.stagger) || 0.7;
+
+      function hex6(c){c=String(c).trim();
+        if(/^#[0-9a-fA-F]{3}$/.test(c)) return "#"+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];
+        if(/^#[0-9a-fA-F]{8}$/.test(c)) return c.slice(0,7); return c; }
+      const INK=hex6(V.ink);
+
+      const root=document.getElementById("root"), cam=document.getElementById("cam"),
+            stack=document.getElementById("stack");
+      root.style.background=V.bg;
+
+      // anchor the stack column to the chosen side of the frame
+      stack.style.alignItems = LEFT ? "flex-start" : "flex-end";
+      // shift the .cam toward that side, but LEAVE A CLEAN MARGIN from the frame edge
+      // (frame half 960, stack half 380, margin 58 → shift 522; tighter, per the ref screenshot)
+      const MARGIN = 58, STACK_HALF = 380;
+      const SIDE_X = (LEFT ? -1 : 1) * (960 - STACK_HALF - MARGIN);
+
+      // build the cards at construction
+      const cards=[];
+      ITEMS.forEach(it=>{
+        const c=document.createElement("div"); c.className="ncard";
+        c.style.background=V.card; c.style.border=`1px solid ${INK}14`;
+        c.innerHTML =
+          `<div class="icon" style="background:${V.iconBg}">${it.emoji}</div>`+
+          `<div class="body">`+
+            `<div class="row"><span class="app" style="color:${INK}8c">${it.app}</span>`+
+            `<span class="time" style="color:${INK}73">now</span></div>`+
+            `<div class="title" style="color:${INK}">${it.title}</div>`+
+            `<div class="msg" style="color:${INK}b3">${it.msg}</div>`+
+          `</div>`;
+        stack.appendChild(c); cards.push(c);
+      });
+
+      // ── timeline ───────────────────────────────────────────────────
+      const N = ITEMS.length;
+      const START=0.4, IN_DUR=0.6, STAG_OUT=0.45, OUT_DUR=0.5;
+      const HOLD  = parseFloat(V.hold) || 1.6;
+      const CLOSE = String(V.close).toLowerCase() !== "no";
+      const OFF = LEFT ? -900 : 900;   // start / exit off the chosen edge
+      const lastIn    = START + STAG*Math.max(0,N-1) + IN_DUR;
+      const OUT_START = lastIn + HOLD;
+      const TOTAL = CLOSE ? (OUT_START + STAG_OUT*Math.max(0,N-1) + OUT_DUR + 0.4)
+                          : (lastIn + 1.3);
+      const DUR = parseFloat(root.getAttribute("data-duration"))||8;
+
+      const tl=gsap.timeline({paused:true});
+      cards.forEach((c,i)=>{
+        const icon=c.querySelector(".icon");
+        gsap.set(c,{x:OFF,opacity:0});
+        gsap.set(icon,{scale:0.6});
+        // arrive (one-by-one from the side)
+        const at=START+i*STAG;
+        tl.to(c,{x:0,opacity:1,duration:IN_DUR,ease:"back.out(1.5)"},at);
+        tl.to(icon,{scale:1,duration:0.45,ease:"back.out(2.6)"},at+0.12);
+        // dismiss (one-by-one, oldest first): a small wind-up then flick back out the side
+        if(CLOSE){
+          const out=OUT_START+i*STAG_OUT;
+          tl.to(c,{x:OFF,opacity:0,duration:OUT_DUR,ease:"back.in(1.6)"},out);
+        }
+      });
+
+      // STATIC camera — calm, locked. The only motion is the notifications
+      // arriving (then dismissing) one-by-one; no zoom, drift, or bob.
+      cam.style.transform = `translate(calc(-50% + ${SIDE_X}px), -50%)`;
+      tl.set({},{},DUR);
+
+      window.__timelines=window.__timelines||{};
+      window.__timelines["main"]=tl;
+      window.__timeline=tl;
+    </script>
+  </body>
+</html>
