@@ -5,13 +5,18 @@
   "height": 1920,
   "fps": 30,
   "duration": 4.0,
-  "background": "#0a0a0a",
-  "_idSeq": 2,
+  "background": "#141210",
+  "_idSeq": 3,
   "fonts": [
     {
-      "family": "Anton",
-      "src": "assets/fonts/anton-400.ttf",
-      "weight": "400"
+      "family": "Fraunces",
+      "weight": "900",
+      "src": "assets/fonts/fraunces-900.ttf"
+    },
+    {
+      "family": "Inter",
+      "weight": "500",
+      "src": "assets/fonts/inter-500.ttf"
     }
   ],
   "assets": {
@@ -28,10 +33,9 @@
         {
           "id": "clip_000000",
           "type": "image",
-          "source": "bg",
           "start": 0,
           "length": 4.0,
-          "style": { "objectFit": "cover" }
+          "source": "bg"
         }
       ]
     },
@@ -42,21 +46,67 @@
         {
           "id": "clip_000001",
           "type": "text",
-          "text": "TIMELINE → MP4",
-          "start": 0.2,
-          "length": 3.6,
-          "position": { "x": 540, "y": 960, "w": 920, "anchor": "center" },
-          "style": {
-            "fontFamily": "Anton",
-            "fontSize": 130,
-            "color": "#F4F1E8",
-            "textAlign": "center",
-            "lineHeight": 0.95,
-            "letterSpacing": "0.01em"
+          "start": 0.3,
+          "length": 3.7,
+          "text": "Xotion",
+          "position": {
+            "x": 540,
+            "y": 820,
+            "anchor": "center"
           },
-          "transform": { "opacity": 0, "y": 40 },
+          "style": {
+            "fontFamily": "Fraunces",
+            "fontSize": 210,
+            "fontWeight": "900",
+            "color": "#faf8f3"
+          },
+          "transform": {
+            "opacity": 0,
+            "scale": 0.9
+          },
           "keyframes": [
-            { "at": 0, "dur": 0.6, "ease": "power2.out", "props": { "opacity": 1, "y": 0 } }
+            {
+              "at": 0,
+              "dur": 0.8,
+              "ease": "power3.out",
+              "props": {
+                "opacity": 1,
+                "scale": 1
+              }
+            }
+          ]
+        },
+        {
+          "id": "clip_000002",
+          "type": "text",
+          "start": 0.7,
+          "length": 3.3,
+          "text": "the editor for AI agents",
+          "position": {
+            "x": 540,
+            "y": 1010,
+            "anchor": "center"
+          },
+          "style": {
+            "fontFamily": "Inter",
+            "fontSize": 58,
+            "fontWeight": "500",
+            "color": "#e0451f"
+          },
+          "transform": {
+            "opacity": 0,
+            "y": 26
+          },
+          "keyframes": [
+            {
+              "at": 0,
+              "dur": 0.7,
+              "ease": "power3.out",
+              "props": {
+                "opacity": 1,
+                "y": 0
+              }
+            }
           ]
         }
       ]
