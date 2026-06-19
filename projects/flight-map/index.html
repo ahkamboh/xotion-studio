@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" /><meta name="viewport" content="width=1920,height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+    <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }</script>
+    <style>
+      *{margin:0;padding:0;box-sizing:border-box;}
+      html,body{width:1920px;height:1080px;overflow:hidden;background:#060912;font-family:-apple-system,"Helvetica Neue",Arial,sans-serif;}
+      #root{position:relative;width:1920px;height:1080px;overflow:hidden;background:radial-gradient(1500px 1050px at 50% 42%,#0c1628,#060912 72%);}
+      #camera{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;will-change:transform;}
+      #map{position:absolute;inset:0;}
+      .country{fill:#17243f;stroke:rgba(130,165,225,.22);stroke-width:.6;}
+      .grat{fill:none;stroke:rgba(130,165,225,.07);stroke-width:.5;}
+      .arc-glow{fill:none;stroke:#4fd6ff;stroke-width:10;opacity:.34;filter:blur(7px);stroke-linecap:round;}
+      .arc{fill:none;stroke:url(#ag);stroke-width:3.6;stroke-linecap:round;}
+      .city{fill:#eaf6ff;}
+      .city-ring{fill:none;stroke:#7fe0ff;stroke-width:2;}
+      .plane{position:absolute;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;z-index:6;offset-rotate:auto;will-change:offset-distance,opacity;}
+      .label{position:absolute;z-index:8;transform:translate(-50%,-150%);text-align:center;}
+      .label .nm{font-size:30px;font-weight:800;color:#fff;letter-spacing:.02em;text-shadow:0 3px 16px rgba(0,0,0,.8);}
+      .label .sb{font-size:17px;font-weight:700;color:#9fd8ff;letter-spacing:.2em;text-transform:uppercase;}
+      .hud{position:absolute;left:64px;top:58px;z-index:20;}
+      .hud .k{font-size:22px;letter-spacing:.36em;text-transform:uppercase;color:#7fb6ff;font-weight:700;}
+      .hud .t{font-size:60px;font-weight:800;color:#fff;letter-spacing:-.02em;margin-top:4px;}
+      .vig{position:absolute;inset:0;z-index:15;pointer-events:none;box-shadow:inset 0 0 340px 70px rgba(2,5,12,.85);}
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="16" data-width="1920" data-height="1080">
+      <div id="camera">
+        <svg id="map" viewBox="0 0 1920 1080">
+          <defs><linearGradient id="ag" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#4fd6ff"/><stop offset="0.5" stop-color="#a98bff"/><stop offset="1" stop-color="#ff8ad1"/>
+          </linearGradient></defs>
+          <g id="grats"></g><g id="lands"></g><g id="arcs"></g><g id="dots"></g>
+        </svg>
+        <div class="plane" id="plane1"><svg viewBox="0 0 24 24" fill="#fff"><path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg></div>
+        <div class="plane" id="plane2"><svg viewBox="0 0 24 24" fill="#fff"><path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg></div>
+        <div class="label" id="lLA"><div class="nm">Los Angeles</div><div class="sb">start</div></div>
+        <div class="label" id="lNY"><div class="nm">New York</div><div class="sb">stop 1</div></div>
+        <div class="label" id="lPA"><div class="nm">Paris</div><div class="sb">stop 2</div></div>
+      </div>
+      <div class="vig"></div>
+      <canvas id="eiffel" width="1920" height="1080" style="position:absolute;inset:0;width:1920px;height:1080px;z-index:16;opacity:0;"></canvas>
+      <div class="hud" id="hud"><div class="k">Transatlantic route</div><div class="t">LA → NY → Paris</div></div>
+      <div class="label" id="lEif" style="left:960px;top:300px;z-index:18;opacity:0;"><div class="nm" style="font-size:46px;">Paris</div><div class="sb">la tour eiffel</div></div>
+    </div>
+
+    <script>
+      const W=1920,H=1080;
+      const CITIES={LA:[-118.24,34.05],NY:[-74.01,40.71],PA:[2.35,48.85]};
+      const proj=d3.geoMercator(); const pathGen=d3.geoPath().projection(proj);
+      proj.fitExtent([[300,310],[W-300,H-250]], {type:"MultiPoint",coordinates:Object.values(CITIES)});
+      const px={}; for(const k in CITIES) px[k]=proj(CITIES[k]);
+      function arcD(a,b){ const I=d3.geoInterpolate(a,b); let d=""; const N=72;
+        for(let i=0;i<=N;i++){ const p=proj(I(i/N)); d+=(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1); } return d; }
+      function cam(p,s){ return {x:W/2-s*p[0], y:H/2-s*p[1], scale:s}; }
+
+      d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json").then(world=>{
+        const countries=topojson.feature(world,world.objects.countries).features;
+        const svg=d3.select("#map");
+        svg.select("#grats").append("path").datum(d3.geoGraticule10()).attr("class","grat").attr("d",pathGen);
+        svg.select("#lands").selectAll("path").data(countries).enter().append("path").attr("class","country").attr("d",pathGen);
+        const dLANY=arcD(CITIES.LA,CITIES.NY), dNYPA=arcD(CITIES.NY,CITIES.PA);
+        function addArc(id,d){ ["g",""].forEach(suf=>{ const p=document.createElementNS("http://www.w3.org/2000/svg","path");
+          p.setAttribute("class",suf==="g"?"arc-glow":"arc"); p.setAttribute("d",d); p.id=id+suf; document.getElementById("arcs").appendChild(p);
+          const L=p.getTotalLength(); p.style.strokeDasharray=L; p.style.strokeDashoffset=L; p.dataset.len=L; }); }
+        addArc("arc1",dLANY); addArc("arc2",dNYPA);
+        for(const k in px){ const r=document.createElementNS("http://www.w3.org/2000/svg","circle");
+          r.setAttribute("class","city-ring"); r.id="r"+k; r.setAttribute("cx",px[k][0]); r.setAttribute("cy",px[k][1]); r.setAttribute("r",6);
+          const c=document.createElementNS("http://www.w3.org/2000/svg","circle");
+          c.setAttribute("class","city"); c.id="c"+k; c.setAttribute("cx",px[k][0]); c.setAttribute("cy",px[k][1]); c.setAttribute("r",5.5);
+          document.getElementById("dots").appendChild(r); document.getElementById("dots").appendChild(c); }
+        const setL=(id,k)=>{const e=document.getElementById(id); e.style.left=px[k][0]+"px"; e.style.top=px[k][1]+"px";};
+        setL("lLA","LA"); setL("lNY","NY"); setL("lPA","PA");
+        const p1=document.getElementById("plane1"), p2=document.getElementById("plane2");
+        p1.style.offsetPath=`path('${dLANY}')`; p2.style.offsetPath=`path('${dNYPA}')`;
+        const o1={d:0}, o2={d:0};
+
+        const tl=gsap.timeline({paused:true}); window.__timelines=window.__timelines||{}; window.__timelines["main"]=tl;
+        // init state (seek-safe: everything on tl after the sets)
+        gsap.set("#camera", cam(px.LA,5.2));
+        gsap.set(["#cNY","#rNY","#cPA","#rPA"],{opacity:0}); gsap.set(["#cLA","#rLA"],{opacity:0});
+        gsap.set(["#lLA","#lNY","#lPA"],{opacity:0}); gsap.set(["#plane1","#plane2"],{opacity:0});
+        p1.style.offsetDistance="0%"; p2.style.offsetDistance="0%";
+
+        // ---- LA intro ----
+        tl.to(["#cLA","#rLA"],{opacity:1,duration:.5},0.2)
+          .fromTo("#rLA",{attr:{r:6},opacity:.9},{attr:{r:34},opacity:0,duration:1.5,ease:"power1.out",repeat:1},0.3)
+          .to("#lLA",{opacity:1,duration:.5},0.6);
+        // 1.0-3.0 zoom OUT staying focused on LA
+        tl.to("#camera",{...cam(px.LA,2.0),duration:2.0,ease:"power2.inOut"},1.0);
+
+        // ---- leg 1: LA -> NY ----
+        tl.to(["#cNY","#rNY"],{opacity:1,duration:.4},3.2)
+          .fromTo("#rNY",{attr:{r:6},opacity:.9},{attr:{r:30},opacity:0,duration:1.4,ease:"power1.out"},3.25)
+          .to("#lNY",{opacity:1,duration:.5},3.7);
+        tl.to(["#arc1","#arc1g"],{strokeDashoffset:0,duration:3.0,ease:"power1.inOut"},3.3);
+        const midLANY=proj(d3.geoInterpolate(CITIES.LA,CITIES.NY)(0.5));
+        tl.to("#camera",{...cam(midLANY,2.5),duration:1.6,ease:"sine.inOut"},3.3)
+          .to("#camera",{...cam(px.NY,3.3),duration:1.6,ease:"sine.inOut"},4.9);
+        tl.to("#plane1",{opacity:1,duration:.3},3.35).to("#plane1",{opacity:0,duration:.3},6.4);
+        tl.to(o1,{d:100,duration:3.0,ease:"power1.inOut",onUpdate:()=>{p1.style.offsetDistance=o1.d+"%";}},3.4);
+
+        // ---- leg 2: NY -> Paris ----
+        tl.to(["#cPA","#rPA"],{opacity:1,duration:.4},7.2)
+          .fromTo("#rPA",{attr:{r:6},opacity:.9},{attr:{r:30},opacity:0,duration:1.4,ease:"power1.out"},7.25)
+          .to("#lPA",{opacity:1,duration:.5},7.7);
+        tl.to(["#arc2","#arc2g"],{strokeDashoffset:0,duration:3.2,ease:"power1.inOut"},7.3);
+        const midNYPA=proj(d3.geoInterpolate(CITIES.NY,CITIES.PA)(0.5));
+        tl.to("#camera",{...cam(midNYPA,2.6),duration:1.8,ease:"sine.inOut"},7.3)
+          .to("#camera",{...cam(px.PA,3.6),duration:1.8,ease:"sine.inOut"},9.1);
+        tl.to("#plane2",{opacity:1,duration:.3},7.35).to("#plane2",{opacity:0,duration:.3},10.7);
+        tl.to(o2,{d:100,duration:3.2,ease:"power1.inOut",onUpdate:()=>{p2.style.offsetDistance=o2.d+"%";}},7.5);
+
+        // ---- Paris zoom finale + 3D Eiffel ----
+        tl.to("#camera",{...cam(px.PA,6.5),duration:2.2,ease:"power2.inOut"},11.6);
+        tl.to(["#lLA","#lNY"],{opacity:0,duration:.6},11.5);
+        tl.to("#lPA",{opacity:0,duration:.5},12.0);
+        tl.to(["#cPA","#rPA","#plane1","#plane2"],{opacity:0,duration:.5,ease:"power2.in"},11.7);  // hide the huge zoomed dot/plane behind the tower
+        tl.to("#eiffel",{opacity:1,duration:.8,ease:"power2.out"},12.0);   // 3D tower rises (motion on hf-seek)
+        tl.to("#lEif",{opacity:1,duration:.6,ease:"power2.out"},12.8);
+        tl.to({},{duration:0.1},15.9);
+      });
+    </script>
+
+    <script type="module">
+      import * as THREE from "three";
+      const C=document.getElementById("eiffel"), W=1920,H=1080;
+      const rdr=new THREE.WebGLRenderer({canvas:C,antialias:true,alpha:true});
+      rdr.setSize(W,H,false); rdr.setClearColor(0,0);
+      rdr.toneMapping=THREE.ACESFilmicToneMapping; rdr.toneMappingExposure=1.15; rdr.outputColorSpace=THREE.SRGBColorSpace;
+      const sc=new THREE.Scene(); const cam=new THREE.PerspectiveCamera(34,W/H,0.1,100); cam.position.set(0,2.4,9);
+      (function(){ const s=new THREE.Scene(); s.background=new THREE.Color(0x2c2a30);
+        const p=(x,y,z,w,h,hex,g)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({color:new THREE.Color(hex).multiplyScalar(g)}));m.position.set(x,y,z);m.lookAt(0,0,0);s.add(m);};
+        p(0,9,7,26,16,0xffffff,1.0);p(-9,4,5,5,20,0xffe6c8,2.4);p(9,2,4,4,18,0xffd9a0,2.0);p(0,-8,5,18,6,0xff9a5c,1.4);p(0,0,-11,30,30,0x0a0910,1);
+        sc.environment=new THREE.PMREMGenerator(rdr).fromScene(s,0.02).texture; })();
+      sc.add(new THREE.AmbientLight(0xffffff,0.3));
+      const key=new THREE.DirectionalLight(0xfff0d8,2.2); key.position.set(4,8,6); sc.add(key);
+
+      const iron=new THREE.MeshPhysicalMaterial({color:0xa9763e,metalness:0.85,roughness:0.5,clearcoat:0.4,clearcoatRoughness:0.4,envMapIntensity:1.05});
+      const G=new THREE.Group();
+      const tube=(pts,r)=>{ const cv=new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(...p)));
+        G.add(new THREE.Mesh(new THREE.TubeGeometry(cv,24,r,8,false),iron)); };
+      const slab=(y,w)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,0.1,w),iron); m.position.y=y; G.add(m);
+        const r=new THREE.Mesh(new THREE.BoxGeometry(w*1.04,0.16,0.05),iron); r.position.set(0,y+0.12,w/2); G.add(r);
+        const r2=r.clone(); r2.position.z=-w/2; G.add(r2); const r3=r.clone(); r3.rotation.y=Math.PI/2; r3.position.set(w/2,y+0.12,0); G.add(r3);
+        const r4=r3.clone(); r4.position.x=-w/2; G.add(r4); };
+      const b=1.35,h1=1.7,p1=0.5,h2=3.1,p2=0.28,h3=4.5;
+      // 4 curved legs base -> platform1
+      [[1,1],[1,-1],[-1,1],[-1,-1]].forEach(([sx,sz])=>{
+        tube([[b*sx,0,b*sz],[b*0.66*sx,h1*0.5,b*0.66*sz],[p1*sx,h1,p1*sz]],0.085);
+        tube([[p1*sx,h1,p1*sz],[p2*0.7*sx,h2*0.6,p2*0.7*sz],[p2*sx,h2,p2*sz]],0.06);   // mid edge
+        tube([[p2*sx,h2,p2*sz],[0.05*sx,h3,0.05*sz]],0.045);                            // upper edge
+      });
+      // 4 base arches (the iconic arches)
+      [[[b,0,b],[b,0,-b]],[[b,0,-b],[-b,0,-b]],[[-b,0,-b],[-b,0,b]],[[-b,0,b],[b,0,b]]].forEach(([a,c])=>{
+        const mx=(a[0]+c[0])/2,mz=(a[2]+c[2])/2; tube([a,[mx*0.6,h1*0.62,mz*0.6],c],0.05); });
+      slab(h1,1.18); slab(h2,0.66);
+      // spire
+      const spire=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.06,0.9,12),iron); spire.position.y=h3+0.45; G.add(spire);
+      sc.add(G);
+
+      function draw(t){
+        const start=11.8; let p=(t-start)/1.4; p=Math.max(0,Math.min(1,p)); const e=1-Math.pow(1-p,3);
+        G.position.y=-2.6*(1-e); G.scale.setScalar(0.55+0.45*e);
+        G.rotation.y=-0.6 + Math.max(0,t-start)*0.33;
+        cam.position.x=Math.sin(t*0.12)*0.35; cam.lookAt(0,2.5,0);
+        rdr.render(sc,cam);
+      }
+      draw(0); window.addEventListener("hf-seek",(e)=>draw((e.detail&&e.detail.time)||0));
+    </script>
+  </body>
+</html>

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>DHUNDLA — Thumbnail (Vibe-Chapters style)</title>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+@font-face{font-family:'Anton';src:url('assets/fonts/anton-400.ttf');font-display:block}
+@font-face{font-family:'Cormorant';src:url('assets/fonts/cormorant-garamond-600.ttf');font-display:block}
+@font-face{font-family:'Oswald';src:url('assets/fonts/oswald-500.ttf');font-weight:500;font-display:block}
+@font-face{font-family:'Oswald';src:url('assets/fonts/oswald-600.ttf');font-weight:600;font-display:block}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1280px;height:720px;overflow:hidden;background:#000}
+#root{position:relative;width:1280px;height:720px;overflow:hidden;font-family:'Oswald',sans-serif;color:#eef6fb}
+.fill{position:absolute;inset:0;width:1280px;height:720px}
+#bg{background-image:url('assets/bg.jpg');background-size:cover;background-position:center;filter:contrast(1.12) saturate(1.06) brightness(1.04)}
+#warm{background:radial-gradient(ellipse 40% 55% at 84% 56%, rgba(255,176,92,.28), rgba(255,150,70,.08) 46%, transparent 72%);mix-blend-mode:screen}
+#spot{background:radial-gradient(ellipse 26% 30% at 80% 40%, rgba(255,248,235,.22), transparent 70%);mix-blend-mode:screen}
+#scrim{background:linear-gradient(90deg, rgba(3,8,16,.9) 0%, rgba(4,10,20,.6) 34%, rgba(4,10,20,.14) 58%, transparent 76%)}
+#bscrim{background:linear-gradient(180deg, rgba(3,8,16,.5) 0%, transparent 26%, transparent 64%, rgba(3,8,16,.7) 100%)}
+#glow{position:absolute;left:50px;top:48%;transform:translateY(-50%);width:740px;height:480px;
+  background:radial-gradient(ellipse 50% 42% at 40% 50%, rgba(120,212,240,.26), rgba(90,182,214,.08) 46%, transparent 70%);filter:blur(8px)}
+#vig{box-shadow:inset 0 0 240px 50px rgba(0,0,0,.62)}
+#grain{opacity:.07;mix-blend-mode:overlay;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");background-size:360px}
+/* top-center eyebrow (their "pop indie FUTURISTIC VIBE") */
+#topeye{position:absolute;top:26px;left:0;right:0;text-align:center;font-family:'Oswald';font-weight:500;font-size:20px;letter-spacing:7px;color:#dfe9ef;text-transform:uppercase;text-shadow:0 2px 8px rgba(0,0,0,.8);opacity:.92}
+#topeye b{color:#a9e6f1;font-weight:600}
+/* vertical edge credit (their "FEEL THE LOVE") */
+#vedge{position:absolute;left:16px;top:50%;transform:translateY(-50%) rotate(180deg);writing-mode:vertical-rl;font-family:'Oswald';font-weight:600;font-size:17px;letter-spacing:8px;color:#bcd3df;opacity:.8;text-transform:uppercase;text-shadow:0 2px 8px rgba(0,0,0,.8)}
+/* bottom-center artist credit (their "AKKURU") */
+#credit{position:absolute;left:0;right:0;bottom:24px;text-align:center;font-family:'Oswald';font-weight:600;font-size:20px;letter-spacing:9px;color:#dfeef6;text-transform:uppercase;text-shadow:0 2px 10px rgba(0,0,0,.9);opacity:.9}
+/* TITLE block — lower-left */
+#wrap{position:absolute;left:78px;top:57%;transform:translateY(-50%);text-align:left;max-width:720px}
+#title{font-family:'Anton';font-size:152px;line-height:.86;letter-spacing:1px;text-transform:uppercase;color:#f2fbff;transform:skewX(-5deg);
+  text-shadow:0 5px 4px rgba(0,0,0,.8),0 2px 26px rgba(0,0,0,.7),0 0 44px rgba(120,212,240,.5);
+  -webkit-mask-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='700' height='220'><filter id='e'><feTurbulence type='fractalNoise' baseFrequency='0.015 0.2' numOctaves='3' seed='9'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 -2.1 1.5'/></filter><rect width='100%25' height='100%25' fill='white'/><rect width='100%25' height='100%25' filter='url(%23e)'/></svg>");-webkit-mask-size:cover}
+#tag{font-family:'Cormorant';font-style:italic;font-size:42px;letter-spacing:1px;color:#dfeef6;margin-top:6px;margin-left:6px;text-shadow:0 2px 12px rgba(0,0,0,.9)}
+#lyr{font-family:'Oswald';font-weight:500;font-size:18px;letter-spacing:5px;color:#a9c4d2;margin-top:14px;margin-left:8px;text-transform:uppercase;opacity:.85}
+/* ---- BRAND STAMPS (Vibe-Chapters legitimacy kit) ---- */
+.stamp{position:absolute;opacity:.94}
+#crest{left:30px;top:26px;width:96px;height:96px}
+#cert{right:34px;top:30px;width:78px;height:78px}
+#advisory{left:32px;bottom:30px;width:166px;border:2px solid #d7e6ef;border-radius:3px;overflow:hidden;font-family:'Oswald';font-weight:600;background:rgba(6,12,20,.5)}
+#advisory .t{background:#e2eef4;color:#08131c;text-align:center;font-size:16px;letter-spacing:2px;padding:3px 0}
+#advisory .b{text-align:center;font-size:10px;letter-spacing:3px;padding:4px 0;color:#cfe0ea}
+#vinyl{right:38px;bottom:34px;width:66px;height:66px;opacity:.85}
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="1" data-width="1280" data-height="720">
+  <div id="bg" class="fill"></div>
+  <div id="warm" class="fill"></div>
+  <div id="spot" class="fill"></div>
+  <div id="scrim" class="fill"></div>
+  <div id="bscrim" class="fill"></div>
+  <div id="glow"></div>
+  <div id="vig" class="fill"></div>
+  <div id="grain" class="fill"></div>
+
+  <div id="topeye">POP ROMANTIC · <b>FUTURISTIC VIBE</b></div>
+  <div id="vedge">FEEL THE PAIN</div>
+
+  <div id="wrap">
+    <div id="title">Dhundla</div>
+    <div id="tag">Lost in a faded dream…</div>
+  </div>
+
+  <div id="credit">KAMBOJH</div>
+
+  <!-- CREST top-left -->
+  <svg id="crest" class="stamp" viewBox="0 0 120 120">
+    <circle cx="60" cy="60" r="57" fill="none" stroke="#eaf3f8" stroke-width="2.4"/>
+    <circle cx="60" cy="60" r="49" fill="none" stroke="#bcd3df" stroke-width="1.2"/>
+    <path d="M60 28 l5.5 12 13 1 -10 9 3.2 13 -11.7 -6.6 -11.7 6.6 3.2 -13 -10 -9 13 -1 z" fill="#f0f7fb"/>
+    <text x="60" y="76" text-anchor="middle" font-family="Anton" font-size="34" fill="#f3fafe">K</text>
+    <text x="60" y="100" text-anchor="middle" font-family="Oswald" font-size="9" letter-spacing="2.5" fill="#cfe0ea">KAMBOJH</text>
+  </svg>
+  <!-- R certificate top-right -->
+  <svg id="cert" class="stamp" viewBox="0 0 84 84">
+    <circle cx="42" cy="42" r="40" fill="rgba(6,12,20,.45)" stroke="#d7e6ef" stroke-width="2"/>
+    <circle cx="42" cy="42" r="32" fill="none" stroke="#d7e6ef" stroke-width="1" stroke-dasharray="2 3"/>
+    <text x="42" y="53" text-anchor="middle" font-family="Anton" font-size="32" fill="#eef6fb">R</text>
+    <path id="ca" d="M16 42 a26 26 0 0 1 52 0" fill="none"/>
+    <text font-family="Oswald" font-size="8" letter-spacing="2" fill="#cfe0ea"><textPath href="#ca" startOffset="10%">OFFICIAL · RELEASE</textPath></text>
+  </svg>
+  <!-- ADVISORY bottom-left -->
+  <div id="advisory" class="stamp"><div class="t">ADVISORY</div><div class="b">EXPLICIT&nbsp;EMOTION</div></div>
+  <!-- vinyl bottom-right -->
+  <svg id="vinyl" class="stamp" viewBox="0 0 74 74">
+    <circle cx="37" cy="37" r="36" fill="#0a141e" stroke="#bcd3df" stroke-width="1"/>
+    <circle cx="37" cy="37" r="29" fill="none" stroke="#2c3a45" stroke-width="1"/>
+    <circle cx="37" cy="37" r="23" fill="none" stroke="#2c3a45" stroke-width="1"/>
+    <circle cx="37" cy="37" r="11" fill="#5fb6d6"/>
+    <circle cx="37" cy="37" r="3" fill="#0a141e"/>
+  </svg>
+</div>
+<script>const tl=gsap.timeline({paused:true});window.__timelines={main:tl};tl.to({},{duration:1});tl.pause(0);</script>
+</body>
+</html>

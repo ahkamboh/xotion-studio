@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080,height=1920" />
+    <!--
+      GLOSSY 3D LAYER — studio-lit, reflective three.js objects (the "Spline/C4D" look) rendered
+      deterministically, OFFLINE (no external HDRI; the studio environment is procedural).
+      Transparent bg → composite over a gradient/footage via scripts/overlay.sh, or drop the <canvas>
+      into a composition behind/under your text+card layers (see projects/glossy-proof for a full scene).
+
+      THE GLOSSY TRICK: reflections need CONTRASTY, BRIGHT sources. We build a tiny env scene of
+      bright emissive "softbox" panels + light strips and bake it with PMREMGenerator → crisp
+      specular streaks on low-roughness clearcoat/metal materials. RoomEnvironment alone is too soft.
+
+      TRUE PHOTOREAL OBJECTS: swap the procedural geometry for a GLB exported from Spline/Blender via
+      GLTFLoader (add "three/addons/" to the importmap and the loader import). The studio env + tonemap
+      below light it correctly. For motion blur, render high-fps then: scripts/motion-blur.sh in out 24 3.
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script type="importmap">
+      { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+    </script>
+    <style>
+      *{margin:0;padding:0;box-sizing:border-box;}
+      html,body{width:1080px;height:1920px;overflow:hidden;background:transparent;}
+      #root{position:relative;width:1080px;height:1920px;overflow:hidden;background:transparent;}
+      #gl{position:absolute;inset:0;width:1080px;height:1920px;}
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="5" data-width="1080" data-height="1920">
+      <canvas id="gl" width="1080" height="1920"></canvas>
+    </div>
+    <script type="module">
+      import * as THREE from "three";
+      const W=1080,H=1920;
+      const renderer=new THREE.WebGLRenderer({canvas:document.getElementById("gl"),antialias:true,alpha:true});
+      renderer.setSize(W,H,false); renderer.setClearColor(0x000000,0);
+      renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.15;
+      renderer.outputColorSpace=THREE.SRGBColorSpace;
+      const scene=new THREE.Scene();
+      const camera=new THREE.PerspectiveCamera(38,W/H,0.1,100); camera.position.set(0,0,9);
+
+      // --- procedural CONTRASTY studio environment (offline, no HDRI) → crisp glossy reflections ---
+      function studioEnv(){
+        const s=new THREE.Scene(); s.background=new THREE.Color(0x3a3a44);
+        const panel=(x,y,z,w,h,hex,gain)=>{ const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),
+          new THREE.MeshBasicMaterial({color:new THREE.Color(hex).multiplyScalar(gain)}));
+          m.position.set(x,y,z); m.lookAt(0,0,0); s.add(m); };
+        panel(0,9,7,26,16,0xffffff,1.6); panel(-9,4,5,4,20,0xffffff,6.0);
+        panel(9,1,4,3,18,0xcad8ff,5.0); panel(-3,-8,5,18,6,0x6a5cff,2.0); panel(0,0,-11,30,30,0x101018,1.0);
+        return new THREE.PMREMGenerator(renderer).fromScene(s,0.015).texture;
+      }
+      scene.environment=studioEnv();
+      const key=new THREE.DirectionalLight(0xffffff,2.0); key.position.set(5,8,7); scene.add(key);
+      scene.add(new THREE.AmbientLight(0xffffff,0.2));
+
+      // --- the glossy hero object (swap for a GLB via GLTFLoader for photoreal) ---
+      const obj=new THREE.Mesh(new THREE.SphereGeometry(2.0,128,128),
+        new THREE.MeshPhysicalMaterial({color:0x6a3df0,metalness:0.0,roughness:0.03,
+          clearcoat:1.0,clearcoatRoughness:0.02,envMapIntensity:2.6,reflectivity:1.0}));
+      scene.add(obj);
+      // Glossy material presets (pick one):
+      //  • glossy plastic : metalness:0, roughness:0.03, clearcoat:1               (above)
+      //  • chrome metal   : metalness:1, roughness:0.06, envMapIntensity:2.4
+      //  • clear glass    : transmission:1, roughness:0, thickness:1.2, ior:1.45   (use a darker bg)
+
+      function draw(t){                          // deterministic, pure fn of time
+        obj.rotation.y=t*0.7; obj.rotation.x=Math.sin(t*0.5)*0.25;
+        obj.position.y=Math.sin(t*1.1)*0.18;     // gentle float
+        camera.position.x=Math.sin(t*0.4)*0.35; camera.lookAt(0,0,0);
+        renderer.render(scene,camera);
+      }
+      draw(0);
+      window.addEventListener("hf-seek",(e)=>draw((e.detail&&e.detail.time)||0));
+
+      window.__timelines=window.__timelines||{};
+      const tl=gsap.timeline({paused:true});
+      gsap.set("#gl",{opacity:0}); tl.to("#gl",{opacity:1,duration:0.5,ease:"power2.out"},0);
+      window.__timelines["main"]=tl;
+    </script>
+  </body>
+</html>

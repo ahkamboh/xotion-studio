@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<script src="assets/song.js"></script>
+<style>
+@font-face{font-family:'Mont';src:url('assets/fonts/montserrat-700.ttf');font-weight:700;font-display:block}
+@font-face{font-family:'Mont';src:url('assets/fonts/montserrat-800.ttf');font-weight:800;font-display:block}
+@font-face{font-family:'Anton';src:url('assets/fonts/anton-400.ttf');font-display:block}
+*{margin:0;padding:0;box-sizing:border-box}
+/* BLACK bg — this layer is screen-blended over the ASCII video, so black drops out */
+html,body{width:1080px;height:1920px;overflow:hidden;background:#000}
+#root{position:relative;width:1080px;height:1920px;overflow:hidden;font-family:'Mont',sans-serif;color:#fff;--accent:#f6d27a}
+.fill{position:absolute;inset:0;width:1080px;height:1920px}
+/* readability scrims (subtle — they screen-blend so keep them faint/dark) */
+#topbar{position:absolute;left:0;right:0;top:0;height:360px;background:linear-gradient(180deg,rgba(0,0,0,.0),rgba(0,0,0,0))}
+/* top tag */
+#tag{position:absolute;left:0;right:0;top:120px;text-align:center;font-family:'Mont';font-weight:800;font-size:42px;letter-spacing:14px;color:#fff;opacity:0;text-shadow:0 3px 18px rgba(0,0,0,.9)}
+#tag span{color:var(--accent)}
+/* karaoke caption */
+#cap{position:absolute;left:64px;right:64px;top:50%;transform:translateY(-50%);text-align:center}
+#cap .w{display:inline-block;font-family:'Anton';font-size:112px;line-height:1.05;letter-spacing:1px;color:#fff;margin:0 14px;
+  text-shadow:0 6px 5px rgba(0,0,0,.95),0 2px 26px rgba(0,0,0,.85);transition:none}
+#cap .w.on{color:var(--accent);text-shadow:0 6px 5px rgba(0,0,0,.95),0 0 44px color-mix(in srgb,var(--accent) 80%,transparent)}
+/* CTA */
+#cta{position:absolute;left:0;right:0;bottom:160px;text-align:center;opacity:0}
+#cta .h{font-family:'Mont';font-weight:800;font-size:40px;letter-spacing:5px;color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.9)}
+#cta .s{margin-top:14px;font-family:'Mont';font-weight:700;font-size:32px;letter-spacing:3px;color:var(--accent)}
+/* beat flash — a faint accent vignette pulse */
+#flash{position:absolute;inset:0;width:1080px;height:1920px;opacity:0;box-shadow:inset 0 0 300px 60px var(--accent);mix-blend-mode:screen}
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="18" data-width="1080" data-height="1920">
+  <div id="topbar" class="fill"></div>
+  <div id="tag">TERE BINA <span>·</span> KAMBOJH</div>
+  <div id="cap"></div>
+  <div id="flash" class="fill"></div>
+  <div id="cta"><div class="h">▶ FULL SONG ON THE CHANNEL</div><div class="s">@kambojh_official</div></div>
+</div>
+<script>
+const root=document.querySelector('[data-composition-id="main"]');
+const Q=s=>root.querySelector(s);
+const DUR=window.__DUR||18;
+if(window.__ACCENT)root.style.setProperty('--accent',window.__ACCENT);
+if(window.__TAG)Q('#tag').innerHTML=window.__TAG;
+// word-onset karaoke: WORDS=[{w,t,line}] timed to real vocals (see sync_reel_caption.py)
+const WORDS=window.__WORDS||[];
+const NLINES=window.__NLINES||(WORDS.length?Math.max(...WORDS.map(w=>w.line))+1:0);
+const BEATS=window.__BEATS||[];
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));const lerp=(a,b,t)=>a+(b-a)*t;const ease=t=>1-Math.pow(1-t,3);
+const cap=Q('#cap');
+// per-line word lists + line start times
+const lineWords=[]; for(let i=0;i<NLINES;i++) lineWords.push([]);
+WORDS.forEach(w=>{ if(lineWords[w.line]) lineWords[w.line].push(w); });
+const lineStart=lineWords.map(ws=>ws.length?ws[0].t:1e9);
+const LEAD=0.18;  // show a line slightly before its first word
+function lineAt(t){
+  let idx=-1;
+  for(let i=0;i<NLINES;i++){ if(t>=lineStart[i]-LEAD) idx=i; }
+  return idx;
+}
+function setLine(idx){
+  cap.innerHTML="";
+  if(idx<0||idx>=NLINES)return;
+  lineWords[idx].forEach(wd=>{const s=document.createElement('span');s.className='w';s.dataset.t=wd.t;s.textContent=wd.w;cap.appendChild(s);});
+}
+let cur=-1;
+function beatPulse(t){
+  let best=9; for(let i=0;i<BEATS.length;i++){const d=Math.abs(t-BEATS[i]); if(d<best)best=d;}
+  return clamp(1-best/0.12,0,1);
+}
+function render(t){
+  Q('#tag').style.opacity=(ease(clamp((t-0.15)/0.9,0,1))*0.95).toFixed(3);
+  Q('#cta').style.opacity=ease(clamp((t-1.0)/1.1,0,1)).toFixed(3);
+  const pulse=beatPulse(t);
+  Q('#flash').style.opacity=(pulse*0.5).toFixed(3);
+  const idx=lineAt(t);
+  if(idx<0){ if(cur!==-1){setLine(-1);cur=-1;} cap.style.opacity=0; return; }
+  if(idx!==cur){ setLine(idx); cur=idx; }
+  const words=cap.querySelectorAll('.w');
+  const lineIn=ease(clamp((t-(lineStart[idx]-LEAD))/0.3,0,1));
+  cap.style.opacity=lineIn.toFixed(3);
+  cap.style.transform=`translateY(-50%) translateY(${lerp(20,0,lineIn).toFixed(1)}px) scale(${(1+0.03*pulse).toFixed(3)})`;
+  // highlight each word exactly when its onset is reached
+  let activeI=-1;
+  words.forEach((w,i)=>{ const wt=parseFloat(w.dataset.t); if(t>=wt) activeI=i; });
+  words.forEach((w,i)=>{ if(i<=activeI)w.classList.add('on'); else w.classList.remove('on');
+    w.style.transform=(i===activeI)?`scale(${(1.13+0.06*pulse).toFixed(3)})`:'scale(1)'; });
+}
+const tl=gsap.timeline({paused:true});window.__timelines={main:tl};
+const CLK={t:0};tl.to(CLK,{t:DUR,duration:DUR,ease:'none',onUpdate:()=>render(CLK.t)},0);tl.pause(0);render(0);
+</script>
+</body>
+</html>

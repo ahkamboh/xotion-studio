@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"name",          "type":"string","label":"Name (also feeds the initials avatar fallback)",                        "default":"Ali Hamza Kamboh"},
+  {"id":"subtitle",      "type":"string","label":"Title / role line (rendered uppercase)",                                "default":"Co-founder &amp; CTO · Xotion"},
+  {"id":"accentColor",   "type":"color", "label":"Accent (slide-in bar, underline, avatar ring)",                         "default":"#6d5cff"},
+  {"id":"barColor",      "type":"color", "label":"Plate color (the dark panel behind the text)",                          "default":"#141823"},
+  {"id":"fontFamily",    "type":"string","label":"Font family (Schibsted Grotesk ships locally; other names fall back)",  "default":"Schibsted Grotesk"},
+  {"id":"entryDirection","type":"string","label":"Entry side: left | right (anchors AND mirrors the whole third)",        "default":"left"},
+  {"id":"avatarImage",   "type":"string","label":"Avatar IMAGE path (empty = designed initials-on-gradient fallback)",    "default":""},
+  {"id":"bg",            "type":"color", "label":"Backdrop color (preview stage — overlay onto footage in production)",   "default":"#0b0d12"},
+  {"id":"ink",           "type":"color", "label":"Text color",                                                            "default":"#ffffff"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <!--
+      BROADCAST LOWER THIRD — `lower-third-slide`
+      The classic interview / podcast / talking-head name strap, done as a
+      first-party preset: an accent bar slides in with overshoot, a dark plate
+      wipes open behind it, the avatar pops, the underline draws, the name
+      mask-wipes in and the title line rises beneath — holds while gently
+      breathing, then collapses back behind the bar so the clip LOOPS clean
+      (last frames == frame 0). Anchored lower-left by default;
+      entryDirection="right" mirrors the entire third to the lower-right.
+
+      PHASE TABLE (data-duration 7.0 — times for entryDirection="left";
+      "right" mirrors every x/origin):
+        phase             start–end   easing          what moves
+        0 clean slate     0.00–0.15   —               empty frame (loop start)
+        1 bar entry       0.15–0.80   back.out(2.4)   accent bar slides in from off-screen (x −380→0), overshoots
+        1b bar pop        0.20–0.65   power3.out      bar scaleY 0.55→1
+        2 plate wipe      0.60–1.20   power3.out      plate scaleX 0→1, origin at the bar edge
+        3 avatar pop      0.75–1.30   back.out(1.7)   avatar scale 0→1, rotation −8°→0
+        4 underline draw  0.95–1.45   power3.inOut    underline scaleX 0→1 from the bar side
+        5 name mask-wipe  1.05–1.70   power4.out      name xPercent −104→0 inside an overflow-hidden mask
+        6 subtitle rise   1.45–2.05   power3.out      title line yPercent 130→0 beneath the underline
+        7 living hold     2.30–4.80   sine.inOut      bar breathes (scaleY ±4.5%, yoyo ×4), avatar bobs ±5px;
+                                                      3.10–4.00 a sheen sweeps across the plate (power2.inOut)
+        8 collapse        4.90–6.35   power2/3.in     reverse, back behind the bar: subtitle drops (4.90),
+                                      + back.in       underline un-draws (5.00), name wipes out (5.10),
+                                                      avatar shrinks (5.25), plate collapses into the bar (5.40),
+                                                      bar exits with anticipation (5.85–6.35, back.in(2.0))
+        9 clean tail      6.35–7.00   —               empty frame == frame 0 → seamless loop point
+
+      VARIABLES (data-composition-variables):
+        name / subtitle      — any length; the plate shrink-wraps content and
+                               wraps long lines inside max-width, nothing clips
+        accentColor          — bar, underline, avatar ring, backdrop glow
+        barColor             — the plate behind the text
+        fontFamily           — "Schibsted Grotesk" ships via local @font-face
+                               (weights 800 name / 600 subtitle); any other
+                               family name falls back through the CSS stack
+        entryDirection       — "left" (default) | "right": mirrors anchor,
+                               slide direction, wipe direction, text alignment
+        avatarImage          — image path; EMPTY default renders a designed
+                               fallback (initials on an accent gradient), so
+                               the default render needs zero asset files
+        bg / ink             — preview backdrop / text color
+
+      Determinism contract: ONE paused master timeline registered as
+      window.__timelines["main"] + window.__timeline. All DOM (including the
+      optional <img>) is built at script-construction time; every animated
+      element gets its initial state via gsap.set before frame 0. Discrete
+      GSAP tweens only — no proxy needed (no per-frame computed text). No
+      Math.random, no Date, no rAF, no setTimeout, no CSS transitions or
+      @keyframes; all repeats FINITE (breathe yoyo ×4, bob yoyo ×2). Color
+      alpha suffixes only ever appended to hex6()-normalized values.
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family:"Schibsted Grotesk"; font-weight:800;
+        src:url("assets/fonts/schibsted-grotesk-800.ttf") format("truetype"); }
+      @font-face { font-family:"Schibsted Grotesk"; font-weight:600;
+        src:url("assets/fonts/schibsted-grotesk-600.ttf") format("truetype"); }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      html,body { width:1920px; height:1080px; overflow:hidden; }
+      #root { position:relative; width:1920px; height:1080px; overflow:hidden; }
+
+      /* the whole lower third — anchored lower-LEFT by default; JS flips
+         to lower-right + row-reverse for entryDirection="right" */
+      .lt {
+        position:absolute; left:120px; bottom:140px;
+        display:flex; align-items:center; gap:26px;
+      }
+
+      /* avatar — photo if avatarImage is set, designed initials fallback if not */
+      .avatar {
+        position:relative; width:124px; height:124px; border-radius:50%;
+        overflow:hidden; flex:0 0 auto;
+        display:flex; align-items:center; justify-content:center;
+        will-change:transform;
+      }
+      .avatar img { position:absolute; inset:0; width:100%; height:100%;
+                    object-fit:cover; }
+      .avInit { font-weight:800; font-size:46px; letter-spacing:0.02em;
+                line-height:1; position:relative; }
+
+      /* bar + plate live in one unit so the bar always spans plate height */
+      .unit  { position:relative; }
+      .bar   {
+        position:absolute; left:0; top:0; bottom:0; width:10px;
+        border-radius:5px; z-index:2; will-change:transform;
+      }
+      .plate {
+        position:relative; margin-left:26px; overflow:hidden;
+        min-width:420px; max-width:1240px;
+        padding:30px 44px 32px 44px;
+        border-radius:6px 18px 18px 6px;
+        will-change:transform;
+      }
+      .mask  { overflow:hidden; }
+      .name  {
+        font-weight:800; font-size:60px; line-height:1.1;
+        letter-spacing:-0.015em; overflow-wrap:break-word;
+        will-change:transform;
+      }
+      .rule  { height:5px; border-radius:3px; margin:16px 0 14px 0;
+               will-change:transform; }
+      .sub   {
+        font-weight:600; font-size:26px; line-height:1.35;
+        letter-spacing:0.14em; text-transform:uppercase;
+        overflow-wrap:break-word; will-change:transform;
+      }
+      .sheen {
+        position:absolute; top:0; bottom:0; width:38%; left:-35%;
+        background:linear-gradient(105deg, transparent 0%, #ffffff10 42%,
+                   #ffffff1f 50%, #ffffff10 58%, transparent 100%);
+        pointer-events:none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="7" data-width="1920" data-height="1080">
+      <div class="lt" id="lt">
+        <div class="avatar" id="avatar">
+          <span class="avInit" id="avInit"></span>
+        </div>
+        <div class="unit">
+          <div class="plate" id="plate">
+            <div class="sheen" id="sheen"></div>
+            <div class="mask"><div class="name" id="name"></div></div>
+            <div class="rule" id="rule"></div>
+            <div class="mask"><div class="sub" id="sub"></div></div>
+          </div>
+          <div class="bar" id="bar"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const V = window.__hyperframes.getVariables();
+
+      /* normalize hex so 2-digit alpha can be appended safely */
+      function hex6(c){c=String(c).trim();if(/^#[0-9a-fA-F]{3}$/.test(c))return "#"+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];if(/^#[0-9a-fA-F]{8}$/.test(c))return c.slice(0,7);return c;}
+      /* deterministic shade (k<1 darkens) for the avatar-fallback gradient */
+      function shade(c,k){c=hex6(c);const n=parseInt(c.slice(1),16);
+        const f=v=>Math.max(0,Math.min(255,Math.round(v*k))).toString(16).padStart(2,"0");
+        return "#"+f((n>>16)&255)+f((n>>8)&255)+f(n&255);}
+
+      const NAME   = String(V.name);
+      const SUB    = String(V.subtitle);
+      const ACCENT = hex6(V.accentColor);
+      const PLATEC = hex6(V.barColor);
+      const INK    = hex6(V.ink);
+      const RIGHT  = String(V.entryDirection).trim().toLowerCase() === "right";
+      const WIPE   = RIGHT ?  104 : -104;   // name mask-wipe offscreen %
+      const OFF    = RIGHT ?  380 : -380;   // bar offscreen x (px)
+      const DUR    = 7;
+
+      /* ── elements ───────────────────────────────────────────────────── */
+      const root   = document.getElementById("root");
+      const lt     = document.getElementById("lt");
+      const avatar = document.getElementById("avatar");
+      const avInit = document.getElementById("avInit");
+      const plate  = document.getElementById("plate");
+      const bar    = document.getElementById("bar");
+      const nameEl = document.getElementById("name");
+      const ruleEl = document.getElementById("rule");
+      const subEl  = document.getElementById("sub");
+      const sheen  = document.getElementById("sheen");
+
+      /* ── static styles from variables (all at construction time) ────── */
+      document.body.style.background = V.bg;
+      root.style.backgroundColor = V.bg;
+      root.style.backgroundImage =
+        `radial-gradient(1150px 720px at ${RIGHT ? "82%" : "18%"} 88%, ${ACCENT}21, transparent 62%),` +
+        `radial-gradient(1500px 950px at ${RIGHT ? "16%" : "84%"} 8%, #ffffff09, transparent 60%)`;
+
+      lt.style.fontFamily =
+        '"' + String(V.fontFamily).replace(/"/g, "") + '", "Schibsted Grotesk", system-ui, sans-serif';
+
+      nameEl.textContent = NAME;
+      subEl.textContent  = SUB;
+      nameEl.style.color = INK;
+      subEl.style.color  = INK + "c4";           // muted title line
+      ruleEl.style.background = ACCENT;
+      bar.style.background    = ACCENT;
+      bar.style.boxShadow     = `0 0 26px ${ACCENT}59`;
+      plate.style.background  = PLATEC;
+      plate.style.border      = "1px solid #ffffff14";
+      plate.style.boxShadow   = "0 26px 70px #00000059, 0 4px 16px #00000040";
+
+      /* avatar: photo if provided, else designed initials-on-gradient */
+      avatar.style.border    = `3px solid ${ACCENT}`;
+      avatar.style.boxShadow = `0 14px 40px #00000059, 0 0 24px ${ACCENT}40`;
+      avatar.style.background =
+        `linear-gradient(135deg, ${ACCENT} 0%, ${shade(ACCENT,0.45)} 100%)`;
+      avInit.style.color = INK;
+      avInit.textContent =
+        NAME.split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "X";
+      if (String(V.avatarImage || "").trim()) {
+        const img = document.createElement("img");   // construction time — OK
+        img.alt = "";
+        img.src = String(V.avatarImage).trim();
+        avatar.appendChild(img);
+      }
+
+      /* ── mirror everything for entryDirection="right" ───────────────── */
+      if (RIGHT) {
+        lt.style.left = "auto";  lt.style.right = "120px";
+        lt.style.flexDirection = "row-reverse";
+        bar.style.left = "auto"; bar.style.right = "0";
+        plate.style.marginLeft = "0"; plate.style.marginRight = "26px";
+        plate.style.borderRadius = "18px 6px 6px 18px";
+        plate.style.textAlign = "right";
+      }
+      const ORIGIN = RIGHT ? "right center" : "left center";
+
+      /* ── initial states — frame 0 is the clean slate (loop start) ───── */
+      gsap.set(bar,    { x: OFF, scaleY: 0.55, transformOrigin: "center center" });
+      gsap.set(plate,  { scaleX: 0, transformOrigin: ORIGIN });
+      gsap.set(avatar, { scale: 0, rotation: -8, transformOrigin: "center center" });
+      gsap.set(nameEl, { xPercent: WIPE });
+      gsap.set(ruleEl, { scaleX: 0, transformOrigin: ORIGIN });
+      gsap.set(subEl,  { yPercent: 130 });
+      gsap.set(sheen,  { left: "-35%" });
+
+      /* ── ONE paused master timeline; HyperFrames seeks it ───────────── */
+      const tl = gsap.timeline({ paused: true });
+
+      // phase 1 — bar entry with overshoot + vertical pop
+      tl.to(bar,    { x: 0,        duration: 0.65, ease: "back.out(2.4)" }, 0.15);
+      tl.to(bar,    { scaleY: 1,   duration: 0.45, ease: "power3.out"    }, 0.20);
+      // phase 2 — plate wipes open from the bar edge
+      tl.to(plate,  { scaleX: 1,   duration: 0.60, ease: "power3.out"    }, 0.60);
+      // phase 3 — avatar pops
+      tl.to(avatar, { scale: 1, rotation: 0, duration: 0.55, ease: "back.out(1.7)" }, 0.75);
+      // phase 4 — underline draws
+      tl.to(ruleEl, { scaleX: 1,   duration: 0.50, ease: "power3.inOut"  }, 0.95);
+      // phase 5 — name mask-wipes in
+      tl.to(nameEl, { xPercent: 0, duration: 0.65, ease: "power4.out"    }, 1.05);
+      // phase 6 — title line rises beneath
+      tl.to(subEl,  { yPercent: 0, duration: 0.60, ease: "power3.out"    }, 1.45);
+
+      // phase 7 — living hold (FINITE repeats; everything lands back at rest)
+      tl.to(bar,    { scaleY: 1.045, duration: 0.625, ease: "sine.inOut",
+                      yoyo: true, repeat: 3 }, 2.30);            // ends 4.80, scaleY 1
+      tl.to(avatar, { y: -5, duration: 1.25, ease: "sine.inOut",
+                      yoyo: true, repeat: 1 }, 2.30);            // ends 4.80, y 0
+      tl.fromTo(sheen, { left: "-35%" },
+                       { left: "135%", duration: 0.90, ease: "power2.inOut",
+                         immediateRender: false }, 3.10);
+
+      // phase 8 — collapse back behind the bar (reverse order)
+      tl.to(subEl,  { yPercent: 130, duration: 0.35, ease: "power2.in"   }, 4.90);
+      tl.to(ruleEl, { scaleX: 0,     duration: 0.35, ease: "power2.in"   }, 5.00);
+      tl.to(nameEl, { xPercent: WIPE, duration: 0.40, ease: "power3.in"  }, 5.10);
+      tl.to(avatar, { scale: 0, rotation: -8, duration: 0.35, ease: "back.in(1.6)" }, 5.25);
+      tl.to(plate,  { scaleX: 0,     duration: 0.40, ease: "power3.in"   }, 5.40);
+      tl.to(bar,    { x: OFF, scaleY: 0.55, duration: 0.50, ease: "back.in(2.0)" }, 5.85);
+
+      // phase 9 — hold the clean slate to the end of data-duration
+      tl.set({}, {}, DUR);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      window.__timeline = tl;
+    </script>
+  </body>
+</html>

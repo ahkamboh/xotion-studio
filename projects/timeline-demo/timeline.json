@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "id": "main",
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "duration": 4.0,
+  "background": "#0a0a0a",
+  "_idSeq": 2,
+  "fonts": [
+    {
+      "family": "Anton",
+      "src": "assets/fonts/anton-400.ttf",
+      "weight": "400"
+    }
+  ],
+  "assets": {
+    "bg": {
+      "kind": "image",
+      "path": "assets/bg.png"
+    }
+  },
+  "tracks": [
+    {
+      "id": "video",
+      "kind": "visual",
+      "clips": [
+        {
+          "id": "clip_000000",
+          "type": "image",
+          "source": "bg",
+          "start": 0,
+          "length": 4.0,
+          "style": { "objectFit": "cover" }
+        }
+      ]
+    },
+    {
+      "id": "overlay",
+      "kind": "visual",
+      "clips": [
+        {
+          "id": "clip_000001",
+          "type": "text",
+          "text": "TIMELINE → MP4",
+          "start": 0.2,
+          "length": 3.6,
+          "position": { "x": 540, "y": 960, "w": 920, "anchor": "center" },
+          "style": {
+            "fontFamily": "Anton",
+            "fontSize": 130,
+            "color": "#F4F1E8",
+            "textAlign": "center",
+            "lineHeight": 0.95,
+            "letterSpacing": "0.01em"
+          },
+          "transform": { "opacity": 0, "y": 40 },
+          "keyframes": [
+            { "at": 0, "dur": 0.6, "ease": "power2.out", "props": { "opacity": 1, "y": 0 } }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio",
+      "kind": "audio",
+      "clips": []
+    }
+  ]
+}

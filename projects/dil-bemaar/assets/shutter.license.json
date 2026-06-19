@@ -1,0 +1,10 @@
+{
+  "source": "pixabay-sfx",
+  "license": "Pixabay Content License (commercial-OK, no attribution required)",
+  "license_url": "https://pixabay.com/service/license-summary/",
+  "query": "camera shutter click",
+  "source_url": "https://pixabay.com/sound-effects/technology-shutter-click-2-494026/",
+  "title": "shutter click 2 | Royalty-free Music",
+  "audio_url": "https://cdn.pixabay.com/download/audio/2026/03/02/audio_95a2504f0a.mp3?filename=kauasilbershlachparodes-shutter-click-2-494026.mp3",
+  "captured_via": "puppeteer-core + Chrome (Pixabay music/SFX has no public API)"
+}

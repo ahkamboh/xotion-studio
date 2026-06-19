@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"promptText",      "type":"string","label":"User prompt (one line)",                         "default":"How do I stream tokens with the Xotion SDK?"},
+  {"id":"responseMarkdown","type":"string","label":"Assistant answer — markdown blocks, pipe-separated. Prefix: h=heading, p=paragraph, code:lang=fenced code, b=bullet item. **bold** spans flash as they land.","default":"h:Streaming with Xotion|p:Pipe tokens straight to the client with **stream: true** — Xotion handles backpressure for you.|code:ts:const run = await xotion.stream({|  prompt,|  onToken: (t) => ui.append(t),|});|p:Three things you get for free:|b:**Live markdown** assembly as tokens arrive|b:Automatic **Stop / Copy** controls|b:Zero-config **backpressure** handling"},
+  {"id":"burstSpeed",      "type":"string","label":"Burst speed multiplier (1 = default, lower = faster)","default":"1"},
+  {"id":"accentColor",     "type":"color", "label":"Accent (caret, bold, code keywords, copy state)",   "default":"#7c5cff"},
+  {"id":"theme",           "type":"string","label":"Theme: dark or light",                              "default":"dark"},
+  {"id":"showStopButton",  "type":"string","label":"Show Stop→Copy control (show/hide)",                "default":"show"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <!--
+      TOKEN STREAM RESPONSE — the signature "AI is answering" hero.
+
+      A user prompt sits at the top of a chat card. The assistant avatar wakes,
+      a caret blinks, then the answer STREAMS in irregular hand-seeded bursts —
+      not one even character-per-tick crawl but the chunky, bursty cadence real
+      LLM streaming has (a few tokens, a beat, a flurry, a pause). As the text
+      crosses block boundaries the markdown ASSEMBLES LIVE: a heading lands, a
+      paragraph fills, **bold spans flash** the accent as they complete, a
+      fenced code block EXPANDS its height as lines arrive, and bullets POP in
+      one at a time. When the stream lands its last token the caret settles to
+      a calm blink and the "Stop generating" pill MORPHS into "Copy" (width
+      contracts, square-icon → copy-icon, accent wash). Then a loop-friendly
+      hold with a gently breathing caret.
+
+      ── CHOREOGRAPHY (data-duration 7.0; everything is a pure function of t) ──
+      phase                     start–end    easing            what moves
+      0  opening / frame 0      0.00–0.35    none              prompt bubble + empty answer + caret + Stop pill, all final-styled. camera at 1.012.
+      1  assistant wakes        0.35–0.70    back.out(2)       avatar dot scales 0→1, "Xotion" name fades in, caret begins blink
+      2  TOKEN STREAM           0.70–4.55    none (proxy)      chars revealed by a hand-seeded burst table → markdown blocks assemble live; bold spans flash on completion; code block height grows per line; bullets pop as their char-threshold passes; caret rides the last visible glyph
+      3  stream settles         4.55–4.95    power2.out        caret detaches from text, drops to a steady end-of-answer blink; faint "done" glow under avatar
+      4  Stop → Copy morph      4.95–5.55    power3.inOut /    pill width 196→128px, label crossfades ("Stop generating"→"Copy"),
+                                              back.out(1.6)     square stop-icon fades to copy-icon, fill washes accent, tiny pop
+      5  loop hold              5.55–7.00    none              caret breathes; copy pill idle; camera eases 1.012→1.0 across whole clip
+
+      ── LAYOUT / VARIABLE-LENGTH ROBUSTNESS ──
+      The card is TOP-ANCHORED (cam top:0, transform-origin top-center) and grows
+      DOWNWARD — never vertically centered — so a longer-than-default answer can
+      NEVER clip symmetrically about a center. The Stop→Copy pill lives in the
+      card's NORMAL FLOW (a right-aligned .pillRow at the card bottom), so the
+      card's intrinsic height INCLUDES it and it can never be pushed off-screen.
+      An AUTOFIT scale (measured once fonts load, re-measured until then) shrinks
+      the whole card toward its top edge so card+pill always fit within 1080px,
+      no matter how long responseMarkdown is. The gentle 1.012→1.0 camera ease is
+      applied multiplicatively on top of the fit-scale (driven in renderFrame).
+
+      ── DETERMINISM ──
+      ONE paused master timeline (window.__timelines["main"]). The stream is a
+      single proxy {c} tweened 0→TOTAL_CHARS with ease:"none"; its onUpdate
+      reveals exactly Math.floor(c) characters across the pre-built block DOM,
+      so text NEVER reads ahead of the visual and any seeked frame is exact.
+      "Irregular bursts" = a HAND-CODED table BURSTS[] (cumulative-char ÷ time
+      knots) the proxy interpolates through — never Math.random / Date / rAF.
+      All DOM (avatar, prompt, every markdown block, every code line, every
+      bullet, both pill labels & icons) built at construction; initial states
+      via gsap.set. Bold-span flash + code-line reveal + bullet pop are driven
+      by the SAME char counter, so they land precisely with the glyph that
+      triggers them. No CSS transitions/@keyframes, no infinite repeats.
+
+      ── VARIABLE ENCODING ──
+      responseMarkdown is PIPE-separated ("|") blocks; each block is "type:payload":
+        h:Heading text                 → an <h2>
+        p:Paragraph **with bold**      → a <p>  (**…** = bold span, flashes accent)
+        code:ts:first code line        → opens a fenced block in lang "ts".
+                                          While a code block is open, every
+                                          following pipe segment that does NOT
+                                          start with a block prefix (h:/p:/b:/code:)
+                                          is appended as another code line — so
+                                          multi-line code (incl. an un-indented
+                                          "});") is just more "|"-segments. The
+                                          next h:/p:/b: closes the code block.
+        b:Bullet **item**              → a <li> in a shared <ul>
+      Any block / bullet / code line may be longer or shorter than the default;
+      the card is max-width + wrapping and grows downward from a FIXED TOP, and
+      an autofit downscale (see LAYOUT note above) keeps the whole card + pill
+      inside 1080px for any length — nothing clips top OR bottom.
+
+      Slot-driven (works with :cards / render-batch):
+        npx hyperframes render <proj> --variables '{"promptText":"…","theme":"light"}'
+
+      Fonts are LOCAL: Inter (chat UI) + JetBrains Mono (code/caret/keywords).
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family:"Inter"; font-weight:400; src:url("assets/fonts/inter-400.ttf") format("truetype"); }
+      @font-face { font-family:"Inter"; font-weight:500; src:url("assets/fonts/inter-500.ttf") format("truetype"); }
+      @font-face { font-family:"Inter"; font-weight:600; src:url("assets/fonts/inter-600.ttf") format("truetype"); }
+      @font-face { font-family:"Inter"; font-weight:700; src:url("assets/fonts/inter-700.ttf") format("truetype"); }
+      @font-face { font-family:"JetBrains Mono"; font-weight:500; src:url("assets/fonts/jetbrains-500.ttf") format("truetype"); }
+
+      * { margin:0; padding:0; box-sizing:border-box; }
+      html,body { width:1920px; height:1080px; overflow:hidden; }
+      #root { position:relative; width:1920px; height:1080px; overflow:hidden; }
+
+      /* camera — one transform owned by gsap.
+         TOP-ANCHORED (not vertically centered): the card is pinned to a fixed
+         top Y and grows DOWNWARD. Horizontal stays centered. A long answer can
+         never clip symmetrically about the center because there is no center
+         anchor; instead an autofit downscale (computed once fonts load) shrinks
+         the whole card toward its TOP edge so card+pill always fit 1080px. */
+      .cam { position:absolute; left:50%; top:0; transform-origin:50% 0%; will-change:transform; }
+
+      /* the chat card */
+      .card {
+        position:relative; width:1180px;
+        border-radius:28px;
+        padding:54px 60px 60px;
+        font-family:"Inter",sans-serif;
+      }
+
+      /* user prompt row */
+      .promptRow { display:flex; align-items:flex-start; gap:20px; margin-bottom:42px; }
+      .uAvatar {
+        flex:0 0 auto; width:54px; height:54px; border-radius:50%;
+        display:flex; align-items:center; justify-content:center;
+        font-weight:700; font-size:22px; letter-spacing:-0.01em;
+      }
+      .uText {
+        flex:1 1 auto; font-size:34px; font-weight:500; line-height:1.4;
+        letter-spacing:-0.012em; padding-top:8px;
+      }
+
+      /* assistant row */
+      .aRow { display:flex; align-items:flex-start; gap:20px; }
+      .aAvatarWrap { flex:0 0 auto; width:54px; position:relative; }
+      .aAvatar {
+        width:54px; height:54px; border-radius:15px;
+        display:flex; align-items:center; justify-content:center;
+        will-change:transform;
+      }
+      .aAvatar svg { display:block; width:30px; height:30px; }
+      .aGlow {
+        position:absolute; left:50%; top:50%;
+        width:54px; height:54px; border-radius:15px;
+        transform:translate(-50%,-50%); pointer-events:none;
+      }
+      .aName {
+        font-size:20px; font-weight:700; letter-spacing:0.02em;
+        text-transform:uppercase; margin-bottom:14px; will-change:opacity;
+      }
+
+      /* answer body — grows downward, never clips */
+      .answer { flex:1 1 auto; min-width:0; }
+      .answer h2 {
+        font-size:38px; font-weight:700; letter-spacing:-0.018em;
+        line-height:1.25; margin:0 0 18px;
+      }
+      .answer p {
+        font-size:29px; font-weight:400; line-height:1.5;
+        letter-spacing:-0.006em; margin:0 0 22px; max-width:980px;
+      }
+      .answer p:last-child, .answer h2:last-child { margin-bottom:0; }
+      .answer .b { font-weight:700; }   /* bold span — flashes accent on completion */
+      /* per-character glyph span: present in DOM from frame 0 (warms the font
+         atlas), revealed by opacity. inline so text wraps naturally. */
+      .g { display:inline; }
+
+      /* fenced code block */
+      .codeWrap {
+        position:relative; border-radius:16px; overflow:hidden;
+        margin:0 0 24px; will-change:height;
+      }
+      .codeBar {
+        display:flex; align-items:center; gap:9px;
+        height:42px; padding:0 18px;
+      }
+      .codeDot { width:12px; height:12px; border-radius:50%; }
+      .codeLang {
+        margin-left:auto; font-family:"JetBrains Mono",monospace;
+        font-size:16px; font-weight:500; letter-spacing:0.04em; text-transform:lowercase;
+      }
+      .codeBody {
+        font-family:"JetBrains Mono",monospace; font-size:24px; line-height:1.55;
+        padding:18px 22px 20px; white-space:pre;
+      }
+      .codeBody .cl { display:block; }   /* one code line */
+      .codeBody .kw { font-weight:500; } /* keyword highlight (accent) */
+
+      /* bullet list */
+      .answer ul { list-style:none; margin:0; padding:0; }
+      .answer li {
+        position:relative; font-size:29px; font-weight:400; line-height:1.45;
+        letter-spacing:-0.006em; padding-left:42px; margin:0 0 18px; max-width:940px;
+        will-change:transform,opacity;
+      }
+      .answer li:last-child { margin-bottom:0; }
+      .answer li .dot {
+        position:absolute; left:6px; top:14px; width:12px; height:12px;
+        border-radius:50%;
+      }
+
+      /* streaming caret — sits inline at the stream head */
+      .caret {
+        display:inline-block; width:3px; height:0.95em;
+        vertical-align:-0.12em; border-radius:2px;
+        margin-left:2px; will-change:opacity;
+      }
+
+      /* Stop → Copy control — sits in the card's NORMAL FLOW, right-aligned,
+         below the answer. Because it is in flow (not absolute), the card's
+         intrinsic height INCLUDES the pill, so the autofit measurement covers
+         it and it can never be pushed below the viewport on a long answer. */
+      .pillRow {
+        display:flex; justify-content:flex-end;
+        margin-top:40px;
+      }
+      .pillWrap {
+        position:relative;
+        height:64px; will-change:width;
+        border-radius:16px; overflow:hidden;
+      }
+      .pill {
+        position:absolute; inset:0;
+        display:flex; align-items:center; justify-content:center; gap:12px;
+        font-size:24px; font-weight:600; letter-spacing:-0.01em;
+        white-space:nowrap; will-change:opacity;
+      }
+      .pill svg { display:block; flex:0 0 auto; }
+      .pillIcon { width:22px; height:22px; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="7.0" data-width="1920" data-height="1080">
+      <div class="cam" id="cam">
+        <div class="card" id="card">
+
+          <!-- user prompt -->
+          <div class="promptRow">
+            <div class="uAvatar" id="uAvatar">A</div>
+            <div class="uText" id="uText"></div>
+          </div>
+
+          <!-- assistant answer -->
+          <div class="aRow">
+            <div class="aAvatarWrap">
+              <div class="aGlow" id="aGlow"></div>
+              <div class="aAvatar" id="aAvatar">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 3 L12 7 M12 3 C 9 3 7 5 7 8 L7 13 C7 16 9 18 12 18 C15 18 17 16 17 13 L17 8 C17 5 15 3 12 3 Z"/>
+                  <path d="M7 11 L4.5 11 M17 11 L19.5 11 M9.4 21 L14.6 21"/>
+                </svg>
+              </div>
+            </div>
+            <div class="answer" id="answer">
+              <div class="aName" id="aName">Xotion</div>
+              <!-- markdown blocks injected at construction -->
+              <div id="blocks"></div>
+            </div>
+          </div>
+
+          <!-- Stop → Copy control (in card flow, right-aligned) -->
+          <div class="pillRow" id="pillRow">
+          <div class="pillWrap" id="pillWrap">
+            <div class="pill" id="pillStop">
+              <svg class="pillIcon" id="iconStop" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="6.5" y="6.5" width="11" height="11" rx="2.2"/>
+              </svg>
+              <span id="labelStop">Stop generating</span>
+            </div>
+            <div class="pill" id="pillCopy">
+              <svg class="pillIcon" id="iconCopy" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="11" height="11" rx="2.4"/>
+                <path d="M5 15 L5 5 C5 4.4 5.4 4 6 4 L15 4"/>
+              </svg>
+              <span id="labelCopy">Copy</span>
+            </div>
+          </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const V = window.__hyperframes.getVariables();
+
+      /* normalize hex so 2-digit alpha can be appended (#abc→#aabbcc, #rrggbbaa→#rrggbb) */
+      function hex6(c){c=String(c).trim();if(/^#[0-9a-fA-F]{3}$/.test(c))return "#"+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];if(/^#[0-9a-fA-F]{8}$/.test(c))return c.slice(0,7);return c;}
+
+      /* ── parameters ─────────────────────────────────────────────────── */
+      const PROMPT   = String(V.promptText);
+      const RAW      = String(V.responseMarkdown);
+      /* burstSpeed: clamp BOTH ends. Lower bound keeps a brisk-but-readable
+         floor; upper bound guarantees the stream + settle + Stop→Copy morph all
+         finish inside the 7s clip (otherwise a large value like 3 would push
+         STREAM_DUR past DUR and the signature morph would never fire). With
+         STREAM_DUR = 3.85·SPEEDMUL starting at 0.70 and ~0.95s of settle+morph,
+         a 1.30 cap lands the morph end at ~6.65 < DUR 7.0 with hold to spare. */
+      const SPEEDMUL = Math.min(1.30, Math.max(0.35, parseFloat(V.burstSpeed) || 1));
+      const ACCENT   = hex6(V.accentColor);
+      const DARK     = String(V.theme).toLowerCase() !== "light";
+      const SHOW_PILL= String(V.showStopButton).toLowerCase() !== "hide";
+
+      /* ── theme palette ──────────────────────────────────────────────── */
+      const PAGE   = DARK ? "#0b0b10" : "#f4f4f7";
+      const CARD   = DARK ? "#15151d" : "#ffffff";
+      const CARD_BD= DARK ? "#26262f" : "#e7e7ee";
+      const INK    = DARK ? "#f2f2f6" : "#16161c";
+      const SUB    = DARK ? "#a9a9ba" : "#6a6a78";
+      const CODE_BG= DARK ? "#0c0c12" : "#1a1a22";   /* code stays dark in both themes */
+      const CODE_BAR=DARK ? "#1c1c26" : "#262630";
+      const CODE_INK=DARK ? "#e8e8f2" : "#e8e8f2";
+      const CODE_DIM=DARK ? "#7e7e92" : "#8a8a9c";
+      const U_BG    = DARK ? "#2a2a36" : "#e9e9f1";
+
+      /* ── elements ───────────────────────────────────────────────────── */
+      const root    = document.getElementById("root");
+      const cam     = document.getElementById("cam");
+      const card    = document.getElementById("card");
+      const uAvatar = document.getElementById("uAvatar");
+      const uText   = document.getElementById("uText");
+      const aGlow   = document.getElementById("aGlow");
+      const aAvatar = document.getElementById("aAvatar");
+      const aName   = document.getElementById("aName");
+      const blocks  = document.getElementById("blocks");
+      const pillRow = document.getElementById("pillRow");
+      const pillWrap= document.getElementById("pillWrap");
+      const pillStop= document.getElementById("pillStop");
+      const pillCopy= document.getElementById("pillCopy");
+
+      /* ── static styles from theme ───────────────────────────────────── */
+      document.body.style.background = PAGE;
+      root.style.background = PAGE;
+      card.style.background = CARD;
+      card.style.border = "1px solid " + CARD_BD;
+      card.style.boxShadow = DARK
+        ? "0 40px 120px rgba(0,0,0,0.55), 0 8px 30px rgba(0,0,0,0.4)"
+        : "0 40px 120px rgba(20,20,40,0.12), 0 8px 30px rgba(20,20,40,0.06)";
+      uAvatar.style.background = U_BG;
+      uAvatar.style.color = INK;
+      uText.style.color = INK;
+      uText.textContent = PROMPT;
+      aName.style.color = SUB;
+      aAvatar.style.background = ACCENT;
+      aAvatar.querySelector("svg").style.stroke = "#ffffff";
+      aGlow.style.background = ACCENT;
+      aGlow.style.filter = "blur(18px)";
+
+      /* ── parse responseMarkdown into block descriptors ──────────────── */
+      /* keywords highlighted inside code (deterministic, lang-agnostic-ish) */
+      const KEYWORDS = ["const","let","var","await","async","function","return",
+                        "import","from","export","new","if","else","for","while",
+                        "true","false","null","def","class","public","void"];
+
+      const segments = RAW.split("|");
+      const BLOCKS = [];           // {type, ...}
+      let codeOpen = null;         // currently-open code block descriptor
+      const PREFIX = /^(h|p|b|code):/;   // a segment that starts a NEW block
+      for (let raw of segments) {
+        // while a code block is open, any segment that is NOT a new-block prefix
+        // is a continued code line (so multi-line code "just works", incl. the
+        // un-indented closing "});" — no special encoding needed).
+        if (codeOpen && !PREFIX.test(raw)) { codeOpen.lines.push(raw); continue; }
+        const ci = raw.indexOf(":");
+        const type = ci >= 0 ? raw.slice(0, ci) : "p";
+        let payload = ci >= 0 ? raw.slice(ci + 1) : raw;
+        if (type === "code") {
+          // code:lang:firstline  — but lang is the next token, firstline after 2nd colon
+          const ci2 = payload.indexOf(":");
+          const lang = ci2 >= 0 ? payload.slice(0, ci2) : "txt";
+          const first = ci2 >= 0 ? payload.slice(ci2 + 1) : "";
+          codeOpen = { type:"code", lang, lines:[first] };
+          BLOCKS.push(codeOpen);
+        } else if (type === "h") {
+          codeOpen = null; BLOCKS.push({ type:"h", text:payload });
+        } else if (type === "b") {
+          codeOpen = null; BLOCKS.push({ type:"b", text:payload });
+        } else {
+          codeOpen = null; BLOCKS.push({ type:"p", text:payload });
+        }
+      }
+
+      /* ── build DOM for every block at construction, with per-glyph spans ──
+         Each renderable block exposes char slots so the stream can reveal
+         them progressively. We track a global char index across all blocks
+         (markdown markers like ** are NOT counted — only visible glyphs).   */
+      let GLOBAL = 0;              // running visible-glyph count
+      const FLASH = [];           // bold spans: {el, start, end} (char range)
+      const CHARS = [];           // flat per-character spans, indexed by global pos:
+                                  //   CHARS[i] = the <span> whose glyph is char i
+      /* ── one <span> per CHARACTER, full glyph in the DOM at CONSTRUCTION ──
+         CRITICAL for the hyperframes renderer: glyphs only rasterize if they
+         exist in the DOM at frame 0 (the warmup frame). Building empty spans
+         and filling textContent mid-timeline leaves their glyphs out of the
+         render's font atlas → invisible text. So every glyph is present from
+         frame 0; reveal = toggling per-char opacity (warmed glyphs paint). */
+      function buildInline(parent, text, boldClassFlash) {
+        const parts = text.split(/(\*\*[^*]+\*\*)/g);   // split on **bold**
+        for (const part of parts) {
+          if (!part) continue;
+          const bold = part.startsWith("**") && part.endsWith("**") && part.length > 4;
+          const str  = bold ? part.slice(2, -2) : part;
+          const run  = document.createElement("span");  // word/run wrapper (bold class)
+          if (bold) run.className = "b";
+          const runStart = GLOBAL;
+          for (const ch of str) {
+            const g = document.createElement("span");
+            g.className = "g";
+            g.textContent = ch;            // real glyph in DOM at construction
+            g.style.opacity = "0";         // hidden until its char index lands
+            run.appendChild(g);
+            CHARS[GLOBAL] = g;
+            GLOBAL += 1;
+          }
+          parent.appendChild(run);
+          if (bold && boldClassFlash) FLASH.push({ el:run, start:runStart, end:GLOBAL });
+        }
+      }
+
+      const REVEALERS = [];   // {kind, ...} ordered for progressive reveal
+      const ul = (() => null)();   // placeholder; created lazily for bullets
+
+      let listEl = null;      // shared <ul> for consecutive bullets
+      const CODE_BLOCKS = []; // {wrap, body, lineEls:[{el,start,len}], startChar}
+
+      for (const blk of BLOCKS) {
+        if (blk.type === "h") {
+          listEl = null;
+          const h = document.createElement("h2");
+          h.style.color = INK;
+          const startIdx = GLOBAL;
+          buildInline(h, blk.text, false);
+          // container stays visible; per-char opacity does the reveal
+          h.dataset.appearAt = startIdx;
+          blocks.appendChild(h);
+          REVEALERS.push({ kind:"text", el:h, start:startIdx, end:GLOBAL });
+        }
+        else if (blk.type === "p") {
+          listEl = null;
+          const p = document.createElement("p");
+          p.style.color = INK;
+          const startIdx = GLOBAL;
+          buildInline(p, blk.text, true);
+          p.dataset.appearAt = startIdx;
+          blocks.appendChild(p);
+          REVEALERS.push({ kind:"text", el:p, start:startIdx, end:GLOBAL });
+        }
+        else if (blk.type === "b") {
+          if (!listEl) { listEl = document.createElement("ul"); blocks.appendChild(listEl); }
+          const li = document.createElement("li");
+          li.style.color = INK;
+          li.style.transform = "translateY(14px) scale(0.97)";   // pop-start state
+          const dot = document.createElement("span");
+          dot.className = "dot"; dot.style.background = ACCENT; dot.style.opacity = "0";
+          li.appendChild(dot);
+          const span = document.createElement("span");   // holds the inline text
+          li.appendChild(span);
+          const startIdx = GLOBAL;
+          buildInline(span, blk.text, true);
+          li.dataset.appearAt = startIdx;
+          listEl.appendChild(li);
+          REVEALERS.push({ kind:"bullet", el:li, dot, start:startIdx, end:GLOBAL });
+        }
+        else if (blk.type === "code") {
+          listEl = null;
+          const wrap = document.createElement("div");
+          wrap.className = "codeWrap";
+          wrap.style.background = CODE_BG;
+          // bar
+          const bar = document.createElement("div");
+          bar.className = "codeBar"; bar.style.background = CODE_BAR;
+          ["#ff5f57","#febc2e","#28c840"].forEach(c => {
+            const d = document.createElement("span"); d.className = "codeDot";
+            d.style.background = c; bar.appendChild(d);
+          });
+          const lang = document.createElement("span");
+          lang.className = "codeLang"; lang.style.color = CODE_DIM;
+          lang.textContent = blk.lang;
+          bar.appendChild(lang);
+          wrap.appendChild(bar);
+          // body
+          const body = document.createElement("div");
+          body.className = "codeBody"; body.style.color = CODE_INK;
+          wrap.appendChild(body);
+
+          const startChar = GLOBAL;
+          const lineEls = [];
+          for (const lineText of blk.lines) {
+            const cl = document.createElement("span");
+            cl.className = "cl";
+            const lstart = GLOBAL;
+            // keyword highlight: tokenize on word boundaries; per-char .g spans
+            // (full glyphs in DOM at construction → warmed in the font atlas)
+            const tokens = lineText.split(/(\b)/);
+            for (const tk of tokens) {
+              const isKw = KEYWORDS.includes(tk);
+              const tw = document.createElement("span");   // token wrapper
+              if (isKw) { tw.className = "kw"; tw.style.color = ACCENT; }
+              for (const ch of tk) {
+                const g = document.createElement("span");
+                g.className = "g"; g.textContent = ch; g.style.opacity = "0";
+                tw.appendChild(g);
+                CHARS[GLOBAL] = g;
+                GLOBAL += 1;
+              }
+              cl.appendChild(tw);
+            }
+            // newline char between code lines (counts as 1 glyph for cadence)
+            GLOBAL += 1;
+            // line stays in layout (display:block) so its mono glyphs warm at
+            // frame 0; per-char opacity reveals it. Box is content-sized from
+            // the start — the wrap fades in as a unit when its first char lands.
+            cl.dataset.appearAt = lstart;
+            body.appendChild(cl);
+            lineEls.push({ el:cl, start:lstart });
+          }
+          wrap.style.opacity = "0";   // wrap (a box, no text glyphs) fades in
+          wrap.dataset.appearAt = startChar;
+          blocks.appendChild(wrap);
+          CODE_BLOCKS.push({ wrap, body, bar, lineEls });
+          REVEALERS.push({ kind:"code", el:wrap, body, lineEls, start:startChar, end:GLOBAL });
+        }
+      }
+
+      const TOTAL_CHARS = GLOBAL;
+      /* CHARS[i] holds the .g span for glyph i (newline indices are empty/undef) */
+
+      /* ── caret element — appended to the answer, moved to the stream head ─ */
+      const caret = document.createElement("span");
+      caret.className = "caret";
+      caret.style.background = ACCENT;
+      blocks.appendChild(caret);   // present in DOM at construction; moved (never created) per frame
+
+      /* ── Stop → Copy pill static styling ────────────────────────────── */
+      const PILL_W_STOP = 232, PILL_W_COPY = 132;
+      pillRow.style.display = SHOW_PILL ? "flex" : "none";
+      pillWrap.style.display = SHOW_PILL ? "block" : "none";
+      pillWrap.style.width = PILL_W_STOP + "px";
+      pillWrap.style.background = DARK ? "#22222c" : "#ededf3";
+      pillWrap.style.border = "1px solid " + CARD_BD;
+      pillStop.style.color = SUB;
+      pillStop.querySelector("svg").style.stroke = SUB;
+      pillCopy.style.color = "#ffffff";
+      pillCopy.querySelector("svg").style.stroke = "#ffffff";
+
+      /* ── BURST TABLE — hand-seeded irregular streaming cadence ────────────
+         knots are {f: fraction-of-total-chars at this knot, t: time-fraction}.
+         Uneven spacing => chunky bursts and beats (a real stream, not a crawl).
+         The proxy interpolates char-count linearly between knots; because the
+         char→time mapping is piecewise, characters arrive in flurries+pauses. */
+      const BURSTS = [
+        { f:0.00, t:0.00 },
+        { f:0.06, t:0.05 },   // tiny first burst (the model "starts")
+        { f:0.07, t:0.13 },   // beat
+        { f:0.20, t:0.22 },   // flurry (heading + start of paragraph)
+        { f:0.24, t:0.30 },   // small pause
+        { f:0.42, t:0.42 },   // burst — paragraph body + bold
+        { f:0.45, t:0.50 },   // beat before the code block
+        { f:0.66, t:0.66 },   // code lines stream in
+        { f:0.70, t:0.73 },   // beat
+        { f:0.84, t:0.86 },   // bullets begin
+        { f:0.93, t:0.93 },   // last bullets
+        { f:1.00, t:1.00 }    // final token lands
+      ];
+      // map a 0..1 progress (p) through the time-knots → cumulative char fraction
+      function burstChars(p) {
+        if (p <= 0) return 0;
+        if (p >= 1) return TOTAL_CHARS;
+        for (let i = 1; i < BURSTS.length; i++) {
+          if (p <= BURSTS[i].t) {
+            const a = BURSTS[i-1], b = BURSTS[i];
+            const k = (p - a.t) / (b.t - a.t || 1);
+            return (a.f + (b.f - a.f) * k) * TOTAL_CHARS;
+          }
+        }
+        return TOTAL_CHARS;
+      }
+
+      /* ── timing constants ───────────────────────────────────────────── */
+      const T_WAKE   = 0.35;                       // assistant avatar wakes
+      const T_STREAM = 0.70;                       // streaming starts
+      const STREAM_DUR = 3.85 * SPEEDMUL;          // streaming duration
+      const T_SETTLE = T_STREAM + STREAM_DUR;      // caret settles
+      const T_MORPH  = T_SETTLE + 0.40;            // Stop→Copy morph
+      const MORPH_DUR= 0.55;
+      const DUR      = 7.0;
+
+      /* ── camera anchoring + autofit ──────────────────────────────────
+         The card is TOP-ANCHORED (cam top:0, transform-origin top-center) and
+         grows downward. We compute, once fonts load, a fit-scale so the WHOLE
+         card (header → answer → pill, intrinsic height) plus top/bottom margins
+         fits within 1080px. Default content fits at scale 1; only a longer-than-
+         default responseMarkdown shrinks. The shrink is toward the TOP edge, so
+         nothing clips top OR bottom and the in-flow pill stays on-screen.
+         Measurement is lazy + re-done each frame until fonts.status==="loaded"
+         (then cached) per the determinism contract. */
+      const VIEW_H   = 1080;
+      const TOP_MARGIN = 96;          // gap above the card top at rest (scale=fitAt1)
+      const BOT_MARGIN = 72;          // min gap kept below the card after fit
+      // fitAt1: the camera scale at REST (gentle-ease multiplier = 1.0) that
+      // makes the whole card (header → answer → in-flow pill) fit the viewport
+      // height with margins. Default content fits at 1.0; a longer answer
+      // shrinks below 1.0. The gentle 1.2% breathing is applied MULTIPLICATIVELY
+      // on top (camMul eases 1.012→1.0), so it never breaks the fit.
+      let fitAt1 = 1.0;               // cached once fonts are loaded
+      let fitCached = false;
+      function measureFit() {
+        const h = card.offsetHeight;  // intrinsic card height (incl. in-flow pill)
+        const avail = VIEW_H - TOP_MARGIN - BOT_MARGIN;
+        fitAt1 = Math.min(1.0, avail / h);   // never upscale a short card
+      }
+
+      /* ── initial states (frame 0 correct before any tween) ──────────── */
+      // transform-origin is top-center (CSS); y positions the scaled top edge.
+      gsap.set(cam, { xPercent:-50, yPercent:0, y:TOP_MARGIN, scale:1.012 });
+      gsap.set(aAvatar, { scale:0, transformOrigin:"50% 50%" });
+      gsap.set(aGlow, { opacity:0, scale:1 });
+      gsap.set(aName, { opacity:0, y:6 });
+      gsap.set(pillCopy, { opacity:0 });
+      gsap.set(pillStop, { opacity:1 });
+      // caret hidden at frame 0 (stream hasn't begun)
+      caret.style.opacity = "0";
+
+      /* ── easings (pure fns, for the proxy-driven phases) ────────────── */
+      const clamp01  = t => Math.max(0, Math.min(1, t));
+      const outCubic = t => 1 - Math.pow(1 - t, 3);
+      const inOutCubic = t => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
+
+      /* pre-compute rgb triplets once (for the pill wash + bold-flash lerps) */
+      const toRGB = h => { h = hex6(h); return [parseInt(h.slice(1,3),16),
+                           parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; };
+      const ACC_RGB = toRGB(ACCENT);
+      const INK_RGB = toRGB(INK);
+      const NEU_RGB = DARK ? [0x22,0x22,0x2c] : [0xed,0xed,0xf3];
+
+      /* ── stream char count from absolute time, via the burst table ──── */
+      function streamChars(t) {
+        const p = clamp01((t - T_STREAM) / STREAM_DUR);
+        return burstChars(p);
+      }
+
+      /* ── ONE render(t): the WHOLE per-frame visual is a pure fn of time.
+         Driven by a single master proxy spanning [0,DUR] (the proven pattern
+         from input-typing.html) so the renderer's seek fires onUpdate on every
+         frame — text, code lines, bullets, caret + pill wash all stay in sync. */
+      let lastShown = -1;
+      function renderFrame(t) {
+        // 0. CAMERA + AUTOFIT (pure fn of t). Re-measure each frame until fonts
+        //    are loaded, then cache (per the determinism contract — geometry is
+        //    only stable once glyph metrics are final). fitAt1 makes the card
+        //    fit at rest; camMul applies the gentle 1.012→1.0 breathing on top.
+        if (!fitCached) {
+          measureFit();
+          if (document.fonts && document.fonts.status === "loaded") fitCached = true;
+        }
+        const camMul = 1.012 + (1.0 - 1.012) * clamp01(t / DUR);   // 1.012 → 1.0
+        gsap.set(cam, { scale: fitAt1 * camMul, y: TOP_MARGIN });
+
+        const shown = Math.max(0, Math.min(TOTAL_CHARS, Math.floor(streamChars(t))));
+
+        // 1. reveal glyphs by per-char opacity (glyphs are warmed in DOM since
+        //    construction). Char i visible ⇔ i < shown. Only touch the spans
+        //    whose visibility actually flipped since the last frame (works for
+        //    forward AND backward seeks — pure function of `shown`).
+        if (shown !== lastShown) {
+          if (lastShown < 0) {                 // cold render: set every char
+            for (let i = 0; i < TOTAL_CHARS; i++) {
+              const g = CHARS[i]; if (g) g.style.opacity = i < shown ? "1" : "0";
+            }
+          } else if (shown > lastShown) {      // forward: turn ON [lastShown, shown)
+            for (let i = lastShown; i < shown; i++) { const g = CHARS[i]; if (g) g.style.opacity = "1"; }
+          } else {                             // backward: turn OFF [shown, lastShown)
+            for (let i = shown; i < lastShown; i++) { const g = CHARS[i]; if (g) g.style.opacity = "0"; }
+          }
+          lastShown = shown;
+        }
+
+        // 2. block-level appearance: code wrap fades in; bullets pop (rise+scale)
+        for (const r of REVEALERS) {
+          if (r.kind === "code") {
+            r.el.style.opacity = shown > r.start ? "1" : "0";
+          } else if (r.kind === "bullet") {
+            const k = clamp01((shown - r.start) / 6);     // pop over ~6 chars
+            const e = outCubic(k);
+            r.el.style.transform = `translateY(${(14*(1-e)).toFixed(2)}px) scale(${(0.97+0.03*e).toFixed(4)})`;
+            r.dot.style.opacity = e.toFixed(3);           // the bullet dot fades with the pop
+          }
+        }
+
+        // 2b. bold-span flash — when a **bold** run's last glyph lands it pulses
+        //     the accent, then settles to INK over ~12 chars of stream (the
+        //     brief's "bold spans flash"). Pure fn of shown — no timers.
+        for (const f of FLASH) {
+          // 0 while still typing the bold run → 1 right as it completes → 0 settled
+          let pulse = 0;
+          if (shown >= f.end) pulse = 1 - clamp01((shown - f.end) / 12);
+          const r = Math.round(INK_RGB[0] + (ACC_RGB[0]-INK_RGB[0])*pulse);
+          const g = Math.round(INK_RGB[1] + (ACC_RGB[1]-INK_RGB[1])*pulse);
+          const b = Math.round(INK_RGB[2] + (ACC_RGB[2]-INK_RGB[2])*pulse);
+          const col = `rgb(${r},${g},${b})`;
+          if (f.el.style.color !== col) f.el.style.color = col;
+        }
+
+        // 3. caret: hidden until wake; rides the stream head while streaming;
+        //    settles to a calm blink after the last token. Move (never create).
+        if (t < T_WAKE + 0.15) {
+          caret.style.opacity = "0";
+        } else {
+          const streaming = shown > 0 && shown < TOTAL_CHARS;
+          if (streaming) {
+            // park the caret right after the last revealed glyph
+            let host = CHARS[shown - 1];
+            for (let i = shown - 1; i >= 0 && !host; i--) host = CHARS[i];   // skip newline gaps
+            if (host && caret.previousSibling !== host) host.parentNode.appendChild(caret);
+            const phase = (Math.sin(t * Math.PI * 2 * 1.7) + 1) / 2;
+            caret.style.opacity = (0.55 + 0.45 * phase).toFixed(3);
+          } else {
+            // settled: park the caret at the very end of the answer, calm blink
+            if (caret.parentNode !== blocks) blocks.appendChild(caret);
+            const phase = (Math.sin(t * Math.PI * 2 * 1.1) + 1) / 2;
+            caret.style.opacity = phase.toFixed(3);
+          }
+        }
+
+        // 4. Stop → Copy pill wash (color lerp) — discrete width/label/pop are
+        //    separate tweens below; only the per-frame color lerp lives here.
+        if (SHOW_PILL) {
+          const k = inOutCubic(clamp01((t - T_MORPH) / MORPH_DUR));
+          const r = Math.round(NEU_RGB[0] + (ACC_RGB[0]-NEU_RGB[0])*k);
+          const g = Math.round(NEU_RGB[1] + (ACC_RGB[1]-NEU_RGB[1])*k);
+          const b = Math.round(NEU_RGB[2] + (ACC_RGB[2]-NEU_RGB[2])*k);
+          pillWrap.style.background  = `rgb(${r},${g},${b})`;
+          pillWrap.style.borderColor = k > 0.5 ? ACCENT : CARD_BD;
+        }
+      }
+
+      /* ── paused master timeline; HyperFrames seeks it ───────────────── */
+      const tl = gsap.timeline({ paused:true });
+
+      // MASTER PROXY — one tween across the entire clip drives renderFrame(t).
+      // Because it spans [0,DUR] the renderer's per-frame seek always lands
+      // inside it, so onUpdate fires for every frame (the proven pattern).
+      const p = { t:0 };
+      tl.to(p, { t:DUR, duration:DUR, ease:"none",
+                 onUpdate:()=>renderFrame(p.t) }, 0);
+
+      // camera scale (gentle 1.012→1.0 ease + autofit) is driven inside
+      // renderFrame so it composes with the fit-scale — no discrete cam tween.
+
+      // PHASE 1: assistant wakes (discrete entrance tweens)
+      tl.to(aAvatar, { scale:1, duration:0.35, ease:"back.out(2)" }, T_WAKE);
+      tl.to(aGlow,   { opacity:0.5, duration:0.30, ease:"power2.out" }, T_WAKE);
+      tl.to(aGlow,   { opacity:0.0, duration:0.50, ease:"power2.in", overwrite:"auto" }, T_WAKE+0.30);
+      tl.to(aName,   { opacity:1, y:0, duration:0.30, ease:"power2.out" }, T_WAKE+0.08);
+
+      // PHASE 3: stream settles — faint done-glow pulse under avatar
+      tl.fromTo(aGlow, { opacity:0 }, { opacity:0.32, duration:0.22, ease:"power2.out",
+                                        immediateRender:false, overwrite:"auto" }, T_SETTLE);
+      tl.to(aGlow, { opacity:0, duration:0.55, ease:"power2.in", overwrite:"auto" }, T_SETTLE+0.22);
+
+      // PHASE 4: Stop → Copy morph (discrete: width, label crossfade, pop;
+      //          the color wash is folded into renderFrame above)
+      if (SHOW_PILL) {
+        tl.to(pillWrap, { width:PILL_W_COPY, duration:MORPH_DUR, ease:"power3.inOut" }, T_MORPH);
+        tl.to(pillStop, { opacity:0, duration:0.22, ease:"power2.in" }, T_MORPH+0.04);
+        tl.to(pillCopy, { opacity:1, duration:0.26, ease:"power2.out" }, T_MORPH+0.20);
+        // tiny confirm pop right as Copy settles
+        tl.fromTo(pillWrap, { scale:1 }, { scale:1.05, duration:0.16, ease:"power2.out",
+                                           transformOrigin:"100% 50%", immediateRender:false }, T_MORPH+MORPH_DUR-0.06);
+        tl.to(pillWrap, { scale:1, duration:0.22, ease:"back.out(2)", overwrite:"auto" }, T_MORPH+MORPH_DUR+0.10);
+      }
+
+      // hold the final frame to the end of data-duration
+      tl.set({}, {}, DUR);
+
+      // frame 0 styled immediately
+      renderFrame(0);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      window.__timeline = tl;
+    </script>
+  </body>
+</html>

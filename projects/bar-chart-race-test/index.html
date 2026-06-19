@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"rows",          "type":"string","label":"Rows — name:color:v1~v2~v3~... (one row per | ; values per era split by ~)", "default":"Xotion:#6366f1:6~14~31~58~92|Cursor:#22c55e:38~52~64~71~78|Copilot:#f59e0b:54~61~66~69~72|Replit:#06b6d4:21~33~44~55~63|v0:#ec4899:12~19~40~49~57|Devin:#a855f7:9~16~24~37~46"},
+  {"id":"eraLabels",     "type":"string","label":"Era labels (one per value-slot, split by |)", "default":"2024 Q1|2024 Q3|2025 Q1|2025 Q3|2026 Q1"},
+  {"id":"title",         "type":"string","label":"Chart title",          "default":"Agent-editor benchmark"},
+  {"id":"valueSuffix",   "type":"string","label":"Value suffix",         "default":""},
+  {"id":"topN",          "type":"string","label":"Bars visible at once", "default":"6"},
+  {"id":"highlightRow",  "type":"string","label":"Row name to track + crown", "default":"Xotion"},
+  {"id":"stampText",     "type":"string","label":"Stamp when the highlight takes #1", "default":"NEW SOTA"},
+  {"id":"crownOnWinner", "type":"string","label":"Crown the final leader (show/hide)", "default":"show"},
+  {"id":"bg",            "type":"color", "label":"Background",            "default":"#0b0b14"},
+  {"id":"panel",         "type":"color", "label":"Bar track / panel",    "default":"#16161f"},
+  {"id":"ink",           "type":"color", "label":"Text color",           "default":"#f4f4f7"},
+  {"id":"muted",         "type":"color", "label":"Muted text",           "default":"#8b8b9a"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <!--
+      BAR CHART RACE — horizontal bars grow and OVERTAKE across keyframed eras.
+      Rows slide vertically to swap ranks as their values cross; value labels
+      count up at each bar tip; the highlighted row (highlightRow) surges past
+      the leader, earns a crown, and a "NEW SOTA" stamp slams in the instant it
+      seizes #1. A big era label cross-dissolves through the timeline (2024 Q1 →
+      2026 Q1) and a sweeping time-axis ticker tracks progress along the bottom.
+
+      The single most viral data-viz format of the last five years (Flourish
+      races pull hundreds of millions of views) and the default shape of every
+      "new model beats the field" benchmark clip — first-party so a creator
+      fills the `rows` slot and ships.
+
+      ── DEFAULT CONTENT (Xotion-flavored) ─────────────────────────────────────
+      A race of AI agent-editors on a benchmark score. The field (Cursor,
+      Copilot, Replit, v0, Devin) is out front early; Xotion starts last,
+      climbs era by era, overtakes the pack, crosses into #1 in the final era —
+      crown + NEW SOTA stamp. "The editor for AI agents" wins its own race.
+
+      ── VARIABLES / ENCODING ──────────────────────────────────────────────────
+        rows         pipe-separated rows; each row is  name:hexcolor:v1~v2~v3~...
+                     — colon ":" splits the 3 fields (only the first two colons
+                     are used, so a #hex stays whole), tilde "~" splits the
+                     per-era values. Every row should carry the SAME number of
+                     era values as eraLabels has entries (short rows pad by
+                     repeating their last value; extras are clamped).
+        eraLabels    pipe-separated era captions, one per value slot.
+        title        small eyebrow title (top-left).
+        valueSuffix  appended to every value label (e.g. "%", "M", "k", " pts").
+        topN         how many bars are visible at once (the chart shows the
+                     current top-N; rows below the cut fade + slide off).
+        highlightRow name of the row to spotlight (brighter, gets crown+stamp).
+        stampText    text slammed in when the race resolves (set "" to skip).
+        crownOnWinner show/hide a crown on whoever leads at the end.
+        bg/panel/ink/muted  palette.
+      Any count is robust: 2..8 rows, any era count, long names (rows are sized
+      to the longest name via a measured label gutter, never hard-coded), long
+      values (tips reserve space + tuck the number inside the bar so it never
+      clips off the right edge).
+
+      ── CHOREOGRAPHY (FIXED 8.0s window — race is FITTED to it, any era count) ─
+      The total window is a CONSTANT DUR = 8.0s (=== data-duration). The race is
+      fitted into it: the per-era transition time is DERIVED from the era count
+      (RACE_T = (RACE_END - INTRO)/(ERAS-1), RACE_END = DUR - HOLD = 6.95s), so
+      no matter how many eras (2, 5, 6, 7, 8…) the final-era resolution, SOTA
+      slam, crown drop and loop hold ALWAYS land inside 8.0s — never truncated,
+      never on the boundary. (For the default 5 eras RACE_T≈1.59s; for 7 eras
+      RACE_T≈1.06s — same phases, just paced to fit.)
+      One proxy {t} drives the whole race as a pure function of time; discrete
+      slams (stamp, crown, bar flash) are normal tweens on the same paused
+      timeline.
+
+        phase                 | start–end (s)        | easing             | what moves
+        ----------------------|----------------------|--------------------|-------------------------------------------
+        0  cold open / intro  | 0.00–0.60            | outCubic (widths)  | eyebrow + axis fade in; bars grow from 0 to era-1 width, ranked; era-1 label + values shown — frame 0 is a valid chart
+        1  race (fitted)      | 0.60–6.95            | smootherstep       | bars grow/shrink era→era over (ERAS-1) equal RACE_T segments; rows SLIDE to new ranks as values cross; counters tick; era label cross-fades; ticker sweeps; highlight crosses into #1 in the final segment
+        2  SOTA slam          | 6.65–7.07            | back.out(2.2)      | as the race resolves: NEW SOTA stamp scales/rotates in + a white flash on the winning bar
+        3  crown drop         | 7.10–7.50            | back.out(2.0)      | crown drops onto the final leader's bar (bounce)
+        4  loop-friendly hold | 7.50–8.00            | finite cosine      | full final chart holds; highlight bar keeps a gentle idle pulse so the last frame isn't dead-still
+
+      ── DETERMINISM CONTRACT ───────────────────────────────────────────────────
+      • ALL DOM (rows, bars, labels, ticks, crown, stamp) built at construction
+        time from the parsed rows; nothing is createElement'd inside a callback.
+      • One paused master timeline (window.__timelines["main"] + __timeline).
+      • Continuous values (bar width, rank Y, counters, ticker, era cross-fade,
+        idle pulse) come from ONE proxy {t} via onUpdate→render(t); each row's
+        value is interpolated between era keyframes with smootherstep, ranks are
+        derived from those interpolated values each frame so rows slide smoothly
+        as they cross. Counters show Math.floor(value) so a number never reads
+        ahead of its bar. Discrete slams (stamp, crown, bar flash) are GSAP
+        tweens scheduled at fixed times on the same timeline.
+      • Every animated element's frame-0 state is set via gsap.set / render(0)
+        at construction.
+      • Idle pulse uses a finite cosine of t (not repeat:-1).
+      • No Math.random / Date / rAF / setTimeout / CSS transition|keyframes /
+        infinite repeats. Geometry (label gutter) is measured lazily in the
+        first onUpdate and only cached once document.fonts.status==="loaded".
+      • Hex colors normalized via hex6() before any alpha-digit append.
+
+      Only network resource: GSAP CDN. Fonts are LOCAL (Sora + JetBrains Mono).
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family:"Sora"; font-weight:700;
+        src:url("assets/fonts/sora-700.ttf") format("truetype"); }
+      @font-face { font-family:"Sora"; font-weight:800;
+        src:url("assets/fonts/sora-800.ttf") format("truetype"); }
+      @font-face { font-family:"JetBrains Mono"; font-weight:500;
+        src:url("assets/fonts/jetbrains-500.ttf") format("truetype"); }
+
+      * { margin:0; padding:0; box-sizing:border-box; }
+      html,body { width:1920px; height:1080px; overflow:hidden; }
+      #root { position:relative; width:1920px; height:1080px; overflow:hidden;
+        font-family:"Sora",sans-serif; }
+
+      /* centered chart column */
+      .stage { position:absolute; left:50%; top:50%;
+        transform:translate(-50%,-50%); width:1560px; }
+
+      /* header: title eyebrow (left) + giant era label (right) */
+      .head { position:relative; height:140px; margin-bottom:34px; }
+      .eyebrow {
+        position:absolute; left:0; top:14px;
+        font-family:"JetBrains Mono",monospace; font-weight:500;
+        font-size:26px; letter-spacing:0.16em; text-transform:uppercase;
+        display:flex; align-items:center;
+      }
+      .eyebrowDot { display:inline-block; width:14px; height:14px;
+        border-radius:50%; margin-right:14px; flex:0 0 auto; }
+      .eraWrap {
+        position:absolute; right:0; top:0; height:140px;
+        display:flex; align-items:flex-start; }
+      /* era labels stacked so swaps never reflow / clip */
+      .eraStack { position:relative; width:640px; height:140px; }
+      .era {
+        position:absolute; right:0; top:0; white-space:nowrap;
+        font-family:"Sora",sans-serif; font-weight:800;
+        font-size:120px; line-height:1; letter-spacing:-0.03em;
+        text-align:right; will-change:transform,opacity;
+      }
+      .era .qt { font-size:60px; margin-left:14px; opacity:0.55; }
+
+      /* the rows area — each row absolutely positioned, Y driven per frame */
+      .rows { position:relative; }
+      .row {
+        position:absolute; left:0; right:0;
+        display:flex; align-items:center; will-change:transform,opacity;
+      }
+      .label {
+        flex:0 0 auto; text-align:right; padding-right:30px;
+        font-weight:700; white-space:nowrap;
+        overflow:hidden; text-overflow:ellipsis;
+        /* width set in JS to the measured longest-name gutter */
+      }
+      .barWrap { position:relative; flex:1 1 auto; height:100%; }
+      .track { position:absolute; inset:0; border-radius:14px; }
+      .bar {
+        position:absolute; left:0; top:0; bottom:0;
+        border-radius:14px; transform-origin:left center;
+        will-change:width; min-width:14px;
+      }
+      .barFlash { position:absolute; inset:0; border-radius:14px;
+        background:#fff; opacity:0; will-change:opacity; }
+      /* value at the bar tip, riding just past the bar's right edge */
+      .val {
+        position:absolute; top:50%; transform:translateY(-50%);
+        font-family:"JetBrains Mono",monospace; font-weight:500;
+        white-space:nowrap; will-change:left;
+      }
+      /* crown sits above the bar's right portion */
+      .crown { position:absolute; top:0; left:0; opacity:0;
+        will-change:transform,opacity; pointer-events:none; }
+      .crown svg { display:block; }
+
+      /* time-axis ticker along the bottom */
+      .axis { position:relative; margin-top:46px; height:54px; }
+      .axisLine { position:absolute; left:0; right:0; top:14px; height:3px;
+        border-radius:2px; }
+      .axisFill { position:absolute; left:0; top:14px; height:3px;
+        border-radius:2px; will-change:width; }
+      .tick { position:absolute; top:4px; width:3px; height:22px;
+        border-radius:2px; transform:translateX(-50%); }
+      .tickLbl { position:absolute; top:30px; transform:translateX(-50%);
+        font-family:"JetBrains Mono",monospace; font-weight:500;
+        font-size:20px; letter-spacing:0.04em; white-space:nowrap; }
+      .puck { position:absolute; top:15px; left:0; will-change:left; }
+
+      /* NEW SOTA stamp — slams onto the scene */
+      .stamp {
+        position:absolute; opacity:0; will-change:transform,opacity;
+        font-family:"Sora",sans-serif; font-weight:800;
+        font-size:54px; letter-spacing:0.04em; text-transform:uppercase;
+        padding:18px 36px; border-radius:18px; white-space:nowrap;
+        border:6px solid currentColor;
+        text-align:center; line-height:1;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="8" data-width="1920" data-height="1080">
+      <div class="stage" id="stage">
+        <div class="head" id="head">
+          <div class="eyebrow" id="eyebrow">
+            <span class="eyebrowDot" id="eyebrowDot"></span><span id="eyebrowTxt"></span>
+          </div>
+          <div class="eraWrap"><div class="eraStack" id="eraStack"></div></div>
+        </div>
+        <div class="rows" id="rowsEl"></div>
+        <div class="axis" id="axis">
+          <div class="axisLine" id="axisLine"></div>
+          <div class="axisFill" id="axisFill"></div>
+          <div class="puck" id="puck"></div>
+        </div>
+      </div>
+      <div class="stamp" id="stamp"></div>
+    </div>
+
+    <script>
+      const V = window.__hyperframes.getVariables();
+
+      /* normalize a CSS hex color to 6-digit form so 2-digit alpha can be
+         appended safely (#abc → #aabbcc, #rrggbbaa → #rrggbb) */
+      function hex6(c){c=String(c).trim();if(/^#[0-9a-fA-F]{3}$/.test(c))return "#"+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];if(/^#[0-9a-fA-F]{8}$/.test(c))return c.slice(0,7);return c;}
+
+      /* ── palette ─────────────────────────────────────────────────────── */
+      const BG = V.bg, PANEL = V.panel, INK = V.ink, MUTED = V.muted;
+
+      /* ── parse eras + rows ───────────────────────────────────────────── */
+      const eraLabels = String(V.eraLabels).split("|").map(s => s.trim()).filter(Boolean);
+      const ERAS = Math.max(2, eraLabels.length);
+
+      const rawRows = String(V.rows).split("|").map(s => s.trim()).filter(Boolean);
+      const DATA = rawRows.map(r => {
+        // name:color:v1~v2~v3  — split only on the FIRST two colons so a hex stays whole
+        const i1 = r.indexOf(":");
+        const i2 = r.indexOf(":", i1 + 1);
+        const name  = (i1 < 0 ? r : r.slice(0, i1)).trim() || "—";
+        const color = hex6((i1 < 0 ? "#6366f1" : i2 < 0 ? r.slice(i1 + 1) : r.slice(i1 + 1, i2)).trim() || "#6366f1");
+        const vstr  = i2 < 0 ? "" : r.slice(i2 + 1);
+        let vals = vstr.split("~").map(s => parseFloat(s)).filter(v => !isNaN(v));
+        if (!vals.length) vals = [0];
+        while (vals.length < ERAS) vals.push(vals[vals.length - 1]);   // pad short rows
+        vals = vals.slice(0, ERAS);
+        return { name, color, vals };
+      });
+      const N = DATA.length;
+
+      const TOPN     = Math.max(1, Math.min(N, parseInt(V.topN, 10) || N));
+      const SUFFIX   = String(V.valueSuffix || "");
+      const HILITE   = String(V.highlightRow || "").trim().toLowerCase();
+      const STAMPTXT = String(V.stampText || "");
+      const CROWN_ON = String(V.crownOnWinner) !== "hide";
+
+      const hiIdx = DATA.findIndex(d => d.name.trim().toLowerCase() === HILITE);
+
+      // global max across all eras → bar scale (bars stay comparable era→era)
+      let VMAX = 0;
+      DATA.forEach(d => d.vals.forEach(v => { if (v > VMAX) VMAX = v; }));
+      VMAX = VMAX || 1;
+
+      /* ── layout constants ────────────────────────────────────────────── */
+      const ROW_H  = TOPN <= 4 ? 132 : TOPN <= 5 ? 116 : TOPN <= 6 ? 100 : 84;
+      const GAP    = TOPN <= 4 ? 26  : TOPN <= 6 ? 22  : 18;
+      const PITCH  = ROW_H + GAP;
+      const ROWS_H = TOPN * PITCH - GAP;
+      const STAGE_W = 1560;
+      let LABEL_W  = 320;                     // re-measured to the longest name once fonts load
+      const VAL_FS = TOPN <= 5 ? 44 : 38;
+      const NAME_FS = TOPN <= 5 ? 42 : 36;
+
+      /* ── elements ────────────────────────────────────────────────────── */
+      const root      = document.getElementById("root");
+      const eyebrowEl = document.getElementById("eyebrow");
+      const eyebrowDot= document.getElementById("eyebrowDot");
+      const eyebrowTxt= document.getElementById("eyebrowTxt");
+      const eraStack  = document.getElementById("eraStack");
+      const rowsEl    = document.getElementById("rowsEl");
+      const axis      = document.getElementById("axis");
+      const axisLine  = document.getElementById("axisLine");
+      const axisFill  = document.getElementById("axisFill");
+      const puck      = document.getElementById("puck");
+      const stampEl   = document.getElementById("stamp");
+
+      /* ── static styling from palette ─────────────────────────────────── */
+      document.body.style.background = BG;
+      root.style.background = BG;
+      eyebrowEl.style.color = MUTED;
+      eyebrowTxt.textContent = String(V.title || "");
+      eyebrowDot.style.background = (hiIdx >= 0 ? DATA[hiIdx].color : INK);
+      rowsEl.style.height = ROWS_H + "px";
+      axisLine.style.background = hex6(MUTED) + "33";
+
+      /* ── build the ERA labels (grid-stacked, cross-faded per frame) ──── */
+      const eraEls = eraLabels.map((lab) => {
+        const el = document.createElement("div");
+        el.className = "era";
+        const m = lab.match(/^(\S+)\s+(.+)$/);   // "2026 Q1" → big year + small quarter
+        if (m) {
+          el.innerHTML = `<span class="yr"></span><span class="qt"></span>`;
+          el.querySelector(".yr").textContent = m[1];
+          el.querySelector(".qt").textContent = m[2];
+        } else {
+          el.textContent = lab;
+        }
+        el.style.color = INK;
+        eraStack.appendChild(el);
+        return el;
+      });
+
+      /* ── build ROWS (all DOM at construction) ────────────────────────── */
+      const rowObjs = DATA.map((d, i) => {
+        const isHi = (i === hiIdx);
+        const row = document.createElement("div");
+        row.className = "row";
+        row.style.height = ROW_H + "px";
+
+        const label = document.createElement("div");
+        label.className = "label";
+        label.style.width = LABEL_W + "px";
+        label.style.fontSize = NAME_FS + "px";
+        label.style.color = isHi ? INK : MUTED;
+        label.textContent = d.name;
+
+        const barWrap = document.createElement("div");
+        barWrap.className = "barWrap";
+
+        const track = document.createElement("div");
+        track.className = "track";
+        track.style.background = PANEL;
+
+        const bar = document.createElement("div");
+        bar.className = "bar";
+        bar.style.background = `linear-gradient(90deg, ${d.color}cc, ${d.color})`;
+        bar.style.boxShadow = isHi
+          ? `0 0 0 2px ${d.color}55, 0 16px 44px -8px ${d.color}aa`
+          : `0 10px 30px -12px rgba(0,0,0,0.7)`;
+
+        const flash = document.createElement("div");
+        flash.className = "barFlash";
+
+        const val = document.createElement("div");
+        val.className = "val";
+        val.style.color = isHi ? INK : MUTED;
+        val.style.fontSize = VAL_FS + "px";
+
+        const crown = document.createElement("div");
+        crown.className = "crown";
+        crown.innerHTML = `<svg width="84" height="64" viewBox="0 0 84 64" fill="${d.color}"
+            stroke="${INK}" stroke-width="2.5" stroke-linejoin="round">
+            <path d="M8 56 L8 22 L24 36 L42 8 L60 36 L76 22 L76 56 Z"/>
+            <circle cx="8"  cy="16" r="6"/><circle cx="42" cy="4" r="6"/><circle cx="76" cy="16" r="6"/>
+          </svg>`;
+
+        bar.appendChild(flash);
+        barWrap.appendChild(track);
+        barWrap.appendChild(bar);
+        barWrap.appendChild(val);
+        barWrap.appendChild(crown);
+        row.appendChild(label);
+        row.appendChild(barWrap);
+        rowsEl.appendChild(row);
+
+        return { d, isHi, row, label, bar, flash, val, crown };
+      });
+
+      /* stamp styling (anchored to highlight color, or ink) */
+      const STAMP_COLOR = hiIdx >= 0 ? DATA[hiIdx].color : INK;
+      stampEl.textContent = STAMPTXT;
+      stampEl.style.color = STAMP_COLOR;
+      stampEl.style.background = BG;
+
+      /* ── time-axis ticks (one per era; built now) ────────────────────── */
+      eraLabels.forEach((lab, i) => {
+        const frac = ERAS > 1 ? i / (ERAS - 1) : 0;
+        const tk = document.createElement("div"); tk.className = "tick";
+        tk.style.left = (frac * 100) + "%"; tk.style.background = hex6(MUTED) + "66";
+        axis.appendChild(tk);
+        const tlbl = document.createElement("div"); tlbl.className = "tickLbl";
+        tlbl.style.left = (frac * 100) + "%"; tlbl.style.color = MUTED;
+        tlbl.textContent = lab; axis.appendChild(tlbl);
+      });
+      axisFill.style.background = STAMP_COLOR;
+      puck.innerHTML = `<div style="position:absolute;left:-7px;top:-7px;width:14px;height:14px;
+        border-radius:50%;background:${STAMP_COLOR};box-shadow:0 0 18px ${STAMP_COLOR}"></div>`;
+
+      /* ── easing ──────────────────────────────────────────────────────── */
+      const clamp01 = t => Math.max(0, Math.min(1, t));
+      const smoother = t => { t = clamp01(t); return t*t*t*(t*(t*6-15)+10); };
+      const outCubic = t => 1 - Math.pow(1 - clamp01(t), 3);
+
+      /* ── timing (seconds) ────────────────────────────────────────────── */
+      /* FIXED total window — must equal <div id="root" data-duration="…">.
+         The race is FITTED to this window by deriving the per-era transition
+         time from the era count, so EVERY phase (final-era resolution, SOTA
+         slam, crown drop, loop-friendly hold) always lands inside data-duration
+         for ANY era count — never truncated, never landing on the boundary.   */
+      const DUR        = 8.0;                        // === data-duration
+      const INTRO      = 0.60;                       // cold-open / bar grow-in
+      const HOLD       = 1.05;                       // crown drop + idle-pulse tail
+      const RACE0      = INTRO;
+      const RACE_END   = DUR - HOLD;                 // 6.95 — race always ends here
+      const RACE_T     = (RACE_END - RACE0) / (ERAS - 1);  // fitted per-era time
+      const SOTA_AT    = RACE_END - 0.30;            // 6.65 — stamp slams as race resolves
+      const CROWN_AT   = RACE_END + 0.15;            // 7.10 — crown drops (0.4s tween → 7.50)
+                                                     // → ≥0.5s loop hold before DUR
+
+      /* value of row i at time t — interpolate between era keyframes ───── */
+      function valueAt(i, t) {
+        const d = DATA[i];
+        if (t <= RACE0) return d.vals[0];
+        if (t >= RACE_END) return d.vals[ERAS - 1];
+        const localT = (t - RACE0) / RACE_T;
+        const seg = Math.min(ERAS - 2, Math.floor(localT));
+        const k = smoother(localT - seg);
+        return d.vals[seg] + (d.vals[seg + 1] - d.vals[seg]) * k;
+      }
+      /* fractional era position for the era-label cross-fade + axis puck ─ */
+      function eraPos(t) {
+        if (t <= RACE0) return 0;
+        if (t >= RACE_END) return ERAS - 1;
+        return Math.min(ERAS - 1, (t - RACE0) / RACE_T);
+      }
+
+      /* ── lazy geometry: longest name → label gutter (never clips) ────── */
+      let measured = false;
+      function measureLabels() {
+        let maxW = 0;
+        rowObjs.forEach(o => { const w = o.label.scrollWidth; if (w > maxW) maxW = w; });
+        LABEL_W = Math.max(220, Math.min(560, maxW + 30 + 24));   // pad-right(30) + breathing(24)
+        rowObjs.forEach(o => { o.label.style.width = LABEL_W + "px"; });
+      }
+
+      const p = { t: 0 };
+
+      function render(t) {
+        if (!measured) {
+          measureLabels();
+          if (document.fonts && document.fonts.status === "loaded") measured = true;
+        }
+        const BAR_AREA = STAGE_W - LABEL_W;
+
+        // 1. value + rank for every row at this instant
+        const cur = rowObjs.map((o, i) => ({ i, v: valueAt(i, t) }));
+        const order = cur.slice().sort((a, b) =>
+          (b.v - a.v) || (DATA[b.i].vals[0] - DATA[a.i].vals[0]) || (a.i - b.i));
+        const rankOf = new Array(N);
+        order.forEach((o, r) => { rankOf[o.i] = r; });
+
+        // 2. place + size every row
+        const introK = outCubic(t / INTRO);
+        rowObjs.forEach((o, i) => {
+          const rank = rankOf[i];
+          const v = cur[i].v;
+          const visible = rank < TOPN;
+          const yRank = Math.min(rank, TOPN) * PITCH;
+          o.row.style.transform = `translateY(${yRank.toFixed(2)}px)`;
+          o.row.style.opacity = visible ? 1 : Math.max(0, 1 - (rank - TOPN + 1) * 0.9);
+          o.row.style.zIndex = (o.isHi ? 50 : 0) + (N - rank);
+
+          const wFull = (v / VMAX) * BAR_AREA;
+          const w = (t < INTRO ? wFull * introK : wFull);
+          o.bar.style.width = Math.max(14, w).toFixed(2) + "px";
+
+          // value label at the bar tip; tuck inside if it would overflow the area
+          const txt = Math.floor(v + 1e-6).toLocaleString("en-US") + SUFFIX;
+          o.val.textContent = txt;
+          const tipPad = 16;
+          const approxTextW = txt.length * (VAL_FS * 0.62) + 8;
+          let valLeft = w + tipPad;
+          if (valLeft + approxTextW > BAR_AREA) {
+            valLeft = Math.max(tipPad, w - approxTextW - tipPad);
+            o.val.style.color = "#ffffff";
+          } else {
+            o.val.style.color = o.isHi ? INK : MUTED;
+          }
+          o.val.style.left = valLeft.toFixed(2) + "px";
+        });
+
+        // 3. era label cross-fade (the two adjacent eras blend through the race)
+        const ep = eraPos(t);
+        const lo = Math.floor(ep), frac = ep - lo;
+        eraEls.forEach((el, i) => {
+          let op = 0, dy = 0;
+          if (i === lo)        { op = 1 - frac; dy = -frac * 26; }
+          else if (i === lo+1) { op = frac;     dy = (1 - frac) * 26; }
+          el.style.opacity = op.toFixed(3);
+          el.style.transform = `translateY(${dy.toFixed(2)}px)`;
+        });
+
+        // 4. axis fill + puck sweep
+        const sweep = ERAS > 1 ? ep / (ERAS - 1) : 0;
+        axisFill.style.width = (sweep * 100) + "%";
+        puck.style.left = (sweep * 100) + "%";
+
+        // 5. idle pulse on the highlight bar during the hold (finite cosine of t)
+        if (hiIdx >= 0 && t > CROWN_AT) {
+          const ph = t - CROWN_AT;
+          rowObjs[hiIdx].bar.style.transform =
+            `scaleY(${(1 + 0.025 * Math.cos(ph * Math.PI * 2 / 0.9)).toFixed(4)})`;
+        } else if (hiIdx >= 0) {
+          rowObjs[hiIdx].bar.style.transform = "scaleY(1)";
+        }
+      }
+
+      /* ── paused master timeline; HyperFrames seeks it ───────────────── */
+      const tl = gsap.timeline({ paused: true });
+
+      // continuous race driven by the proxy
+      tl.to(p, { t: DUR, duration: DUR, ease: "none",
+                 onUpdate: () => render(p.t) }, 0);
+
+      // intro: eyebrow + axis ease in (layered on top, finite)
+      gsap.set([eyebrowEl, axis], { opacity: 0, y: 16 });
+      tl.to(eyebrowEl, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 0.05);
+      tl.to(axis,      { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 0.18);
+
+      // SOTA stamp slams in as the race resolves
+      gsap.set(stampEl, { xPercent: -50, yPercent: -50, scale: 0.2, rotation: -10, opacity: 0,
+                          left: "50%", top: "28%" });
+      if (STAMPTXT) {
+        tl.to(stampEl, { scale: 1, rotation: -6, opacity: 1, duration: 0.42,
+                         ease: "back.out(2.2)" }, SOTA_AT);
+        if (hiIdx >= 0) {
+          tl.fromTo(rowObjs[hiIdx].flash, { opacity: 0 },
+                    { opacity: 0.6, duration: 0.12, ease: "power2.out", immediateRender: false }, SOTA_AT);
+          tl.to(rowObjs[hiIdx].flash, { opacity: 0, duration: 0.5, ease: "power2.in" }, SOTA_AT + 0.12);
+        }
+      }
+
+      // crown drop onto the final leader (whoever leads in the last era)
+      let winnerIdx = 0, wBest = -Infinity;
+      DATA.forEach((d, i) => { if (d.vals[ERAS - 1] > wBest) { wBest = d.vals[ERAS - 1]; winnerIdx = i; } });
+      if (CROWN_ON) {
+        const wc = rowObjs[winnerIdx].crown;
+        const finalW = (DATA[winnerIdx].vals[ERAS - 1] / VMAX) * (STAGE_W - LABEL_W);
+        wc.style.left = Math.max(0, finalW - 96) + "px";
+        wc.style.top  = "-46px";
+        gsap.set(wc, { opacity: 0, y: -40, scale: 0.6 });
+        tl.to(wc, { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: "back.out(2.0)" }, CROWN_AT);
+      }
+
+      // pad the hold to data-duration (DUR === data-duration; race is fitted to fit)
+      tl.set({}, {}, DUR);
+
+      render(0);   // frame 0 is a valid era-1 chart immediately
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      window.__timeline = tl;
+    </script>
+  </body>
+</html>
