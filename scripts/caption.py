@@ -72,11 +72,43 @@ KARAOKE_PRESETS = {
 def repo_root():
     return os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-def get_words(media, lang, aligner="auto", content="music"):
-    """Return [{text,start,end}] using whisperX if possible, else small.pt."""
+def _mms_words(media, lang, content, model, root, venv, tmp):
+    """Universal path: WORDS from small.pt, TIMING from MMS_FA forced alignment.
+    Covers ANY language incl. pa/ur (which whisperX cannot reliably align)."""
+    cmd = ["python3", os.path.join(root, "scripts/transcribe.py"), media, "--model", model, "--out", tmp]
+    if lang:
+        cmd += ["--lang", lang]
+    subprocess.run(cmd, check=True)
+    words = json.load(open(tmp))
+    texts = [w["text"] for w in words if w.get("text", "").strip()]
+    if not texts:
+        return []
+    wj = os.path.join("work", "_mms_in.json")
+    json.dump(texts, open(wj, "w"), ensure_ascii=False)
+    cmd2 = [venv, os.path.join(root, "scripts/mms_align.py"), media, wj, "--lang", lang or "auto"]
+    if content != "music":
+        cmd2.append("--no-refine")
+    r = subprocess.run(cmd2, capture_output=True, text=True)
+    if r.returncode != 0 or not r.stdout.strip():
+        sys.stderr.write("[caption] MMS_FA failed, using small.pt timing\n" + r.stderr[-400:] + "\n")
+        return words
+    timed = json.loads(r.stdout.strip().splitlines()[-1])
+    return [{"text": t["text"], "start": t["start"], "end": t["end"]}
+            for t in timed if t.get("start") is not None]
+
+
+def get_words(media, lang, aligner="auto", content="music", model="small"):
+    """Return [{text,start,end}] using whisperX if possible, else small.pt (model configurable).
+    aligner='mms' (or auto for pa/ur) -> universal MMS_FA forced alignment."""
     root = repo_root(); tmp = "work/_caption_words.json"
     os.makedirs("work", exist_ok=True)
     venv = os.path.join(root, ".venv-whisperx/bin/python")
+    # pa/ur have no reliable whisperX aligner -> route to universal MMS_FA forced alignment
+    if aligner == "auto" and lang in ("pa", "ur"):
+        aligner = "mms"
+    if aligner == "mms":
+        sys.stderr.write(f"[caption] universal MMS_FA forced alignment ({lang})...\n")
+        return _mms_words(media, lang, content, model, root, venv, tmp)
     # CONTENT RULE (proven by testing): speech/talking -> whisperX (far better),
     #                                     music/singing  -> small.pt (perceived timing).
     if aligner=="auto":
@@ -92,7 +124,7 @@ def get_words(media, lang, aligner="auto", content="music"):
             return json.load(open(tmp))
         sys.stderr.write("[caption] whisperX failed, falling back to small.pt\n"+r.stderr[-400:]+"\n")
     sys.stderr.write(f"[caption] transcribing with small.pt ({lang})...\n")
-    cmd = ["python3", os.path.join(root,"scripts/transcribe.py"), media, "--model","small","--out",tmp]
+    cmd = ["python3", os.path.join(root,"scripts/transcribe.py"), media, "--model",model,"--out",tmp]
     if lang: cmd += ["--lang", lang]
     subprocess.run(cmd, check=True)
     return json.load(open(tmp))
@@ -339,11 +371,13 @@ def main():
     ap.add_argument("--content", choices=["music","speech"], default="music",
                     help="music/singing -> small.pt (perceived timing); speech/talking -> whisperX (forced align). "
                          "PROVEN: whisperX is far better for speech, small.pt perfect for music.")
-    ap.add_argument("--aligner", choices=["auto","whisperx","small"], default="auto",
-                    help="auto = pick from --content (recommended); or force whisperx/small")
+    ap.add_argument("--aligner", choices=["auto","whisperx","small","mms"], default="auto",
+                    help="auto = pick from --content (pa/ur->mms); whisperx/small; or mms = universal MMS_FA")
     ap.add_argument("--out", default=".")
+    ap.add_argument("--model", default="small",
+                    help="ASR model for the small.pt path (small | large-v3). Default small.")
     a=ap.parse_args()
-    words=get_words(a.input, a.lang, a.aligner, a.content)
+    words=get_words(a.input, a.lang, a.aligner, a.content, a.model)
     ev=build_events(words, a.style, a.maxchars, a.maxwords)
     emit(ev, a)
 

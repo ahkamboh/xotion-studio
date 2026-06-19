@@ -1,0 +1,147 @@
+#!/usr/bin/env python3
+"""
+cs_transcribe.py — code-switch-robust transcription (ordered WORDS only; TIMING is MMS's job).
+
+Pipeline:
+  1. Silero VAD -> short utterances (1-8s) so language is decided per-utterance.
+  2. Per-segment language ID via faster-whisper auto-detect (fixes Whisper's
+     one-language-per-30s-window slip on mixed Hinglish/Punjabi-English audio).
+  3. Transcribe each segment in ITS detected language, large-v3, temperature=0.0,
+     condition_on_previous_text=False (deterministic, no cross-segment bleed).
+  4. Optional --dual A B : decode each segment in both languages, keep the higher
+     avg-logprob result (best for known bilingual content).
+  5. Optional --initial-prompt to bias name/slang/brand retention (both languages).
+
+Returns ordered words: [{"w","start","end","lang","score"}] in time order.
+These words feed mms_align.force_align(refine=False) for final timing — text errors
+never cause drift because uroman+MMS time the waveform, not the spelling.
+
+Run: .venv-whisperx/bin/python scripts/cs_transcribe.py <audio> [--model large-v3] [--dual hi en] [--initial-prompt "..."]
+"""
+import sys, json, argparse
+
+SR = 16000
+_MODEL = None
+_MODEL_NAME = None
+
+
+def _load_model(name):
+    global _MODEL, _MODEL_NAME
+    if _MODEL is None or _MODEL_NAME != name:
+        from faster_whisper import WhisperModel
+        sys.stderr.write(f"[cs] loading faster-whisper {name} (cpu/int8)...\n")
+        _MODEL = WhisperModel(name, device="cpu", compute_type="int8")
+        _MODEL_NAME = name
+    return _MODEL
+
+
+def _load_audio(path):
+    from faster_whisper.audio import decode_audio
+    return decode_audio(path, sampling_rate=SR)          # float32 mono @16k
+
+
+def vad_windows(wav, min_s=1.0, max_s=8.0):
+    """Silero VAD -> merged 1-8s speech windows (seconds)."""
+    import torch
+    from silero_vad import load_silero_vad, get_speech_timestamps
+    vad = load_silero_vad()
+    t = torch.from_numpy(wav) if not hasattr(wav, "dim") else wav
+    ts = get_speech_timestamps(t, vad, sampling_rate=SR, return_seconds=True,
+                               min_silence_duration_ms=200, speech_pad_ms=120)
+    import math
+    merged, cur = [], None
+    for seg in ts:
+        s, e = float(seg["start"]), float(seg["end"])
+        if cur is None:
+            cur = [s, e]
+        elif e - cur[0] <= max_s:
+            cur[1] = e
+        else:
+            merged.append(cur); cur = [s, e]
+    if cur:
+        merged.append(cur)
+    # SPLIT any window longer than max_s into equal chunks — a single continuous VAD
+    # segment that code-switches internally (no pause, e.g. a verse flowing into an
+    # English bridge) must be chunked so each chunk gets its OWN per-segment langID.
+    out = []
+    for s, e in merged:
+        dur = e - s
+        if dur <= max_s:
+            out.append((s, max(e, s + min_s)))
+        else:
+            n = math.ceil(dur / max_s)
+            step = dur / n
+            for k in range(n):
+                out.append((round(s + k * step, 3), round(s + (k + 1) * step, 3)))
+    return out
+
+
+def _decode(model, audio_slice, lang, initial_prompt):
+    segs, info = model.transcribe(
+        audio_slice, language=lang, temperature=0.0,
+        condition_on_previous_text=False, word_timestamps=True,
+        beam_size=5, initial_prompt=initial_prompt, vad_filter=False)
+    segs = list(segs)
+    words, logps = [], []
+    for s in segs:
+        logps.append(getattr(s, "avg_logprob", -5.0))
+        for w in (s.words or []):
+            words.append({"w": w.word.strip(), "start": float(w.start),
+                          "end": float(w.end), "score": float(getattr(w, "probability", 0.0))})
+    avg = sum(logps) / len(logps) if logps else -10.0
+    detected = getattr(info, "language", lang)
+    return words, avg, detected
+
+
+def transcribe(audio_path, model_name="large-v3", dual=None, initial_prompt=None):
+    model = _load_model(model_name)
+    wav = _load_audio(audio_path)
+    windows = vad_windows(wav)
+    all_words, seg_report = [], []
+    for (s, e) in windows:
+        a, b = int(s * SR), int(e * SR)
+        chunk = wav[a:b]
+        if dual:
+            best = None
+            for lc in dual:
+                w, avg, det = _decode(model, chunk, lc, initial_prompt)
+                if best is None or avg > best[1]:
+                    best = (w, avg, lc)
+            words, _, lang = best
+        else:
+            words, _, lang = _decode(model, chunk, None, initial_prompt)  # auto-detect
+        for w in words:
+            w["start"] = round(w["start"] + s, 3)
+            w["end"] = round(w["end"] + s, 3)
+            w["lang"] = lang
+        all_words.extend(words)
+        seg_report.append({"start": round(s, 2), "end": round(e, 2), "lang": lang, "words": len(words)})
+    all_words.sort(key=lambda w: w["start"])
+    return _dedup(all_words), seg_report
+
+
+def _dedup(words, max_run=2):
+    """Drop runs of the same repeated token — Whisper loops on instrumental/outro tails."""
+    out, run_w, run_n = [], None, 0
+    for w in words:
+        t = w["w"].strip().lower()
+        if t == run_w:
+            run_n += 1
+        else:
+            run_w, run_n = t, 1
+        if run_n <= max_run:
+            out.append(w)
+    return out
+
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("audio")
+    ap.add_argument("--model", default="large-v3")
+    ap.add_argument("--dual", nargs=2, default=None, metavar=("LANG_A", "LANG_B"))
+    ap.add_argument("--initial-prompt", default=None)
+    a = ap.parse_args()
+    words, report = transcribe(a.audio, a.model, a.dual, a.initial_prompt)
+    sys.stderr.write(f"[cs] {len(words)} words across {len(report)} segments; "
+                     f"langs={sorted(set(r['lang'] for r in report))}\n")
+    print(json.dumps({"words": words, "segments": report}, ensure_ascii=False))

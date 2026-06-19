@@ -1,0 +1,179 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://xotion.studio/schemas/timeline.v1.json",
+  "title": "Xotion Timeline v1",
+  "type": "object",
+  "required": ["version", "id", "width", "height", "fps", "duration", "tracks", "assets"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1, "description": "Schema version. Bump on breaking changes." },
+    "id": { "type": "string", "description": "Composition id. Compiled to data-composition-id on the root div. MUST be 'main' to match the repo convention (window.__timelines['main'], data-composition-id='main')." },
+    "width": { "type": "integer", "enum": [1920, 1080, 1280], "description": "Composition width px -> data-width. 1920(16:9), 1080(9:16), 1280(720p). Other ints allowed but these are the verified template sizes." },
+    "height": { "type": "integer", "description": "Composition height px -> data-height. e.g. 1080, 1920, 720." },
+    "fps": { "type": "integer", "enum": [24, 25, 30, 50, 60], "default": 30, "description": "Frames per second. Passed to render as --fps. Does NOT appear in HTML; stored so preview/export agree." },
+    "duration": { "type": "number", "exclusiveMinimum": 0, "description": "Total timeline length in seconds -> root data-duration. The compiler derives this as max(clip.start+clip.length) if clips exceed it, but the stored value is authoritative for the root attribute." },
+    "background": { "type": "string", "default": "#000", "description": "Root background CSS color." },
+    "_idSeq": { "type": "integer", "minimum": 0, "description": "Persisted seeded clip-id counter. Internal: makes clip ids deterministic AND stable across builds (the open-question resolution). Never authored by hand." },
+    "fonts": {
+      "type": "array",
+      "description": "Local @font-face declarations the compiler emits in <style>. Google Fonts are forbidden (determinism). Paths are RELATIVE to the compiled index.html dir.",
+      "items": {
+        "type": "object",
+        "required": ["family", "src"],
+        "additionalProperties": false,
+        "properties": {
+          "family": { "type": "string", "description": "CSS font-family name." },
+          "src": { "type": "string", "description": "Relative path to a .ttf, e.g. 'assets/fonts/poppins-700.ttf'. Compiler copies/symlinks the file into the compiled dir." },
+          "weight": { "type": "string", "default": "400" }
+        }
+      }
+    },
+    "assets": {
+      "type": "object",
+      "description": "Asset registry keyed by assetId. Clips reference assets by id (source). Decouples 'which file' from 'how it is placed', so relink is one edit. Paths are project-relative or absolute on disk; the compiler resolves them to paths relative to the compiled index.html.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["kind", "path"],
+        "additionalProperties": false,
+        "properties": {
+          "kind": { "type": "string", "enum": ["image", "video", "audio"], "description": "Asset media kind. (Text clips carry no asset.)" },
+          "path": { "type": "string", "description": "Path to the media file on disk (project-relative or absolute)." },
+          "license": { "type": "string", "description": "Optional path to the <file>.license.json (license-auditor gate). Carried through, not validated by the compiler." },
+          "naturalDuration": { "type": "number", "description": "Source media duration in seconds (from ffprobe), used to clamp trims. Optional." }
+        }
+      }
+    },
+    "tracks": {
+      "type": "array",
+      "description": "Ordered tracks, index 0 = bottom layer. Track order maps DIRECTLY to data-track-index (z-order) on emitted clips: track[0] -> data-track-index=0, etc. Audio-only tracks render <audio> elements (no z-order paint, but index still assigned).",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "clips"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "description": "Stable track id (e.g. 'video', 'overlay', 'audio')." },
+          "kind": { "type": "string", "enum": ["visual", "audio"], "description": "visual = image/video/text clips paint to DOM; audio = audio clips only." },
+          "clips": {
+            "type": "array",
+            "description": "Clips on this track. v1 does NOT enforce non-overlap on visual tracks (overlap = cross-fade authored via keyframes); the compiler emits them in array order so later clips paint on top within the same track.",
+            "items": { "$ref": "#/definitions/clip" }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "clip": {
+      "type": "object",
+      "required": ["id", "type", "start", "length"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "description": "Globally-unique, stable clip id (e.g. 'clip_a1b2c3'). Every mutate tool addresses a clip by this id. Generated as 'clip_' + 6 hex chars from a SEEDED counter (NO Math.random/Date.now -> determinism)." },
+        "type": { "type": "string", "enum": ["image", "video", "text", "audio"], "description": "Clip type. Determines the emitted element: image->div with background-image OR img, video-><video class=clip muted playsinline>, text-><div class=clip>, audio-><audio>." },
+        "source": { "type": "string", "description": "assetId into the top-level assets map. REQUIRED for image/video/audio; ABSENT for text. This is the single relink point." },
+        "start": { "type": "number", "minimum": 0, "description": "Timeline start time in seconds -> data-start. Rounded to 3 decimals (matches scene/align precision, avoids GSAP seek jitter)." },
+        "length": { "type": "number", "exclusiveMinimum": 0, "description": "On-timeline duration in seconds -> data-duration." },
+        "trim": {
+          "type": "object",
+          "description": "Source media trim. Only for video/audio. trim.in -> data-media-start (playback offset). length is the played window; (trim.in+length) must be <= asset.naturalDuration.",
+          "additionalProperties": false,
+          "properties": {
+            "in": { "type": "number", "minimum": 0, "default": 0, "description": "Seconds into the source where playback begins -> data-media-start." }
+          }
+        },
+        "text": { "type": "string", "description": "REQUIRED for type=text. The text content (HTML-escaped by the compiler before injection at BUILD time, never inside tl.call())." },
+        "position": {
+          "type": "object",
+          "description": "Layout box in composition px (absolute positioning). Defaults to full-frame inset:0 for image/video, centered auto-box for text.",
+          "additionalProperties": false,
+          "properties": {
+            "x": { "type": "number", "description": "Left in px from composition origin." },
+            "y": { "type": "number", "description": "Top in px." },
+            "w": { "type": "number", "description": "Width px. Omit for full-frame media (uses inset:0)." },
+            "h": { "type": "number", "description": "Height px. Omit for full-frame media." },
+            "anchor": { "type": "string", "enum": ["topleft", "center"], "default": "topleft", "description": "How x/y are interpreted. center -> translate(-50%,-50%)." }
+          }
+        },
+        "style": {
+          "type": "object",
+          "description": "Static CSS for the element, emitted at BUILD time (not animated). Whitelisted keys only; compiler renders them into an inline style string.",
+          "additionalProperties": false,
+          "properties": {
+            "fontFamily": { "type": "string" },
+            "fontSize": { "type": "number", "description": "px" },
+            "fontWeight": { "type": "string" },
+            "color": { "type": "string" },
+            "background": { "type": "string" },
+            "textAlign": { "type": "string", "enum": ["left", "center", "right"] },
+            "lineHeight": { "type": "number" },
+            "letterSpacing": { "type": "string" },
+            "padding": { "type": "string" },
+            "objectFit": { "type": "string", "enum": ["cover", "contain"], "description": "For image/video." },
+            "borderRadius": { "type": "number", "description": "px" },
+            "zIndexBoost": { "type": "integer", "description": "Added on top of the track-derived z-index for in-track ordering." }
+          }
+        },
+        "transform": {
+          "type": "object",
+          "description": "Base (t=0 of the clip) transform/opacity. These are the GSAP-supported props (opacity,x,y,scale,scaleX,scaleY,rotation). The compiler emits a gsap.set(...) at the clip's start, then applies keyframes relative to this base.",
+          "additionalProperties": false,
+          "properties": {
+            "opacity": { "type": "number", "minimum": 0, "maximum": 1, "default": 1 },
+            "x": { "type": "number", "default": 0, "description": "px translate" },
+            "y": { "type": "number", "default": 0 },
+            "scale": { "type": "number", "default": 1 },
+            "rotation": { "type": "number", "default": 0, "description": "degrees" }
+          }
+        },
+        "keyframes": {
+          "type": "array",
+          "description": "Ordered animation steps for THIS clip only. Each becomes a gsap.to() at an ABSOLUTE timeline time = clip.start + at. Only GSAP-supported props allowed (opacity,x,y,scale,scaleX,scaleY,rotation,width,height). v1 emits gsap.set at clip.start (base) then one gsap.to per keyframe -> deterministic, paused, finite.",
+          "items": {
+            "type": "object",
+            "required": ["at", "props"],
+            "additionalProperties": false,
+            "properties": {
+              "at": { "type": "number", "minimum": 0, "description": "Seconds RELATIVE to clip.start when this keyframe is reached." },
+              "dur": { "type": "number", "exclusiveMinimum": 0, "default": 0.5, "description": "Tween duration in seconds (the gsap.to duration). Finite only." },
+              "ease": { "type": "string", "default": "power2.out", "description": "GSAP ease string." },
+              "props": {
+                "type": "object",
+                "description": "Target values for this step. Keys limited to GSAP-supported animatable props.",
+                "additionalProperties": false,
+                "properties": {
+                  "opacity": { "type": "number" },
+                  "x": { "type": "number" },
+                  "y": { "type": "number" },
+                  "scale": { "type": "number" },
+                  "scaleX": { "type": "number" },
+                  "scaleY": { "type": "number" },
+                  "rotation": { "type": "number" },
+                  "width": { "type": "number" },
+                  "height": { "type": "number" }
+                }
+              }
+            }
+          }
+        },
+        "audio": {
+          "type": "object",
+          "description": "Audio params for type=video (its split <audio>) and type=audio.",
+          "additionalProperties": false,
+          "properties": {
+            "volume": { "type": "number", "minimum": 0, "maximum": 1, "default": 1, "description": "-> data-volume" },
+            "mute": { "type": "boolean", "default": false, "description": "If true on a video clip, no <audio> companion is emitted." }
+          }
+        },
+        "meta": {
+          "type": "object",
+          "description": "Free-form provenance carried through compile untouched (e.g. transcript section id, b-roll note, scene peak). Used by transcript/scene tooling; never read by the compiler.",
+          "additionalProperties": true
+        }
+      },
+      "allOf": [
+        { "if": { "properties": { "type": { "const": "text" } } }, "then": { "required": ["text"] } },
+        { "if": { "properties": { "type": { "enum": ["image", "video", "audio"] } } }, "then": { "required": ["source"] } }
+      ]
+    }
+  }
+}

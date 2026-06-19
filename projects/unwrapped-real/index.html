@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GitHub Unwrapped — ahkamboh (Xotion · real assets · frame-faithful motion)</title>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+@font-face{font-family:'MonaSans';src:url('assets/fonts/Mona-Sans.woff2') format('woff2');font-weight:200 900;font-stretch:75% 125%;font-display:block}
+@font-face{font-family:'SevenSeg';src:url('assets/fonts/SevenSegment.ttf');font-display:block}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1080px;overflow:hidden;background:#000}
+#root{position:relative;width:1080px;height:1080px;overflow:hidden;font-family:'MonaSans',sans-serif}
+.fill{position:absolute;inset:0;width:1080px;height:1080px}
+img{display:block;user-select:none;-webkit-user-drag:none}
+#bgSpace{background:linear-gradient(180deg,#060842 0%,#2a2766 45%,#396A91 100%);z-index:0}
+#bgGreen{background:linear-gradient(180deg,#051F0F 0%,#1A4F2E 50%,#39B77F 100%);z-index:0;opacity:0}
+#bgDark{background:radial-gradient(120% 90% at 50% 30%,#10112b 0%,#080817 60%,#000 100%);z-index:0;opacity:0}
+#stars{z-index:1;pointer-events:none}
+#stars .st{position:absolute;background:#cfe0ff;border-radius:50%}
+.scene{z-index:5;opacity:0}
+.pane{background:rgba(230,225,252,.86);border:2px solid rgba(255,255,255,.35);border-radius:46px;box-shadow:0 30px 80px rgba(2,4,40,.45)}
+.flame{position:absolute;left:50%;top:100%;transform:translate(-50%,-30px);width:300px;height:300px;pointer-events:none}
+.flame img{position:absolute;left:50%;top:0;width:300px;transform:translateX(-50%) rotate(-90deg);transform-origin:center top;display:none}
+/* Scene 1 */
+#s1cam{position:absolute;inset:0;transform-origin:center center}
+#sceneryM{position:absolute;left:0;bottom:120px;width:1080px}
+#sceneryF{position:absolute;left:-540px;bottom:-40px;width:2160px;transform-origin:bottom center}
+#rocketOpen{position:absolute;left:50%;top:300px;width:250px;transform:translateX(-50%)}
+#rocketOpen .rk{width:250px}
+#openWrap{position:absolute;inset:0;perspective:1100px;z-index:6}
+#openPane{position:absolute;left:90px;top:600px;width:900px;height:210px;display:flex;align-items:center;gap:34px;padding:0 40px;transform-style:preserve-3d}
+#avFlip{perspective:1000px}
+#openPane img.av{width:150px;height:150px;border-radius:28px;border:2px solid rgba(255,255,255,.25);object-fit:cover;backface-visibility:hidden}
+.op-l1{font:600 38px MonaSans;color:#01064A;opacity:.92}.op-l1 b{font-weight:850}
+.op-l2{font:850 86px/0.95 MonaSans;background:linear-gradient(270deg,#000 8%,#01064A 60%);-webkit-background-clip:text;background-clip:text;color:transparent;margin-top:4px}
+/* Scene 2 */
+.langCard{position:absolute;inset:0;opacity:0}
+.lc-planet{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);width:460px}
+.lc-glow{position:absolute;left:50%;top:42%;width:620px;height:620px;transform:translate(-50%,-50%);border-radius:50%;filter:blur(14px);z-index:-1}
+.lc-pill{position:absolute;left:50%;bottom:150px;display:flex;align-items:center;gap:24px;background:#191c29;border-radius:90px;padding:22px 46px 22px 24px;box-shadow:0 20px 60px rgba(0,0,0,.5);transform:translateX(-50%)}
+.lc-rank{width:78px;height:78px;border-radius:20px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font:800 46px MonaSans;color:#fff}
+.lc-name{font:800 60px MonaSans;color:#fff}.lc-pct{font:800 50px MonaSans;color:#fff;margin-left:8px;font-variant-numeric:tabular-nums}
+#langRocket{position:absolute;left:0;top:0;width:120px;opacity:0;z-index:7}
+/* Scene 3 */
+#issUfo{position:absolute;left:50%;top:300px;width:300px;transform:translateX(-50%)}
+.iss-panel{position:absolute;bottom:120px;width:380px;height:200px;border-radius:34px;background:rgba(176,224,186,.16);border:2px solid rgba(255,255,255,.36);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+#issLeft{left:80px}#issRight{right:80px}
+.iss-lab{font:700 30px MonaSans;color:#eafff0;opacity:.85}
+.seven{font-family:'SevenSeg';color:#fff;text-shadow:0 0 16px rgba(180,255,210,.7)}
+/* Scene 4 cockpit */
+#cockShines{position:absolute;inset:0;z-index:4}
+#cockShines img{position:absolute;left:50%;top:50%;width:30px;opacity:0}
+#cockStars{position:absolute;inset:0;z-index:4}
+#cockStars .fstar{position:absolute;left:50%;top:50%;font-size:40px;color:#9FB8DE;opacity:0;text-shadow:0 0 18px rgba(150,180,240,.9)}
+#cockWrap{position:absolute;inset:0;z-index:5}
+#cockpitImg{position:absolute;inset:0;width:1080px;height:1080px;z-index:6}
+#starsLabel{position:absolute;left:0;right:0;top:90px;text-align:center;font:800 40px MonaSans;letter-spacing:8px;color:#cfe0ff;opacity:0;text-shadow:0 0 18px rgba(120,170,255,.6);z-index:7}
+.cock-screen{position:absolute;bottom:140px;width:300px;height:225px;z-index:7;display:flex;align-items:center;justify-content:center}
+#cockLeft{left:96px}#cockRight{right:96px}
+#cockLeft .scr{position:absolute;inset:0;border-radius:24px;background:#0A111B;border:2px solid rgba(120,150,210,.4);box-shadow:inset 0 0 40px rgba(0,40,90,.6)}
+#starCount{position:relative;font-family:'SevenSeg';font-size:150px;color:#eaf2ff;text-shadow:0 0 24px rgba(120,170,255,.85)}
+#cockRight img{width:230px}
+#hud{position:absolute;left:50%;top:300px;width:560px;height:120px;border-radius:18px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.22);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:7;opacity:0;transform:translateX(-50%)}
+#hudAuthor{font:600 26px MonaSans;color:#9fb8de;letter-spacing:2px;opacity:.85}
+#hudName{font:800 40px MonaSans;color:#fff;margin-top:6px;max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Scene 5 productivity */
+#tablet{position:absolute;inset:0;z-index:5;transform-origin:left bottom}
+#hands{position:absolute;left:50%;bottom:-120px;width:1000px;opacity:.9;transform:translateX(-50%)}
+.prod-pane{position:absolute;left:70px;width:940px;height:185px;border-radius:42px;display:flex;align-items:center;padding:0 50px}
+#prodDay{top:140px}#prodTime{top:350px}
+.pp-lab{font:800 40px MonaSans;color:#01064A;flex:1}
+.wheel{width:450px;height:80px;overflow:hidden;position:relative;-webkit-mask-image:linear-gradient(180deg,transparent,#000 30%,#000 70%,transparent);mask-image:linear-gradient(180deg,transparent,#000 30%,#000 70%,transparent)}
+.wheel-col{position:absolute;right:0;top:0;text-align:right;width:100%}
+.wheel-col div{height:80px;line-height:80px;font:800 46px MonaSans;color:rgba(1,6,74,.32);white-space:nowrap}
+.wheel-col div.sel{color:#01064A}
+#barGraph{position:absolute;left:70px;right:70px;bottom:120px;height:300px;display:flex;align-items:flex-end;gap:9px;padding:0 6px}
+.bar{flex:1;background:#181B28;border:2px solid rgba(255,255,255,.12);border-radius:5px 5px 0 0;transform-origin:bottom;transform:scaleY(0)}
+.bar.peak{background:rgba(230,225,252,.95)}
+.bar-lab{position:absolute;bottom:90px;left:70px;right:70px;display:flex;gap:9px;padding:0 6px}
+.bar-lab span{flex:1;text-align:center;font:700 16px MonaSans;color:#fff;opacity:.7}
+#prodTitle{position:absolute;left:0;right:0;top:50px;text-align:center;font:800 36px MonaSans;color:#dfe2ff;opacity:0;z-index:6}
+/* Scene 6 PR */
+#prSvg{position:absolute;inset:0}
+#prBadge{position:absolute;left:390px;top:417px;width:300px;height:300px;border-radius:50%;background:#E6E1FC;border:2px solid rgba(255,255,255,.4);display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 0 0 30px rgba(255,255,255,.08),0 30px 90px rgba(0,0,0,.5);overflow:hidden;opacity:0}
+#prShine{position:absolute;inset:0;background:conic-gradient(from 0deg,transparent 0deg,rgba(255,255,255,.55) 18deg,transparent 40deg)}
+.mergeIco{margin-bottom:2px}
+#prCount{font:800 92px MonaSans;color:#01064A;font-variant-numeric:tabular-nums;line-height:1}
+#prSub{font:800 24px MonaSans;color:#01064A;text-align:center;margin-top:6px}
+#prBlack{position:absolute;inset:0;background:#000;opacity:0;z-index:9}
+/* Scene 7 contributions */
+#goldC{position:absolute;left:50%;bottom:-560px;width:1500px;opacity:0;transform:translateX(-50%)}
+#contribPane{position:absolute;left:72px;top:280px;width:936px;border-radius:40px;background:rgba(10,14,45,.5);border:2px solid rgba(255,255,255,.22);padding:34px 40px}
+.cp-head{display:flex;align-items:center;gap:30px;margin-bottom:24px}
+.cp-cell{display:flex;flex-direction:column}.cp-num{font:600 40px MonaSans;color:#fff;font-variant-numeric:tabular-nums;line-height:1}.cp-lab{font:400 19px MonaSans;color:rgba(255,255,255,.7);margin-top:4px}.cp-spacer{flex:1}
+#heat{display:flex;flex-direction:column;gap:4px}#heat .hrow{display:flex;gap:4px}.hc{width:14px;height:14px;border-radius:4px;background:#c6ccff;opacity:0}
+#contribWrap{position:absolute;inset:0;transform-origin:center center}
+#rocketSweep{position:absolute;top:300px;left:60px;width:170px;opacity:0;z-index:6;transform:rotate(90deg)}
+/* Scene 8 end */
+#goldE{position:absolute;left:50%;bottom:-470px;width:1500px;opacity:0;transform:translateX(-50%)}
+#threads{position:absolute;inset:0;z-index:2;opacity:0;overflow:hidden}
+#threads .th{position:absolute;width:30px;opacity:.7}
+#endGroup{position:absolute;inset:0;z-index:5;transform-origin:center 60%}
+#rocketEnd{position:absolute;left:50%;top:60px;width:210px;z-index:5;transform:translateX(-50%)}
+#rocketEnd .rk{width:210px}
+#endShadow{position:absolute;left:50%;top:780px;width:0;height:0;background:radial-gradient(ellipse,rgba(0,0,0,.35),transparent 70%);transform:translate(-50%,-50%)}
+#ctaWrap{position:absolute;left:0;right:0;top:0;bottom:0;z-index:8}
+#cta{position:absolute;left:140px;top:770px;height:150px;display:flex;align-items:center;gap:28px;background:#291C0B;border:2px solid rgba(255,255,255,.22);border-radius:75px 26px 26px 75px;padding:0 60px 0 24px;box-shadow:0 30px 90px rgba(0,0,0,.6);transform-origin:center center}
+#cta .octo{width:110px;height:110px}
+.cta-1{font:600 30px MonaSans;background:linear-gradient(270deg,#AD8C52 20%,#F7E99A 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.cta-2{font:850 50px MonaSans;background:linear-gradient(270deg,#AD8C52 10%,#F7E99A 100%);-webkit-background-clip:text;background-clip:text;color:transparent;margin-top:2px}
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="55" data-width="1080" data-height="1080">
+  <div id="bgSpace" class="fill"></div>
+  <div id="bgGreen" class="fill"></div>
+  <div id="bgDark"  class="fill"></div>
+  <div id="stars"   class="fill"></div>
+
+  <!-- SCENE 1 -->
+  <div id="s1" class="scene fill">
+    <div id="s1cam">
+      <img id="sceneryM" src="assets/img/background-mountains.png">
+      <img id="sceneryF" src="assets/img/foreground.png">
+      <div id="rocketOpen"><img class="rk" src="assets/img/rocket-side-orange.png"><div class="flame" id="flameOpen"></div></div>
+    </div>
+    <div id="openWrap"><div id="openPane" class="pane">
+      <div id="avFlip"><img class="av" src="assets/avatar.png"></div>
+      <div><div class="op-l1">This is my <b>#GitHubUnwrapped</b></div><div class="op-l2">ahkamboh</div></div>
+    </div></div>
+  </div>
+
+  <!-- SCENE 2 -->
+  <div id="s2" class="scene fill">
+    <img id="langRocket" src="assets/img/rocket-side-orange.png">
+    <div class="langCard" id="lcCSS"><div class="lc-glow" style="background:radial-gradient(circle,#7a5fb0 0%,rgba(86,61,124,0) 66%)"></div><img class="lc-planet" src="assets/img/planet-silver.png" style="filter:hue-rotate(245deg) saturate(1.6)"><div class="lc-pill"><div class="lc-rank">3</div><div class="lc-name">CSS</div><div class="lc-pct"><span class="pv">0</span>%</div></div></div>
+    <div class="langCard" id="lcTS"><div class="lc-glow" style="background:radial-gradient(circle,#3178c6 0%,rgba(49,120,198,0) 66%)"></div><img class="lc-planet" src="assets/img/typescript.png" style="width:380px"><div class="lc-pill"><div class="lc-rank">2</div><div class="lc-name">TypeScript</div><div class="lc-pct"><span class="pv">0</span>%</div></div></div>
+    <div class="langCard" id="lcHTML"><div class="lc-glow" style="background:radial-gradient(circle,#e34c26 0%,rgba(227,76,38,0) 66%)"></div><img class="lc-planet" src="assets/img/planet-fire.png"><div class="lc-pill"><div class="lc-rank">1</div><div class="lc-name">HTML</div><div class="lc-pct"><span class="pv">0</span>%</div></div></div>
+  </div>
+
+  <!-- SCENE 3 -->
+  <div id="s3" class="scene fill">
+    <img id="issUfo" src="assets/img/ufo.png">
+    <div id="issLeft" class="iss-panel"><div class="iss-lab">Opened issues</div><div class="seven" id="issOpen" style="font-size:84px">0</div></div>
+    <div id="issRight" class="iss-panel"><div class="iss-lab">Closed issues</div><div class="seven" id="issClosed" style="font-size:84px">0</div></div>
+  </div>
+
+  <!-- SCENE 4 -->
+  <div id="s4" class="scene fill">
+    <div id="cockShines"></div>
+    <div id="cockStars"></div>
+    <div id="cockWrap">
+      <img id="cockpitImg" src="assets/img/cockpit.png">
+      <div id="starsLabel">REPOS STARRED</div>
+      <div id="hud"><div id="hudAuthor">repos</div><div id="hudName">starred</div></div>
+      <div id="cockLeft" class="cock-screen"><div class="scr"></div><div id="starCount">0</div></div>
+      <div id="cockRight" class="cock-screen"><img src="assets/img/shinystaroutline.png"></div>
+    </div>
+  </div>
+
+  <!-- SCENE 5 -->
+  <div id="s5" class="scene fill">
+    <div id="tablet">
+      <img id="hands" src="assets/img/hands.png">
+      <div id="prodTitle">Productivity</div>
+      <div id="prodDay" class="prod-pane pane"><div class="pp-lab">Most productive day</div><div class="wheel"><div class="wheel-col" id="dayCol"></div></div></div>
+      <div id="prodTime" class="prod-pane pane"><div class="pp-lab">Most productive time</div><div class="wheel"><div class="wheel-col" id="timeCol"></div></div></div>
+      <div id="barGraph"></div><div class="bar-lab" id="barLab"></div>
+    </div>
+  </div>
+
+  <!-- SCENE 6 -->
+  <div id="s6" class="scene fill">
+    <svg id="prSvg" width="1080" height="1080" viewBox="0 0 1080 1080">
+      <defs>
+        <linearGradient id="prg1" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#000"/><stop offset=".5" stop-color="#3A2A73"/><stop offset="1" stop-color="#7E52E4"/></linearGradient>
+        <linearGradient id="prg2" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#000"/><stop offset=".5" stop-color="#2a2050"/><stop offset="1" stop-color="#9a6cf2"/></linearGradient>
+      </defs>
+      <path id="prPath1" d="M540 1080 C 380 860, 360 720, 540 567" fill="none" stroke="url(#prg1)" stroke-width="5" stroke-linecap="round"/>
+      <path id="prPath2" d="M540 1080 C 720 880, 700 700, 540 567" fill="none" stroke="url(#prg2)" stroke-width="5" stroke-linecap="round"/>
+      <circle id="prDot1" r="9" fill="#cdb8ff" opacity="0"/><circle id="prDot2" r="9" fill="#cdb8ff" opacity="0"/>
+    </svg>
+    <div id="prBadge"><div id="prShine"></div>
+      <svg class="mergeIco" viewBox="0 0 24 24" width="58" height="58" fill="none" stroke="#01064A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></svg>
+      <div id="prCount">0</div><div id="prSub">pull requests<br>merged</div>
+    </div>
+    <div id="prBlack"></div>
+  </div>
+
+  <!-- SCENE 7 -->
+  <div id="s7" class="scene fill">
+    <img id="goldC" src="assets/img/planet-gold.png">
+    <div id="contribWrap">
+      <img id="rocketSweep" src="assets/img/rocket-side-orange.png">
+      <div id="contribPane">
+        <div class="cp-head">
+          <div class="cp-cell"><div class="cp-num">2025</div><div class="cp-lab">@ahkamboh</div></div>
+          <div class="cp-spacer"></div>
+          <div class="cp-cell"><div class="cp-num">69d</div><div class="cp-lab">Longest streak</div></div>
+          <div class="cp-cell" style="margin-left:40px"><div class="cp-num" id="contribNum">0</div><div class="cp-lab">Contributions</div></div>
+        </div>
+        <div id="heat"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENE 8 -->
+  <div id="s8" class="scene fill">
+    <img id="goldE" src="assets/img/planet-gold.png">
+    <div id="threads"></div>
+    <div id="endGroup">
+      <div id="endShadow"></div>
+      <div id="rocketEnd"><img class="rk" src="assets/img/rocket-side-orange.png"><div class="flame" id="flameEnd"></div></div>
+    </div>
+    <div id="ctaWrap"><div id="cta">
+      <svg class="octo" viewBox="0 0 496 512" fill="#F7E99A"><path d="M165 397c0 2-2 4-5 4-3 0-5-1-5-4 0-2 2-4 5-4 2 0 5 2 5 4zm-29-4c-1 2 1 5 4 5 2 1 5 0 5-2 1-2-1-4-4-5-2-1-4 0-5 2zm41-2c-3 1-5 3-4 5 0 2 3 3 6 2 2 0 4-2 4-4-1-2-3-4-6-3zM244 8C106 8 0 113 0 251c0 110 70 204 169 237 13 2 17-5 17-12v-42c-69 15-84-33-84-33-11-29-28-37-28-37-22-15 2-15 2-15 25 2 38 26 38 26 22 38 58 27 72 21 2-16 9-27 16-33-55-6-113-28-113-122 0-27 10-49 25-66-2-6-11-31 3-65 0 0 21-7 68 25 20-5 41-8 62-8s42 3 62 8c47-32 68-25 68-25 14 34 5 59 3 65 15 17 25 39 25 66 0 94-58 116-113 122 9 8 17 23 17 47v69c0 7 4 14 17 12C426 455 496 361 496 251 496 113 390 8 244 8z"/></svg>
+      <div><div class="cta-1">Get your Year in Review</div><div class="cta-2">GitHubUnwrapped.com</div></div>
+    </div></div>
+  </div>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/rmotion.js"></script>
+<script>
+const D = window.DATA, RM = window.RM;
+const Q = s => document.querySelector('[data-composition-id="main"] ' + s);
+const QA = s => Array.from(document.querySelectorAll('[data-composition-id="main"] ' + s));
+const FPS = 30, H = 1080, W = 1080;
+const spring = RM.spring, ipol = RM.interpolate, Ease = RM.Easing;
+const OVER = {damping:200}, BOUNCE = {damping:10};
+// deterministic smooth noise (-1..1), seeded by string
+function hashStr(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0)/4294967296;}
+function noise(seed,t){const h=hashStr(seed)*6.28;return (Math.sin(t*1.3+h)+Math.sin(t*2.7+h*1.7)+Math.sin(t*0.7+h*2.3))/3;}
+function rndSeed(seed){return hashStr(String(seed));}
+// integral of a per-frame speed function (exponential takeoff)
+function remapSpeed(frame, speedFn){let s=0;const n=Math.floor(Math.max(0,frame));for(let i=0;i<=n;i++)s+=speedFn(i);return s;}
+
+/* ---------- build DOM bits ---------- */
+const starsEl = Q('#stars');
+for(let i=0;i<170;i++){const d=document.createElement('div');d.className='st';const s=0.8+rndSeed('st'+i)*2.4;d.style.cssText=`left:${rndSeed('x'+i)*W}px;top:${rndSeed('y'+i)*H}px;width:${s}px;height:${s}px;opacity:${0.3+rndSeed('o'+i)*0.6}`;starsEl.appendChild(d);}
+// flame flipbook
+const FN=24, flameSets=[];
+['#flameOpen','#flameEnd'].forEach(sel=>{const c=Q(sel);const arr=[];for(let i=1;i<=FN;i++){const im=new Image();im.src=`assets/img/flame/f${String(i).padStart(2,'0')}.png`;c.appendChild(im);arr.push(im);}flameSets.push(arr);});
+function flameFrame(idx){idx=((idx%FN)+FN)%FN;flameSets.forEach(a=>a.forEach((im,i)=>im.style.display=i===idx?'block':'none'));}
+// cockpit warp shines (radial)
+const SHN=44, shines=[];const shc=Q('#cockShines');
+for(let i=0;i<SHN;i++){const im=document.createElement('img');im.src='assets/img/shine.png';shc.appendChild(im);shines.push({el:im,rot:rndSeed('sh'+i)*6.28,born:i*1.4});}
+// flying stars
+const FSN=20, fstars=[];const fsc=Q('#cockStars');
+for(let i=0;i<FSN;i++){const d=document.createElement('div');d.className='fstar';d.textContent='★';fsc.appendChild(d);fstars.push({el:d,ang:rndSeed('fa'+i)*6.28-3.14,from:i*10+20,hit:i<8});}
+// productivity wheels
+const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun','Mon','Tue','Wed','Thu','Fri','Sat','Sun','Wednesday'];
+const HOURS=['9 am','10 am','11 am','12 pm','1 pm','2 pm','4 pm','6 pm','8 pm','10 pm','12 am','1 pm','5 pm','11 pm','3 pm'];
+const fillCol=(el,l)=>el.innerHTML=l.map((v,i)=>`<div class="${i===l.length-1?'sel':''}">${v}</div>`).join('');
+fillCol(Q('#dayCol'),DAYS);fillCol(Q('#timeCol'),HOURS);
+// bars
+const bgEl=Q('#barGraph'),blEl=Q('#barLab'),gmax=Math.max(...D.graph,1),BARS=[];
+D.graph.forEach((v,i)=>{const b=document.createElement('div');b.className='bar'+(i===D.topHourIndex?' peak':'');bgEl.appendChild(b);BARS.push({el:b,v});const s=document.createElement('span');s.textContent=i;blEl.appendChild(s);});
+// heatmap
+const heatEl=Q('#heat'),HCELLS=[];
+for(let r=0;r<7;r++){const row=document.createElement('div');row.className='hrow';for(let c=0;c<52;c++){const idx=c*7+r,v=D.contrib[idx]||0,op=Math.max(0.08,Math.min(1,v/D.maxContrib));const cell=document.createElement('div');cell.className='hc';row.appendChild(cell);HCELLS.push({el:cell,col:c,row:r,op});}heatEl.appendChild(row);}
+const ROWMOVE=[54,36,18,0,-18,-36,-54];
+// PR paths
+const p1=Q('#prPath1'),p2=Q('#prPath2'),L1=p1.getTotalLength(),L2=p2.getTotalLength();
+p1.style.strokeDasharray=L1;p2.style.strokeDasharray=L2;
+const PRdelay1=rndSeed('pr1')*25, PRdelay2=rndSeed('pr2')*25;
+// end threads
+const thEl=Q('#threads'),THREADS=[];
+for(let col=0;col<11;col++){for(let k=0;k<6;k++){const im=document.createElement('img');im.className='th';im.src=`assets/img/orb${(col%11)+1}.png`;im.style.left=(col*100+30)+'px';im.style.top=(k*200+rndSeed('th'+col+k)*120)+'px';thEl.appendChild(im);THREADS.push({el:im,speed:600+rndSeed('ts'+col)*450});}}
+
+/* ---------- helpers ---------- */
+const T=(el,v)=>{el.style.transform=v;};
+const O=(el,v)=>{el.style.opacity=v;};
+function showScene(id,on){Q(id).style.opacity=on?1:0;}
+const lerp=(a,b,t)=>a+(b-a)*t;
+
+/* ================= MASTER FRAME RENDER (Remotion-style) ================= */
+// scene windows in absolute frames @30fps
+const SC={
+  s1:[0,130], s2:[130,505], s3:[505,640], s4:[640,875], s5:[875,1070], s6:[1070,1320], s7:[1320,1540], s8:[1540,1745]
+};
+const TOTAL=1745;
+
+function render(F){
+  // backgrounds
+  const inS3 = F>=SC.s3[0]&&F<SC.s3[1];
+  const dark = (F>=SC.s5[0]&&F<SC.s6[1])||(F>=SC.s8[0]);
+  O(Q('#bgGreen'), inS3?1:0);
+  O(Q('#bgDark'), dark?1:0);
+  O(Q('#bgSpace'), (inS3||dark)?0:1);
+  const starsVis = (F<SC.s2[1]) || (F>=SC.s4[0]&&F<SC.s4[1]) || (F>=SC.s7[0]);
+  O(starsEl, starsVis?(F>=SC.s7[0]?0.4:0.85):0.12);
+
+  // hide all scenes, show active (warp overlaps handled inside)
+  ['#s1','#s2','#s3','#s4','#s5','#s6','#s7','#s8'].forEach(id=>{Q(id).style.opacity=0;});
+
+  if(F<SC.s2[0]+8) scOpening(F-SC.s1[0]);
+  if(F>=SC.s2[0]-5 && F<SC.s3[0]+5) scLanguages(F-SC.s2[0]);
+  if(F>=SC.s3[0]-5 && F<SC.s4[0]+5) scIssues(F-SC.s3[0]);
+  if(F>=SC.s4[0]-5 && F<SC.s5[0]+5) scStars(F-SC.s4[0]);
+  if(F>=SC.s5[0]-5 && F<SC.s6[0]+5) scProductivity(F-SC.s5[0]);
+  if(F>=SC.s6[0]-5 && F<SC.s7[0]+5) scPR(F-SC.s6[0]);
+  if(F>=SC.s7[0]-5 && F<SC.s8[0]+5) scContrib(F-SC.s7[0]);
+  if(F>=SC.s8[0]-5) scEnd(F-SC.s8[0]);
+
+  flameFrame(Math.floor(F*0.4));
+}
+
+/* ---- SCENE 1 OPENING (0..130) ---- */
+function scOpening(f){
+  if(f<0||f>136)return; showScene('#s1',1);
+  // camera zoom-out 2.5->1 (overdamped), no bounce
+  const zoom = spring({frame:f,config:OVER,delay:10,durationInFrames:60});
+  const scale = ipol(zoom,[0,1],[2.5,1]);
+  const offset = ipol(zoom,[0,1],[-W/2,0]);
+  T(Q('#s1cam'),`scale(${scale}) translateX(${offset/scale}px)`);
+  // exponential accelerating takeoff: sits & rumbles, then blasts off late
+  const accel = remapSpeed(f, fr=>10**ipol(fr,[0,120],[-1,4]));
+  const top = ipol(accel,[0,250,800],[0,-120,-1200],{extrapolateRight:'clamp'});
+  const nX=noise('rkx',f/10)*3, nY=noise('rky',f/8)*2;
+  T(Q('#rocketOpen'),`translateX(-50%) translateY(${top+nY}px) translateX(${nX}px)`);
+  // pane slide-up (overdamped, NO overshoot)
+  const enter = spring({frame:f,config:OVER,delay:50,durationInFrames:50});
+  const paneY = ipol(enter,[0,1],[260,0]);
+  const sway = ipol(f,[60,120],[10,-10]);
+  T(Q('#openPane'),`translateY(${paneY}px) rotateY(${sway}deg)`);
+  O(Q('#openPane'), ipol(f,[50,62],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'}));
+  // avatar flip (the ONE bouncy default spring)
+  const flip = spring({frame:f,config:BOUNCE,delay:50});
+  const flipRad = ipol(flip,[0,1],[Math.PI,0]);
+  T(Q('#avFlip > img'),`rotateY(${flipRad}rad)`);
+  // warp-explode exit f110-130
+  if(f>=108){
+    const ex = spring({frame:f,config:OVER,delay:110,durationInFrames:60});
+    const dist = ipol(ex,[0,1],[1,0.02]); const sc=Math.min(1/dist,60);
+    T(Q('#sceneryF'),`scale(${sc})`);
+    T(Q('#sceneryM'),`translateY(${ipol(ex,[0,0.7],[0,500],{extrapolateRight:'clamp'})}px)`);
+    O(Q('#openWrap'), 1-ex); O(Q('#stars'),(1-ex)*0.85);
+    T(Q('#openPane'),`translateY(${-(sc-1)*40}px) scale(${1+ex})`);
+    O(Q('#s1'), ipol(ex,[0,1],[1,0]));
+  } else { O(Q('#sceneryF'),1);O(Q('#sceneryM'),1);O(Q('#openWrap'),1); }
+}
+
+/* ---- SCENE 2 LANGUAGES (0..375): CSS 0-125, TS 125-250, HTML 250-375 ---- */
+function scLanguages(f){
+  if(f<-5||f>380)return; showScene('#s2',1);
+  const cards={css:Q('#lcCSS'),ts:Q('#lcTS'),html:Q('#lcHTML')};
+  [cards.css,cards.ts,cards.html].forEach(c=>O(c,0));
+  O(Q('#langRocket'),0);
+  function place(card,lf,pct,wiggle){
+    O(card,1);
+    const enter = spring({frame:lf,config:OVER,durationInFrames:30});
+    const planet=card.querySelector('.lc-planet');
+    if(wiggle){ // 1st place HTML: shrink+grow bounce + wiggle
+      const shrink=spring({frame:lf,config:{damping:14},delay:24,durationInFrames:20});
+      const grow=spring({frame:lf,config:BOUNCE,delay:25});
+      const rot = (lf>=25&&lf<55)?noise('wig',lf/10)*10:0;
+      const ps=ipol(enter,[0,1],[2.4,1])*(1-shrink*0.35+grow*0.35);
+      T(planet,`translate(-50%,-50%) scale(${ps}) rotate(${rot}deg)`);
+    } else {
+      T(planet,`translate(-50%,-50%) scale(${ipol(enter,[0,1],[2.4,1])}) rotate(${ipol(lf,[0,90],[0,6])}deg)`);
+    }
+    O(card.querySelector('.lc-glow'), ipol(lf,[0,18],[0,0.95],{extrapolateLeft:'clamp',extrapolateRight:'clamp'}));
+    const slide=spring({frame:lf,config:{mass:1,stiffness:50,damping:12},delay:5,durationInFrames:24});
+    T(card.querySelector('.lc-pill'),`translateX(-50%) translateY(${ipol(slide,[0,1],[300,0])}px)`);
+    O(card.querySelector('.lc-pill'), ipol(slide,[0,0.3],[0,1],{extrapolateRight:'clamp'}));
+    card.querySelector('.pv').textContent=Math.round(spring({frame:lf,config:OVER,delay:8})*pct);
+  }
+  if(f<125){ place(cards.css, f, 11, false); }
+  else if(f<250){ place(cards.ts, f-125, 32, false); }
+  else { place(cards.html, f-250, 38, true);
+    if(f>=250+95){ const ex=spring({frame:f-250,config:OVER,delay:95,durationInFrames:25});
+      const sc=Math.min(1/ipol(ex,[0,1],[1,0.02]),60);
+      T(Q('#lcHTML'),`scale(${sc})`); O(Q('#s2'),1-ex);
+    }
+  }
+}
+
+/* ---- SCENE 3 ISSUES (0..135) ---- */
+function scIssues(f){
+  if(f<-5||f>140)return; showScene('#s3',1);
+  O(Q('#s3'), ipol(f,[0,30,105,135],[0,1,1,0],{extrapolateLeft:'clamp',extrapolateRight:'clamp'}));
+  const drop=spring({frame:f,config:OVER,delay:5,durationInFrames:30});
+  T(Q('#issUfo'),`translateX(-50%) translateY(${ipol(drop,[0,1],[-300,0])}px)`);
+  const jin=spring({frame:f,config:OVER,delay:40,durationInFrames:20});
+  const py=ipol(jin,[0,1],[260,0]);
+  T(Q('#issLeft'),`translateY(${py}px)`);T(Q('#issRight'),`translateY(${py}px)`);
+  const cnt=spring({frame:f,config:OVER});
+  Q('#issOpen').textContent=Math.round(cnt*D.issuesOpened);
+  // seven-seg flicker
+  O(Q('#issOpen'), ((noise('d0',f/15)+1)/2)*0.3+0.7);
+  // radial UFO warp-out at ~100
+  if(f>=100){const ex=spring({frame:f,config:OVER,delay:100,durationInFrames:20});
+    T(Q('#issUfo'),`translateX(-50%) translateY(${ipol(ex,[0,1],[0,-1200])}px) translateX(${ipol(ex,[0,1],[0,300])}px)`);}
+}
+
+/* ---- SCENE 4 STARS (0..235) ---- */
+function scStars(f){
+  if(f<-5||f>240)return; showScene('#s4',1);
+  // cockpit warp-in (distance 0->1) + shake
+  const inn=spring({frame:f,config:OVER,delay:0,durationInFrames:24});
+  const dist=ipol(inn,[0,1],[0.4,1]); const csc=1/dist;
+  const shake=ipol(f,[0,8,200,210],[0,1,1,0],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+  const xs=noise('xs',f/10)*10*shake, ys=noise('ys',f/10)*10*shake, rs=noise('rs',f/10)*0.02*shake;
+  T(Q('#cockWrap'),`rotate(${rs}rad) scale(${Math.min(csc,1.1)}) translate(${xs}px,${ys}px)`);
+  O(Q('#starsLabel'), ipol(f,[10,25],[0,0.85],{extrapolateLeft:'clamp',extrapolateRight:'clamp'}));
+  // warp shines outward
+  shines.forEach((s)=>{const lf=f-s.born; const prog=ipol(lf,[0,12],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+    const mt=ipol(prog,[0,1],[40,560]); const op=ipol(lf,[0,4,12],[0,0.22,0],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+    O(s.el, f<200?op:0);
+    T(s.el,`translate(-50%,-50%) rotate(${s.rot+rs}rad) translateY(${-mt}px) scale(1.4)`);});
+  // flying stars 1/distance toward camera + burst
+  let hits=0;
+  fstars.forEach((st)=>{const lf=f-st.from; const stop=st.hit?10:20;
+    if(lf<0){O(st.el,0);return;}
+    const dd=ipol(lf,[0,stop],[1,st.hit?0.5:0.001],{extrapolateLeft:'clamp',extrapolateRight:st.hit?'clamp':'extend'});
+    const js=1/dd-1; const radius=st.hit?200:420; const tx=Math.sin(st.ang)*radius, ty=100-Math.cos(st.ang)*radius;
+    const pop=st.hit?ipol(lf,[stop,stop+6],[0,0.12],{extrapolateLeft:'clamp',extrapolateRight:'clamp'}):0;
+    O(st.el, lf<(st.hit?16:24)?0.9:0);
+    T(st.el,`translate(-50%,-50%) translate(${tx*0.7}px,${ty*0.7}px) scale(${Math.max(0.05,Math.min(js*0.5+pop,3))})`);
+    if(st.hit&&f>=st.from+stop)hits++;});
+  // LCD count + HUD repos
+  const count=Math.round(ipol(f,[0,228-10],[0,D.starsGiven],{extrapolateLeft:'clamp',extrapolateRight:'clamp'}));
+  Q('#starCount').textContent=count;
+  O(Q('#starCount'), ((noise('lc',f/15)+1)/2)*0.25+0.75);
+  const ri=Math.min(D.repos.length-1, Math.floor(ipol(f,[20,210],[0,D.repos.length-1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'})));
+  const rep=D.repos[ri]; Q('#hudAuthor').textContent=rep.author; Q('#hudName').textContent=rep.name;
+  O(Q('#hud'), ipol(f,[14,26],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'}));
+  // warp-out
+  if(f>=205){const ex=spring({frame:f,config:OVER,delay:205,durationInFrames:30});
+    const sc=Math.min(1/ipol(ex,[0,1],[1,0.02]),60); T(Q('#cockWrap'),`scale(${sc})`); O(Q('#s4'),1-ex);}
+}
+
+/* ---- SCENE 5 PRODUCTIVITY (0..195) ---- */
+function scProductivity(f){
+  if(f<-5||f>200)return; showScene('#s5',1);O(Q('#s5'),1);
+  // tablet slide-in + 3D unfold (cap 0.68)
+  const enter=spring({frame:f,config:OVER,durationInFrames:45});
+  const tf=0.68*(spring({frame:f,config:{damping:200,mass:0.5},delay:30,durationInFrames:16}) - spring({frame:f,config:{damping:200,mass:0.5},delay:150}));
+  const ty=ipol(enter,[0,1],[800,0]);
+  T(Q('#tablet'),`translateY(${ty}px) perspective(1400px) rotateY(${ipol(tf,[0,1],[0,-12])}deg) rotateX(${ipol(tf,[0,1],[0,9])}deg) skewX(${ipol(tf,[0,1],[0,-5])}deg) scale(${ipol(tf,[0,1],[1,1.02])})`);
+  O(Q('#prodTitle'), ipol(f,[6,22],[0,0.85],{extrapolateLeft:'clamp',extrapolateRight:'clamp'}));
+  O(Q('#hands'),0); // drop distorted hands photo — clean floating panes on dark
+  // slot wheels — HEAVY spring + pre-spin nudge (locks ~f130, leaving hold time)
+  function wheel(sel,delay,radius,list){
+    const ws=spring({frame:f,config:{mass:10,damping:200,stiffness:200},delay,durationInFrames:90});
+    const nudge=ipol(f,[delay-1,delay],[-0.05,0],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+    const prog=Math.max(0,ws+nudge);
+    T(Q(sel),`translateY(${-(list.length-1)*80*prog}px)`);
+  }
+  wheel('#dayCol',28,130,DAYS); wheel('#timeCol',40,300,HOURS);
+  // bars — mass = value (taller bars settle slower)
+  BARS.forEach((b,i)=>{const m=b.v*0.1+0.3; const sp=spring({frame:f,config:{mass:m,damping:200},delay:30+i*2});
+    b.el.style.transform=`scaleY(${sp})`; b.el.style.height=(8+b.v/gmax*92)+'%';});
+  if(f>=170){O(Q('#s5'),ipol(f,[170,195],[1,0],{extrapolateRight:'clamp'}));}
+}
+
+/* ---- SCENE 6 PR (0..250) ---- */
+function scPR(f){
+  if(f<-5||f>255)return; showScene('#s6',1);O(Q('#s6'),1);
+  function draw(path,len,dot,delay){const prog=ipol(f,[delay,200+delay],[0,1],{easing:Ease.out(Ease.ease),extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+    path.style.strokeDashoffset=len*(1-prog);
+    const pt=path.getPointAtLength(len*prog); dot.setAttribute('cx',pt.x);dot.setAttribute('cy',pt.y);dot.setAttribute('opacity',(prog>0.02&&f<202)?1:0);}
+  draw(p1,L1,Q('#prDot1'),PRdelay1); draw(p2,L2,Q('#prDot2'),PRdelay2);
+  // badge appears f>110
+  O(Q('#prBadge'), f>110?1:0);
+  if(f>110){const bs=spring({frame:f,config:OVER,delay:110,durationInFrames:30});
+    T(Q('#prBadge'),`scale(${ipol(bs,[0,1],[0.4,1])})`);}
+  const cnt=Math.round(ipol(f,[110,200],[0,D.totalPullRequests],{easing:Ease.out(Ease.ease),extrapolateLeft:'clamp',extrapolateRight:'clamp'}));
+  Q('#prCount').textContent=cnt;
+  T(Q('#prShine'),`rotate(${f*7}deg)`);
+  // warp-explode + black fade exit
+  if(f>=220){const ex=1-spring({frame:f,config:OVER,delay:220,durationInFrames:40,reverse:true});
+    const sc=Math.min(1/ipol(ex,[0.01,1],[0.02,1]),60); T(Q('#prBadge'),`scale(${sc})`);
+    O(Q('#prBlack'), ipol(f,[230,250],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'}));}
+}
+
+/* ---- SCENE 7 CONTRIBUTIONS (0..220) time-remap /1.5 ---- */
+function scContrib(rf){
+  if(rf<-5||rf>225)return; showScene('#s7',1);O(Q('#s7'),1);
+  const f=rf/1.5;
+  // pane scale-in + explode-exit
+  const scaleIn=spring({frame:f,config:OVER});
+  const disappear=spring({frame:f,config:OVER,delay:90});
+  const constScale=ipol(f,[0,150],[0.8,1]);
+  const sc=scaleIn*constScale + ipol(disappear,[0,1],[0,3]);
+  T(Q('#contribWrap'),`scale(${sc}) translateY(${ipol(disappear,[0,1],[0,500])}px)`);
+  O(Q('#contribPane'), ipol(f,[0,12],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'}));
+  // count-up
+  Q('#contribNum').textContent=Math.floor(Math.max(0,Math.min(ipol(2*f,[25,85],[0,D.totalContributions]),D.totalContributions))).toLocaleString('en-US');
+  // rocket sweep + heatmap wave-clear
+  const targetCol=ipol(2*f,[0,120],[-100,72],{easing:Ease.bezier(0.2,-0.02,0.32,1),extrapolateRight:'clamp'});
+  const rk=Q('#rocketSweep'); O(rk, f>10?1:0);
+  rk.style.left=(targetCol*16+150)+'px'; rk.style.top='300px';
+  HCELLS.forEach(c=>{const fac=Math.min(Math.abs((targetCol-c.col)/17.3),1);
+    if(c.col>=targetCol){ O(c.el,0); c.el.style.transform=`translateY(${ROWMOVE[c.row]}px)`; }
+    else { O(c.el, c.op*ipol(f,[5,20],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'})); c.el.style.transform=`translateY(${(1-fac)*ROWMOVE[c.row]}px)`; }});
+  // gold planet rise (f>80) — bottom fixed in CSS, animate width + lift
+  const gp=Q('#goldC');
+  if(f>78){O(gp,1); const ps=ipol(f,[80,180],[900,1400],{extrapolateRight:'clamp'}); const py=ipol(f,[80,180],[0,200],{extrapolateRight:'clamp'});
+    gp.style.width=ps+'px'; T(gp,`translateX(-50%) translateY(${-py}px)`);}
+  else O(gp,0);
+}
+
+/* ---- SCENE 8 END (0..205) ---- */
+function scEnd(f){
+  if(f<-5)return; showScene('#s8',1);
+  const enter=spring({frame:f,config:OVER,delay:0,durationInFrames:60});
+  const exitP=spring({frame:f,config:OVER,delay:130,durationInFrames:70}); // 0 until f130, then 0->1
+  O(Q('#s8'), ipol(f,[0,30],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'}));
+  O(Q('#goldE'), ipol(f,[0,30],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'}));
+  O(Q('#threads'), ipol(f,[0,30],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'}));
+  // rocket descent (reverse exponential remap) — comes down from top, decelerates to landing
+  const accel=remapSpeed(75-f, fr=>10**ipol(fr,[0,120],[-1,4]));
+  const rocketOffset=ipol(accel,[0,75],[300,-520],{extrapolateLeft:'clamp'});
+  T(Q('#rocketEnd'),`translateX(-50%) translateY(${rocketOffset}px)`);
+  // flame shrink
+  const fh=ipol(f,[30,70],[300,40],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+  Q('#flameOpen'); // (end flame uses flameEnd via flameFrame on both)
+  Q('#flameEnd').style.width=fh+'px'; Q('#flameEnd').querySelectorAll('img').forEach(im=>im.style.width=fh+'px');
+  // shadow grows
+  const shw=ipol(f,[0,50],[0,300],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+  const shel=Q('#endShadow'); shel.style.width=shw+'px'; shel.style.height=(shw*0.25)+'px';
+  // HidePlanets exit (quartic slingshot up): hold until f130, then shrink + lift
+  const grp=Q('#endGroup');
+  T(grp,`scale(${Math.max(0.1,Math.pow(1-exitP,2))}) translateY(${-Math.pow(exitP,4)*1200}px)`);
+  // CTA zoom-pop scale=1/distance: tiny -> normal (enter) -> huge past camera (exit)
+  const dist=ipol(enter+exitP,[0,1,2],[10,1,0.1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+  const ctaScale=1/dist;
+  const enterOffset=(Math.sin(enter*Math.PI*0.5-Math.PI)+1)*-600;
+  T(Q('#cta'),`scale(${ctaScale}) translateY(${enterOffset}px)`);
+  // threads parallax
+  THREADS.forEach(t=>{t.el.style.transform=`translateY(${-(f/t.speed*30)*60}px)`;});
+}
+
+/* ================= DRIVE via GSAP-seekable proxy (onUpdate fires on HyperFrames seek) ================= */
+const tl = gsap.timeline({paused:true});
+window.__timelines = window.__timelines || {}; window.__timelines["main"] = tl;
+const CLK={f:0};
+tl.to(CLK,{f:TOTAL,duration:TOTAL/FPS,ease:'none',onUpdate:()=>render(Math.round(CLK.f))},0);
+tl.pause(0); render(0);
+</script>
+</body>
+</html>
