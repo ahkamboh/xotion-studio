@@ -42,3 +42,6 @@ __pycache__/
 # Secrets / API credentials
 .env
 .env.*
+
+# per-project font copies (duplicates of shared assets/fonts/, regenerated at render time)
+projects/*/assets/fonts/

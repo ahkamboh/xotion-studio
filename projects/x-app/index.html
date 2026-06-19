@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920, height=1080" />
+<title>Xotion — Studio (product demo)</title>
+<!--
+  XOTION STUDIO — product demo.
+  Reproduces the real app's Studio screen (sidebar + topbar + brief bar +
+  Steps run-list + live-preview rail + command bar) from
+  mockups/xotion-studio-clean.html, then animates the app "working on a brief":
+  type a prompt -> it lands in the Brief bar with chips -> the Steps run-list
+  fills one row at a time (queued -> active -> done) while the phone preview
+  caption fills in and the render bar climbs 6% -> 100%, scene 1/5 -> 5/5 ->
+  finished, then a gentle breathing hold.
+
+  Determinism contract: ONE paused timeline (window.__timelines["main"]).
+  All DOM pre-built in markup; render(t) drives typing/caret/progress/scene
+  via a proxy tween onUpdate; render(0) at boot. No Date/Math.random/network.
+  Finite repeats only. Local @font-face only.
+-->
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+  /* ── LOCAL fonts (Google Fonts fail in the render sandbox) ─────────── */
+  @font-face{font-family:"Inter";font-weight:400;src:url("assets/fonts/inter-400.ttf") format("truetype")}
+  @font-face{font-family:"Inter";font-weight:500;src:url("assets/fonts/inter-500.ttf") format("truetype")}
+  @font-face{font-family:"Inter";font-weight:600;src:url("assets/fonts/inter-600.ttf") format("truetype")}
+  @font-face{font-family:"JBMono";font-weight:500;src:url("assets/fonts/jetbrains-500.ttf") format("truetype")}
+
+  :root{
+    --ink:#1b1a17; --ink-2:#37352f; --mute:#8c887e; --faint:#b6b1a6;
+    --bg:#faf8f3; --panel:#ffffff; --side:#1a1814;
+    --line:rgba(27,26,23,.08); --line-2:rgba(27,26,23,.14);
+    --ink-line:rgba(255,255,255,.08); --ink-line-2:rgba(255,255,255,.14);
+    --accent:#e0451f; --accent-soft:rgba(224,69,31,.08); --green:#3a9b6e;
+    --sans:"Inter",-apple-system,system-ui,sans-serif; --mono:"JBMono",ui-monospace,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1920px;height:1080px}
+  body{font-family:var(--sans);color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;overflow:hidden;font-size:15px;line-height:1.5}
+  #root{width:1920px;height:1080px;overflow:hidden;position:relative;background:var(--bg)}
+  .app{display:grid;grid-template-columns:236px 1fr;height:1080px}
+  .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase}
+
+  /* sidebar */
+  .side{background:var(--side);color:#f4f1ea;display:flex;flex-direction:column;padding:22px 16px;gap:28px}
+  .brand{display:flex;align-items:center;gap:10px;padding:2px 6px}
+  .brand .m{width:24px;height:24px;border-radius:7px;background:var(--accent);display:grid;place-items:center;color:#fff;font-weight:600;font-size:14px}
+  .brand b{font-weight:600;font-size:18px;letter-spacing:-.02em}
+  .new{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:9px;padding:12px;font-size:13px;font-weight:500;cursor:pointer;transition:.15s}
+  .new .p{font-size:15px;line-height:1}
+  nav{display:flex;flex-direction:column;gap:2px;flex:1}
+  nav h5{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(244,241,234,.38);margin:16px 8px 8px;font-weight:500}
+  nav a{display:flex;align-items:center;gap:11px;padding:8px 9px;border-radius:7px;color:rgba(244,241,234,.7);font-size:13.5px;font-weight:400;cursor:pointer;transition:.12s}
+  nav a .d{width:6px;height:6px;border-radius:2px;background:currentColor;opacity:.45}
+  nav a.on{background:rgba(244,241,234,.08);color:#fff;font-weight:500}
+  nav a.on .d{background:var(--accent);opacity:1}
+  nav a .c{margin-left:auto;font-family:var(--mono);font-size:10px;color:rgba(244,241,234,.38)}
+  .user{display:grid;grid-template-columns:30px 1fr auto;align-items:center;gap:10px;padding:9px;border:1px solid var(--ink-line-2);border-radius:9px;cursor:pointer}
+  .user .av{width:30px;height:30px;border-radius:50%;background:rgba(244,241,234,.1);display:grid;place-items:center;font-weight:600;font-size:13px}
+  .user .nm{font-size:12.5px;font-weight:500}
+  .user .pl{font-size:10.5px;color:rgba(244,241,234,.5)}
+  .user .pl em{color:#ff7a5c;font-style:normal}
+
+  /* main */
+  .main{display:flex;flex-direction:column;min-width:0}
+  .top{height:58px;flex:0 0 auto;display:flex;align-items:center;gap:16px;padding:0 28px;border-bottom:1px solid var(--line);background:var(--bg)}
+  .crumb{font-size:13.5px;color:var(--mute);display:flex;align-items:center;gap:9px}
+  .crumb b{color:var(--ink);font-weight:500}
+  .crumb .s{color:var(--faint)}
+  .pill{display:flex;align-items:center;gap:7px;border:1px solid var(--line-2);border-radius:999px;padding:5px 12px;color:var(--mute);font-size:11.5px;font-weight:500}
+  .pill .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+  .sp{flex:1}
+  .btn{border:1px solid var(--line-2);background:var(--panel);border-radius:8px;padding:8px 14px;font-size:12.5px;font-weight:500;color:var(--ink);cursor:pointer}
+  .btn.pri{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+  .canvas{flex:1;min-height:0;display:grid;grid-template-rows:auto 1fr auto;overflow:hidden}
+
+  /* brief — slim one-line bar */
+  .briefbar{display:flex;align-items:center;gap:16px;padding:12px 28px;min-width:0}
+  .briefbar .bk{flex:0 0 auto;display:flex;align-items:center;gap:7px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:500}
+  .briefbar .bk .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+  .briefbar .bt{flex:1;min-width:0;font-size:15px;font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .briefbar .ch{flex:0 0 auto;display:flex;gap:7px}
+  .briefbar .ch span{font-size:11.5px;color:var(--mute);border:1px solid var(--line-2);border-radius:6px;padding:4px 9px;white-space:nowrap}
+  .briefbar .ch span b{color:var(--ink);font-weight:500}
+
+  /* work split */
+  .work{min-height:0;display:grid;grid-template-columns:1fr 470px;overflow:hidden;border-top:1px solid var(--line)}
+
+  /* run list */
+  .run{min-height:0;overflow:hidden;padding:22px 28px}
+  .run .h{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .run .h .t{color:var(--mute);font-weight:500}
+  .run .h .s{font-size:12px;color:var(--mute)}
+  .run .h .s em{color:var(--accent);font-style:normal;font-weight:500}
+  .row{display:grid;grid-template-columns:26px 1fr auto;gap:14px;align-items:start;padding:16px 0;border-bottom:1px solid var(--line)}
+  .row .st{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:11px;margin-top:1px}
+  .row.done .st{background:var(--green);color:#fff}
+  .row.act .st{background:var(--accent);color:#fff}
+  .row.q .st{border:1px solid var(--line-2);color:var(--faint)}
+  .row .ttl{font-size:15px;font-weight:500;color:var(--ink)}
+  .row.q .ttl{color:var(--mute)}
+  .row .desc{font-size:13px;color:var(--mute);margin-top:3px;line-height:1.45;max-width:400px}
+  .row .dur{font-family:var(--mono);font-size:11px;color:var(--mute);white-space:nowrap;margin-top:2px}
+  .row.act .dur{color:var(--accent)}
+  .row.act{background:var(--accent-soft);border-radius:9px;margin:0 -12px;padding-left:12px;padding-right:12px;border-bottom-color:transparent}
+
+  /* preview */
+  .rail{min-height:0;border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column}
+  .rail .rh{padding:20px 24px 14px;display:flex;align-items:center;justify-content:space-between}
+  .rail .rh .l{color:var(--accent);font-size:11px;font-weight:500}
+  .tg{display:flex;gap:2px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:3px}
+  .tg b{font-family:var(--mono);font-size:10.5px;padding:5px 9px;border-radius:6px;color:var(--mute);cursor:pointer;font-weight:400}
+  .tg b.on{background:var(--ink);color:#fff}
+  .stage{flex:1;min-height:0;display:grid;place-items:center;padding:6px 24px}
+  .frame{width:218px;aspect-ratio:9/19.5;background:#0c0a08;border-radius:30px;padding:7px;position:relative;
+    box-shadow:0 30px 64px rgba(27,26,23,.22),inset 0 0 0 1px rgba(255,255,255,.05)}
+  .frame .scrn{height:100%;border-radius:24px;overflow:hidden;position:relative;background:linear-gradient(165deg,#efe6d3,#ddccae 55%,#c39a6a)}
+  .frame .scrn .pl{position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.85);display:grid;place-items:center}
+  .frame .scrn .pl::after{content:"";border-left:12px solid var(--ink);border-top:8px solid transparent;border-bottom:8px solid transparent;margin-left:3px}
+  .frame .scrn .cap{position:absolute;left:13px;right:13px;bottom:34px;font-size:15px;font-weight:600;color:#1a130b;line-height:1.15}
+  .rs{padding:12px 24px}
+  .rs .r{display:flex;justify-content:space-between;font-size:11.5px;color:var(--mute)}
+  .rs .r b{color:var(--ink);font-weight:500}
+  .rs .bar{height:4px;border-radius:2px;background:var(--bg);border:1px solid var(--line);margin-top:8px;overflow:hidden}
+  .rs .bar i{display:block;height:100%;width:6%;background:var(--accent)}
+  .ex{padding:14px 24px 20px;display:flex;gap:7px}
+  .ex button{flex:1;font-size:12px;font-weight:500;padding:9px;border-radius:8px;border:1px solid var(--line-2);background:var(--panel);color:var(--ink);cursor:pointer}
+  .ex button.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+
+  /* command */
+  .cmd{flex:0 0 auto;border-top:1px solid var(--line);background:var(--panel);padding:14px 28px 16px}
+  .cmd .qk{display:flex;gap:7px;margin-bottom:10px}
+  .cmd .qk b{font-size:12px;font-weight:400;color:var(--mute);border:1px solid var(--line-2);border-radius:999px;padding:5px 11px;cursor:pointer}
+  .cmd .box{display:flex;align-items:center;gap:12px;border:1px solid var(--line-2);border-radius:13px;padding:13px 14px 13px 17px;background:var(--bg)}
+  .cmd .box .q{font-size:14.5px;color:var(--mute);flex:1;min-width:0;white-space:nowrap;overflow:hidden}
+  .cmd .box .q .typed{color:var(--ink)}
+  .cmd .box .q .caret{display:inline-block;color:var(--accent);font-weight:400;margin-left:1px}
+  .cmd .send{width:38px;height:38px;border-radius:10px;background:#d9d5cc;display:grid;place-items:center;flex:0 0 auto}
+  .cmd .send::after{content:"";border-bottom:12px solid #fff;border-left:7px solid transparent;border-right:7px solid transparent}
+  .cmd .ft{margin-top:10px;display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--mute)}
+  .cmd .ftl{display:flex;align-items:center;gap:8px}
+  .cmd .ft .md{display:flex;align-items:center;gap:7px;border:1px solid var(--line-2);border-radius:999px;padding:5px 11px;cursor:pointer}
+  .cmd .ft .md .d{width:6px;height:6px;border-radius:50%;background:var(--green)}
+  .attwrap{position:relative}
+  .cmd .att{display:flex;align-items:center;gap:7px;border:1px solid var(--line-2);border-radius:999px;padding:5px 12px 5px 9px;background:var(--panel);color:var(--ink);font-size:12px;font-weight:500;cursor:pointer}
+  .cmd .att svg{width:15px;height:15px;color:var(--mute)}
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="16" data-width="1920" data-height="1080">
+<div class="app">
+  <aside class="side">
+    <div class="brand"><span class="m">X</span><b>Xotion</b></div>
+    <button class="new"><span class="p">+</span> New video</button>
+    <nav>
+      <h5>Workspace</h5>
+      <a class="on"><span class="d"></span>Studio</a>
+      <a><span class="d"></span>Library<span class="c">12</span></a>
+      <a><span class="d"></span>History<span class="c">38</span></a>
+      <a><span class="d"></span>Templates<span class="c">74</span></a>
+      <a><span class="d"></span>Brand Kit</a>
+      <a><span class="d"></span>Settings</a>
+    </nav>
+    <div class="user">
+      <div class="av">A</div>
+      <div><div class="nm">you@local</div><div class="pl">Free · <em>∞ renders</em></div></div>
+      <div style="color:rgba(244,241,234,.45)">⌄</div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="top">
+      <div class="crumb">Library <span class="s">/</span> <b>Launch video</b></div>
+      <div class="pill" id="brainpill"><span class="dot"></span> Brain · ready</div>
+      <div class="sp"></div>
+      <button class="btn">Share</button>
+      <button class="btn pri">Publish</button>
+    </div>
+
+    <div class="canvas">
+      <div class="briefbar">
+        <span class="bk"><span class="dot"></span> Brief</span>
+        <span class="bt" id="briefText"></span>
+        <span class="ch" id="chips">
+          <span class="chip">Model <b>Opus 4.8</b></span>
+          <span class="chip"><b>9:16</b></span>
+          <span class="chip">captions</span>
+          <span class="chip">music</span>
+        </span>
+      </div>
+
+      <div class="work">
+        <div class="run">
+          <div class="h"><span class="lbl t">Steps</span><span class="s" id="runStatus">queued</span></div>
+
+          <div class="row q" id="row0">
+            <div class="st">○</div>
+            <div><div class="ttl">Cut the dead air</div>
+              <div class="desc">Tightened the raw clips, removed the gaps.</div></div>
+            <div class="dur">queued</div>
+          </div>
+
+          <div class="row q" id="row1">
+            <div class="st">○</div>
+            <div><div class="ttl">Added word-by-word captions</div>
+              <div class="desc">Synced to the voice, in your house style.</div></div>
+            <div class="dur">queued</div>
+          </div>
+
+          <div class="row q" id="row2">
+            <div class="st">○</div>
+            <div><div class="ttl">Color graded</div>
+              <div class="desc">Warm cinematic grade across every scene.</div></div>
+            <div class="dur">queued</div>
+          </div>
+
+          <div class="row q" id="row3">
+            <div class="st">○</div>
+            <div><div class="ttl">Dropped in music + sound</div>
+              <div class="desc">A driving bed with hits on the cuts.</div></div>
+            <div class="dur">queued</div>
+          </div>
+
+          <div class="row q" id="row4">
+            <div class="st">○</div>
+            <div><div class="ttl">Rendering in 4K</div>
+              <div class="desc">Final pass — almost there.</div></div>
+            <div class="dur">queued</div>
+          </div>
+        </div>
+
+        <div class="rail">
+          <div class="rh"><span class="l">Live preview</span>
+            <div class="tg"><b class="on">9:16</b><b>1:1</b><b>4:5</b><b>16:9</b></div></div>
+          <div class="stage">
+            <div class="frame" id="frame"><div class="scrn"><div class="pl" id="playbtn"></div>
+              <div class="cap" id="cap"></div></div></div>
+          </div>
+          <div class="rs">
+            <div class="r"><span id="sceneLabel">Scene 1 / 5</span><span><b id="pctLabel">6%</b> · <span id="rsState">rendering</span></span></div>
+            <div class="bar"><i id="bar"></i></div>
+            <div class="r" style="margin-top:9px"><span>Vertical · 1080 × 1920</span><span>30 fps</span></div>
+          </div>
+          <div class="ex">
+            <button class="pri">↓ MP4</button><button>WebM</button><button>GIF</button><button>Source</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="cmd">
+        <div class="qk"><b>+ Add scene</b><b>Swap stat</b><b>Restyle</b><b>Change length</b></div>
+        <div class="box"><div class="q" id="cmdq"><span class="ph" id="cmdph">Tell Xotion what to change…</span><span class="typed" id="cmdtyped"></span><span class="caret" id="cmdcaret">|</span></div><div class="send" id="send"></div></div>
+        <div class="ft">
+          <div class="ftl">
+            <div class="attwrap">
+              <button class="att"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 8.5l-9.2 9.2a4 4 0 0 1-5.7-5.7l8.5-8.5a2.7 2.7 0 0 1 3.8 3.8l-8.5 8.5a1.3 1.3 0 0 1-1.9-1.9l7.8-7.8"/></svg> Add</button>
+            </div>
+            <div class="md"><span class="d"></span> Opus 4.8 ⌄</div>
+          </div>
+          <div>Renders on your Mac · nothing uploaded</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+  const Q  = s => document.querySelector('[data-composition-id="main"] ' + s);
+  const Qa = s => Array.from(document.querySelectorAll('[data-composition-id="main"] ' + s));
+
+  // ── nodes ────────────────────────────────────────────────────────────
+  const app       = Q('.app');
+  const briefText = Q('#briefText');
+  const chips     = Qa('#chips .chip');
+  const runStatus = Q('#runStatus');
+  const cmdph     = Q('#cmdph');
+  const cmdtyped  = Q('#cmdtyped');
+  const cmdcaret  = Q('#cmdcaret');
+  const send      = Q('#send');
+  const cap       = Q('#cap');
+  const playbtn   = Q('#playbtn');
+  const bar       = Q('#bar');
+  const pctLabel  = Q('#pctLabel');
+  const rsState   = Q('#rsState');
+  const sceneLabel= Q('#sceneLabel');
+  const frame     = Q('#frame');
+  const brainpill = Q('#brainpill');
+
+  const ACCENT = '#e0451f';
+  const GREY   = '#d9d5cc';
+
+  // 5 step rows + their themed metadata
+  const ROWS = [
+    { el: Q('#row0'), st: Q('#row0 .st'), dur: Q('#row0 .dur'), durTxt: '2s' },
+    { el: Q('#row1'), st: Q('#row1 .st'), dur: Q('#row1 .dur'), durTxt: '4s' },
+    { el: Q('#row2'), st: Q('#row2 .st'), dur: Q('#row2 .dur'), durTxt: '3s' },
+    { el: Q('#row3'), st: Q('#row3 .st'), dur: Q('#row3 .dur'), durTxt: '5s' },
+    { el: Q('#row4'), st: Q('#row4 .st'), dur: Q('#row4 .dur'), durTxt: '' }, // last stays active through render
+  ];
+
+  // ── timing constants ─────────────────────────────────────────────────
+  const PROMPT = 'Edit my launch video — cut it tight, add captions + music';
+  const TYPE_S = 0.8, TYPE_E = 3.0;
+  const SPEED  = (TYPE_E - TYPE_S) / PROMPT.length;
+  const SEND_AT = 3.1;
+  const BRIEF_AT = 3.3;
+
+  // step pacing: each row goes active ~1.7s apart; prev flips done as next goes active
+  const STEP_GAP = 1.7;
+  const ACT0     = 3.6;                       // row0 becomes active
+  const ACT  = i => ACT0 + i * STEP_GAP;      // row i active time
+  const DONE = i => ACT0 + (i + 1) * STEP_GAP;// row i completes (== next active)
+  // rows 0..3 complete at ACT(1..4); row4 stays active until RENDER_DONE
+  const RENDER_DONE = 12.5;
+
+  // render bar / scene counter span
+  const RB_START = 3.5, RB_END = 12.5;
+  const HOLD_S = 14.5, TOTAL = 16.0;
+
+  const CAP_DIM = '#1a130b';
+
+  // ── helpers ──────────────────────────────────────────────────────────
+  const clamp01 = t => Math.max(0, Math.min(1, t));
+
+  // brief text + chips are filled by the timeline; here we only manage the
+  // per-frame stuff (typing, caret, render bar, scene counter, play dimming).
+  let briefSet = false;
+
+  function setRowState(r, state){
+    r.el.classList.remove('q','act','done');
+    r.el.classList.add(state);
+    if (state === 'q'){   r.st.textContent = '○'; r.dur.textContent = 'queued'; }
+    if (state === 'act'){ r.st.textContent = '●'; r.dur.textContent = r.durTxt ? r.durTxt : 'rendering'; }
+    if (state === 'done'){ r.st.textContent = '✓'; r.dur.textContent = r.durTxt || 'done'; }
+  }
+
+  // ── per-frame render(t) ──────────────────────────────────────────────
+  function render(t){
+    // 1) typing into the command box (char by char) with blinking caret
+    if (t < BRIEF_AT){
+      const shown = Math.max(0, Math.min(PROMPT.length, Math.floor((t - TYPE_S) / SPEED)));
+      cmdtyped.textContent = PROMPT.slice(0, shown);
+      cmdph.style.display = shown > 0 ? 'none' : 'inline';
+      const typing = t >= TYPE_S && t <= TYPE_E;
+      // caret visible while focused (from TYPE_S on); blink via deterministic sin(t)
+      const blink = (Math.sin(t * Math.PI * 2.4) + 1) / 2;
+      cmdcaret.style.opacity = (t >= TYPE_S) ? (typing ? blink : 0.6) : 0;
+      send.style.background = shown > 0 ? ACCENT : GREY;
+    } else {
+      // after send: box cleared back to placeholder
+      cmdtyped.textContent = '';
+      cmdph.style.display = 'inline';
+      cmdcaret.style.opacity = 0;
+      send.style.background = GREY;
+    }
+
+    // 2) render status bar 6% -> 100% and scene 1/5 -> 5/5
+    let p;
+    if (t < RB_START) p = 6;
+    else if (t >= RB_END) p = 100;
+    else p = 6 + clamp01((t - RB_START) / (RB_END - RB_START)) * 94;
+    const pv = Math.round(p);
+    bar.style.width = pv + '%';
+    pctLabel.textContent = pv + '%';
+    rsState.textContent = (pv >= 100) ? 'ready' : 'rendering';
+    // scene counter 1..5 tracks progress
+    let scene = Math.min(5, Math.max(1, Math.floor((pv - 6) / 94 * 5) + 1));
+    if (pv >= 100) scene = 5;
+    sceneLabel.textContent = 'Scene ' + scene + ' / 5';
+
+    // 3) play button dim until finished; brightens at the end
+    const bright = t >= RENDER_DONE;
+    playbtn.style.opacity = bright ? 1 : 0.42;
+  }
+
+  // ── master timeline (paused; HyperFrames seeks it) ───────────────────
+  const tl = gsap.timeline({ paused: true });
+
+  // INITIAL STATE — clean frame 0
+  gsap.set(app, { opacity: 0, scale: 0.985, transformOrigin: '50% 50%' });
+  gsap.set(briefText, { opacity: 0 });
+  chips.forEach(c => gsap.set(c, { opacity: 0, y: 4 }));
+  ROWS.forEach(r => { setRowState(r, 'q'); gsap.set(r.el, { opacity: 0, y: 10 }); });
+  gsap.set(cap, { opacity: 0 });
+  gsap.set(send, { scale: 1 });
+
+  // app fade/scale in
+  tl.to(app, { opacity: 1, scale: 1, duration: 0.6, ease: 'expo.out' }, 0);
+
+  // send press (squash + pop) once the prompt is typed
+  tl.to(send, { scale: 0.82, duration: 0.12, ease: 'power2.in' }, SEND_AT)
+    .to(send, { scale: 1, duration: 0.34, ease: 'back.out(3)' }, SEND_AT + 0.12);
+
+  // prompt moves into the BRIEF bar; chips fade in one by one
+  tl.add(() => { briefText.textContent = PROMPT; }, BRIEF_AT - 0.01);
+  tl.to(briefText, { opacity: 1, duration: 0.4, ease: 'power2.out' }, BRIEF_AT);
+  chips.forEach((c, i) => {
+    tl.to(c, { opacity: 1, y: 0, duration: 0.32, ease: 'power3.out' }, BRIEF_AT + 0.2 + i * 0.18);
+  });
+  // run status flips to "working"
+  tl.add(() => { runStatus.innerHTML = '<em>working</em>'; }, BRIEF_AT + 0.2);
+
+  // STEPS run-list fills one row at a time: appear -> active -> done
+  ROWS.forEach((r, i) => {
+    const appearAt = ACT(i) - 0.3;
+    // row appears (still queued look)
+    tl.to(r.el, { opacity: 1, y: 0, duration: 0.4, ease: 'power3.out' }, appearAt);
+    // becomes ACTIVE
+    tl.add(() => setRowState(r, 'act'), ACT(i));
+    tl.fromTo(r.el, { scale: 0.992 }, { scale: 1, duration: 0.3, ease: 'back.out(2)' }, ACT(i));
+    // completes to DONE (rows 0..3 at their DONE time; row4 at render done)
+    if (i < ROWS.length - 1){
+      tl.add(() => setRowState(r, 'done'), DONE(i));
+      tl.fromTo(r.st, { scale: 0.5 }, { scale: 1, duration: 0.32, ease: 'back.out(2.4)' }, DONE(i));
+    }
+  });
+  // status counters update as steps complete (feel of progress)
+  tl.add(() => { runStatus.innerHTML = '1 done · <em>rendering</em> · 3 queued'; }, DONE(0));
+  tl.add(() => { runStatus.innerHTML = '2 done · <em>rendering</em> · 2 queued'; }, DONE(1));
+  tl.add(() => { runStatus.innerHTML = '3 done · <em>rendering</em> · 1 queued'; }, DONE(2));
+  tl.add(() => { runStatus.innerHTML = '4 done · <em>rendering</em>'; }, DONE(3));
+
+  // PREVIEW caption fills in / changes as work lands
+  tl.add(() => { cap.textContent = 'your launch'; }, ACT(0) + 0.1);
+  tl.to(cap, { opacity: 1, duration: 0.4, ease: 'power2.out' }, ACT(0) + 0.1);
+  tl.add(() => { cap.textContent = 'your launch starts'; }, ACT(2) + 0.1);
+  tl.add(() => { cap.textContent = 'your launch starts now'; }, ACT(3) + 0.1);
+
+  // FINISHED: row4 completes, play button brightens, brain pill pulses once
+  tl.add(() => {
+    setRowState(ROWS[4], 'done');
+    ROWS[4].dur.textContent = 'done';
+    runStatus.innerHTML = '<em>5 done</em> · ready';
+  }, RENDER_DONE);
+  tl.fromTo(ROWS[4].st, { scale: 0.5 }, { scale: 1, duration: 0.34, ease: 'back.out(2.4)' }, RENDER_DONE);
+  // brain pill pulse once
+  tl.fromTo(brainpill, { scale: 1 }, { scale: 1.06, duration: 0.3, ease: 'power2.out' }, RENDER_DONE + 0.1)
+    .to(brainpill, { scale: 1, duration: 0.4, ease: 'power2.in' }, RENDER_DONE + 0.4);
+  // finished caption emphasis
+  tl.fromTo(cap, { scale: 0.96 }, { scale: 1, duration: 0.4, ease: 'back.out(2)' }, RENDER_DONE + 0.05);
+
+  // GENTLE HOLD — subtle breathing on the preview frame (finite yoyo)
+  // 14.5 -> 16.0 = 1.5s; one full breath cycle ~1.5s -> repeat 0 (single yoyo pair)
+  tl.to(frame, { scale: 1.012, duration: 0.75, ease: 'sine.inOut', yoyo: true, repeat: 1 }, HOLD_S);
+
+  // proxy tween drives render() every frame across the whole clip
+  const proxy = { t: 0 };
+  tl.to(proxy, { t: TOTAL, duration: TOTAL, ease: 'none', onUpdate: () => render(proxy.t) }, 0);
+  // pad to data-duration so the final frame holds cleanly
+  tl.set({}, {}, TOTAL);
+
+  render(0);
+  window.__timelines = window.__timelines || {};
+  window.__timelines['main'] = tl;
+  window.__timeline = tl;
+</script>
+</body>
+</html>

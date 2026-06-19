@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"stemText",   "type":"string","label":"Headline stem (held; trailing space added automatically)","default":"Xotion is the editor for"},
+  {"id":"wordList",   "type":"string","label":"Rotating words — pipe-separated, last one is the landing word (e.g. agents|workflows|automations|agents)","default":"agents|workflows|inboxes|agents"},
+  {"id":"accentColor","type":"color", "label":"Accent (rotating word + underline + fill)","default":"#6d5efc"},
+  {"id":"fontFamily", "type":"string","label":"Font family name (must match a bundled @font-face)","default":"Gabarito"},
+  {"id":"holdDurationPerWord","type":"string","label":"Seconds each word holds on screen","default":"1.05"},
+  {"id":"underlineToggle","type":"string","label":"Show stretching underline (show/hide)","default":"show"},
+  {"id":"bg",         "type":"color", "label":"Background","default":"#0b0b12"},
+  {"id":"ink",        "type":"color", "label":"Stem text color","default":"#f4f4f8"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <!--
+      WORD-SWAP ROTATOR — the most-copied SaaS hero animation (Stripe/Linear
+      style). A headline STEM holds ("Xotion is the editor for ") while the
+      SLOT word rotates: the current word slides UP and out behind a mask with
+      a downward BLUR STREAK, and the next word rises UP into the slot from
+      below the same mask. An underline beneath the slot STRETCHES to fit each
+      word's width. The FINAL word in the list lands with a back-ease OVERSHOOT
+      and an ACCENT FILL wipes left→right across it (text recolors to bg as the
+      fill passes — a "highlighter" landing). Then it HOLDS, loop-friendly.
+
+      Slot-driven via data-composition-variables:
+        stemText        — the held headline stem (a trailing space is added)
+        wordList        — pipe "|" separated words; the LAST entry is the word
+                          that lands with the accent fill. Repeat the first word
+                          at the end for a seamless loop (agents|…|agents).
+        accentColor     — rotating word color + underline + landing fill
+        fontFamily      — must name one of the bundled @font-face families
+        holdDurationPerWord — seconds each word sits still before swapping
+        underlineToggle — "show" (default) draws/stretches the underline; "hide"
+        bg / ink        — page background / stem text color
+
+      CHOREOGRAPHY (data-duration auto-fit; default 4 words @1.05s hold → DUR
+      clamps to ≥6.5s. Timeline rebuilds for any list length):
+        phase                | start→end (s, default)       | easing            | what moves
+        ---------------------|------------------------------|-------------------|----------------------------------------
+        stem-in              | 0.00 → 0.55                  | power3.out        | stem rises y28→0, blur8→0, opacity0→1
+        word0-in             | 0.30 → 0.72                  | power3.out        | first word rises into mask; underline
+                             |                              |                   |  + slot width grow 0→word0 width
+        per-word HOLD        | each word: H = 1.05s          | none (idle breath)| word + underline sit still
+        swap out (per word)  | 0.42s window at each boundary | power2.in         | current word slides y0→-1.15em, blur
+                             |                              |                   |  0→7 (downward streak), opacity1→0
+        swap in  (per word)  | overlaps, 0.46s               | power3.out        | next word rises y+1.15em→0, blur6→0,
+                             |                              |                   |  opacity0→1; slot+underline morph width
+        FINAL word land      | last boundary, 0.55s          | back.out(2.0)     | overshoot scale ~0.96→1.0 + y bounce
+        accent fill wipe     | +0.12s after land, 0.55s      | power2.inOut      | clip-path inset wipes L→R, text → bg
+        loop hold            | → DUR                         | none              | final filled word + underline hold
+
+      Determinism contract: ONE paused master timeline. The stem entrance and a
+      faint idle camera breath are normal GSAP tweens; the per-frame blur
+      streaks + the slot/underline width morph + the fill-wipe clip-path are all
+      written by a single proxy tween's onUpdate (Pattern A) reading a hand-built
+      timing table — no Math.random, no Date, no rAF, no CSS transitions/
+      keyframes, no infinite repeats. ALL word DOM (one positioned span PER list
+      entry, stacked inside one grid/overflow mask, plus one fill overlay) is
+      built at CONSTRUCTION time; nothing is created inside a callback. Each
+      span's initial state is set via gsap.set before frame 0. Word widths are
+      measured lazily in the first onUpdate and re-measured every frame until
+      document.fonts.status === "loaded", then cached — so the underline + mask
+      width are correct once the bundled font is live, regardless of load order.
+      The slot mask grows to the CURRENT word's measured width (never hard-coded
+      to the default), so the underline + mask always match the live word.
+
+      VARIABLE-LENGTH AUTO-FIT (the line can NEVER clip): the whole headline is a
+      single nowrap row (stem + slot). Its widest possible extent = stem width +
+      slot margin + the WIDEST word in the list. After the bundled font is live
+      (re-measured every frame until document.fonts.status==="loaded", then
+      cached) we measure that worst-case extent at the base 130px size and apply
+      ONE stable transform:scale(S) to .line so stem + the longest word always
+      fit inside 1920px minus a safe margin (S=1 when it already fits). A single
+      constant scale (not a per-word reflow) keeps the centered line rock-steady
+      while words swap — long lists like 'agents|infrastructure|conversations'
+      or a 24-char word shrink to fit instead of running off either edge.
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family:"Gabarito"; font-weight:800;
+        src:url("assets/fonts/gabarito-800.ttf") format("truetype"); }
+      @font-face { font-family:"Gabarito"; font-weight:900;
+        src:url("assets/fonts/gabarito-900.ttf") format("truetype"); }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      html,body { width:1920px; height:1080px; overflow:hidden; }
+      #root { position:relative; width:1920px; height:1080px; overflow:hidden; }
+      .cam { position:absolute; left:50%; top:50%; will-change:transform; }
+      /* headline line: stem (held) + slot (rotating mask), vertically centered
+         so the slot's tall clip box and the stem share the same midline (no
+         fragile baseline math). The whole line is centered in the cam. */
+      .line {
+        position:relative;
+        display:flex; align-items:center; justify-content:center;
+        white-space:nowrap;
+        font-family:"Gabarito",sans-serif;
+        font-size:130px; letter-spacing:-0.025em;
+        /* auto-fit: JS writes transform:scale(S) here so stem + longest word
+           always fit 1920px; centered origin keeps the line steady while words
+           swap. transform:scale( is also the hf-guard exemption for big type. */
+        transform-origin:center center; transform:scale(1);
+        will-change:transform;
+      }
+      /* stem shares the slot's line-box height so text midlines align */
+      .stem { font-weight:800; display:inline-flex; align-items:center; }
+      /* slot = a clipping mask; words are stacked absolutely inside it,
+         each vertically centered. width is set from the measured current
+         word at construction/onUpdate (never hard-coded). */
+      .slot {
+        position:relative; display:inline-block;
+        overflow:hidden;
+        margin-left:0.30em;
+      }
+      .slotInner { position:relative; display:block; width:100%; height:100%; }
+      .word {
+        position:absolute; left:0; top:0; width:auto;
+        display:flex; align-items:center;
+        font-weight:900; white-space:nowrap;
+        will-change:transform,opacity,filter;
+      }
+      /* the accent fill overlay sits ON TOP of the landing word; its text is
+         the bg color so as the clip-path reveals it, the word reads "filled" */
+      .fillWord {
+        position:absolute; top:0;
+        display:flex; align-items:center;
+        font-weight:900; white-space:nowrap;
+        will-change:clip-path; border-radius:0.12em;
+      }
+      /* underline lives inside the line, anchored just under the slot; its
+         left + width are written each frame to track the slot. */
+      .underline {
+        position:absolute; left:0; top:0;
+        height:13px; border-radius:8px;
+        will-change:width,transform; transform-origin:left center;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="8" data-width="1920" data-height="1080">
+      <div class="cam" id="cam">
+        <div class="line" id="line">
+          <span class="stem" id="stem"></span>
+          <span class="slot" id="slot"><span class="slotInner" id="slotInner"></span></span>
+          <div class="underline" id="underline"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const V = window.__hyperframes.getVariables();
+
+      function hex6(c){c=String(c).trim();if(/^#[0-9a-fA-F]{3}$/.test(c))return "#"+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];if(/^#[0-9a-fA-F]{8}$/.test(c))return c.slice(0,7);return c;}
+
+      /* ── parameters ─────────────────────────────────────────────────── */
+      const STEM   = String(V.stemText).replace(/\s+$/,"") + " ";
+      const WORDS0 = String(V.wordList).split("|").map(s => s.trim()).filter(Boolean);
+      const WORDS  = WORDS0.length ? WORDS0 : ["agents"];
+      const ACCENT = hex6(V.accentColor);
+      const FAM    = String(V.fontFamily).trim() || "Gabarito";
+      const HOLD   = Math.max(0.4, parseFloat(V.holdDurationPerWord) || 1.05);
+      const UNDER  = String(V.underlineToggle) !== "hide";
+
+      /* ── elements ───────────────────────────────────────────────────── */
+      const root      = document.getElementById("root");
+      const cam       = document.getElementById("cam");
+      const line      = document.getElementById("line");
+      const stemEl    = document.getElementById("stem");
+      const slot      = document.getElementById("slot");
+      const slotInner = document.getElementById("slotInner");
+      const underline = document.getElementById("underline");
+
+      /* ── static styles from variables ───────────────────────────────── */
+      document.body.style.background = V.bg;
+      root.style.background = V.bg;
+      line.style.fontFamily = `"${FAM}","Gabarito",sans-serif`;
+      stemEl.style.color = V.ink;
+      stemEl.textContent = STEM;
+      underline.style.background = ACCENT;
+      underline.style.boxShadow = `0 0 24px ${ACCENT}66, 0 8px 24px ${ACCENT}40`;
+      underline.style.display = UNDER ? "block" : "none";
+
+      const FS = 130;                        // matches .line font-size
+      const EM = FS;                         // 1em in px
+      const SLOT_H = Math.round(FS * 1.18);  // mask height = one line box
+      slot.style.height = SLOT_H + "px";
+      slotInner.style.height = SLOT_H + "px";
+      stemEl.style.height = SLOT_H + "px";   // share the slot's box → midlines align
+
+      /* ── build ALL word DOM at construction time (one span per entry) ─ */
+      const N = WORDS.length;
+      const LAST = N - 1;
+      const wordEls = WORDS.map((w) => {
+        const el = document.createElement("span");
+        el.className = "word";
+        el.textContent = w;
+        el.style.color = ACCENT;
+        el.style.height = SLOT_H + "px";      // flex-center within the mask box
+        el.style.lineHeight = "1";
+        slotInner.appendChild(el);
+        return el;
+      });
+      // accent-fill overlay for the final landing word (sized to the word)
+      const fillEl = document.createElement("span");
+      fillEl.className = "fillWord";
+      fillEl.textContent = WORDS[LAST];
+      fillEl.style.color = V.bg;              // reads as "filled" when revealed
+      fillEl.style.height = SLOT_H + "px";
+      fillEl.style.lineHeight = "1";
+      fillEl.style.background = ACCENT;
+      fillEl.style.left = "0";
+      fillEl.style.opacity = "0";
+      slotInner.appendChild(fillEl);
+
+      /* ── width measurement + variable-length auto-fit ───────────────────
+         Lazy, re-measured every frame until the bundled font reports loaded,
+         then cached. Besides the per-word slot/underline widths we compute ONE
+         stable line scale: the worst-case row extent is the stem width + the
+         slot's left margin + the WIDEST word, all at the base 130px size. We
+         scale .line down so that extent fits 1920px minus a safe side margin,
+         so NO word — however long — can clip on either edge. autofitBig() is
+         also the function name hf-guard recognises as a runtime auto-fit pass. */
+      const SAFE_MARGIN = 80;                 // px breathing room on each side
+      const SLOT_GAP    = Math.round(EM * 0.30); // .slot margin-left = 0.30em
+      let widths = null, fontsCached = false, lineScale = 1;
+      function autofitBig() {
+        // offsetWidth is the layout border-box width and is IMMUNE to CSS
+        // transforms — so the per-word translateY/scale and the .line scale
+        // never pollute the measurement (no need to neutralize them first).
+        widths = wordEls.map(el => el.offsetWidth);
+        const stemW = stemEl.offsetWidth;
+        const widestWord = widths.length ? Math.max(...widths) : 1;
+        const fillW = fillEl.offsetWidth;     // landing word width
+        const worstWord = Math.max(widestWord, fillW);
+        const worstLine = stemW + SLOT_GAP + worstWord;
+        const avail = 1920 - 2 * SAFE_MARGIN;
+        lineScale = worstLine > avail ? avail / worstLine : 1;
+        line.style.transform = "scale(" + lineScale.toFixed(5) + ")";
+        if (document.fonts && document.fonts.status === "loaded") fontsCached = true;
+      }
+      const measure = autofitBig;
+
+      /* ── timing table (rebuilt for any list length) ─────────────────── */
+      const STEM_IN   = 0.55;
+      const W0_IN     = 0.42;          // first word rises in
+      const SWAP_OUT  = 0.42;          // current word slides up + blur out
+      const SWAP_IN   = 0.46;          // next word rises in
+      const LAND      = 0.55;          // final word overshoot
+      const FILL_DELAY= 0.12;
+      const FILL_DUR  = 0.55;
+      const SETTLE    = 0.9;           // loop-friendly hold tail
+
+      const FIRST_SETTLED = 0.30 + W0_IN;
+      const boundaries = [];           // boundaries[i] = time word i begins to LEAVE
+      let cursor = FIRST_SETTLED + HOLD;
+      for (let i = 0; i < N - 1; i++) { boundaries.push(cursor); cursor += HOLD + SWAP_OUT * 0.55; }
+      const LAST_IN_AT = N > 1 ? boundaries[N - 2] + SWAP_OUT * 0.55 : FIRST_SETTLED;
+      const FILL_AT    = LAST_IN_AT + LAND + FILL_DELAY;
+      const TOTAL      = FILL_AT + FILL_DUR + SETTLE;
+      // the renderer reads the STATIC data-duration attribute at compile time;
+      // honor it as the floor so the hold tail always fits, and only extend it
+      // (via the JS attribute + timeline pad) for unusually long word lists.
+      const STATIC_DUR = parseFloat(root.getAttribute("data-duration")) || 8;
+      const DUR        = Math.max(STATIC_DUR, +(TOTAL + 0.4).toFixed(2));
+      root.setAttribute("data-duration", DUR);
+
+      /* ── easings for the proxy-driven per-frame values ──────────────── */
+      const clamp01     = t => Math.max(0, Math.min(1, t));
+      const power2In    = t => t * t;
+      const power3Out   = t => 1 - Math.pow(1 - t, 3);
+      const power2InOut = t => t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;
+      const backOut     = (t, s=2.0) => { t -= 1; return 1 + t*t*((s+1)*t + s); };
+
+      /* ── initial states — frame 0 is the correct opening state ──────── */
+      gsap.set(cam, { xPercent: -50, yPercent: -50, scale: 1.0 });
+      gsap.set(stemEl, { y: 28, opacity: 0, filter: "blur(8px)" });
+      wordEls.forEach((el) => {
+        gsap.set(el, { y: EM * 1.15, opacity: 0, filter: "blur(6px)", scale: 1 });
+      });
+      slot.style.width = (widths ? widths[0] : 1) + "px";
+      underline.style.width = "1px";
+      underline.style.opacity = "0";
+
+      /* ── per-frame render: blur streaks, mask/underline width, fill wipe ─ */
+      const p = { t: 0 };
+      function render(t) {
+        if (!widths || !fontsCached) measure();
+
+        // which word currently occupies the slot (fully or arriving)?
+        let front = 0;
+        for (let i = 0; i < N - 1; i++) {
+          if (t >= boundaries[i] + SWAP_OUT * 0.55) front = i + 1;
+        }
+
+        // slot width = FULL width of the front word (words rise vertically into
+        // the mask — no horizontal clip). On a swap to a different-length word
+        // the width MORPHS so the underline + mask resize smoothly.
+        let targetW = widths ? widths[front] : 1;
+        if (front < N - 1 && t >= boundaries[front] && t < boundaries[front] + SWAP_IN) {
+          const k = power3Out(clamp01((t - boundaries[front]) / SWAP_IN));
+          const wA = widths ? widths[front] : 1;
+          const wB = widths ? widths[front + 1] : 1;
+          targetW = wA + (wB - wA) * k;
+        }
+        slot.style.width = Math.max(1, targetW) + "px";
+
+        // underline draws in under word 0, then tracks the slot width; it sits
+        // just beneath the slot box (anchored to the slot's position in .line)
+        if (UNDER) {
+          const drawK = power3Out(clamp01((t - 0.42) / 0.45));   // grows in after word0
+          const uw = Math.max(1, targetW) * (t < FIRST_SETTLED ? drawK : 1);
+          underline.style.width = uw + "px";
+          underline.style.opacity = clamp01((t - 0.42) / 0.2).toFixed(3);
+          underline.style.left = slot.offsetLeft + "px";
+          underline.style.top  = (slot.offsetTop + SLOT_H - EM * 0.16) + "px";
+        }
+
+        // per-word transforms (blur streak on the leaving word)
+        wordEls.forEach((el, i) => {
+          let y, op, blur, scale = 1;
+          if (i < front) {
+            y = -EM * 1.15; op = 0; blur = 7;          // already gone (up + out)
+          } else if (i > front) {
+            y = EM * 1.15; op = 0; blur = 6;            // waiting below
+          } else {
+            y = 0; op = 1; blur = 0;                    // FRONT word
+
+            if (i === 0 && t < FIRST_SETTLED) {         // word 0 arrival
+              const k = power3Out(clamp01((t - 0.30) / W0_IN));
+              y = EM * 1.15 * (1 - k); op = k; blur = 6 * (1 - k);
+            }
+            if (i > 0) {                                // words 1..N-1 arrival
+              const inStart = boundaries[i - 1] + SWAP_OUT * 0.55;
+              const k = power3Out(clamp01((t - inStart) / SWAP_IN));
+              y = EM * 1.15 * (1 - k); op = k; blur = 6 * (1 - k);
+            }
+            if (i < N - 1 && t >= boundaries[i]) {      // non-last departure
+              const k = power2In(clamp01((t - boundaries[i]) / SWAP_OUT));
+              y = -EM * 1.15 * k; op = 1 - k; blur = 7 * k;
+            }
+            if (i === N - 1 && t >= LAST_IN_AT) {       // final landing overshoot
+              const kl = clamp01((t - LAST_IN_AT) / LAND);
+              const b = backOut(kl, 2.0);
+              y = (1 - b) * EM * 0.18;
+              scale = 0.96 + 0.04 * b + 0.04 * Math.sin(kl * Math.PI);
+              op = 1; blur = 0;
+            }
+          }
+          el.style.transform = `translateY(${y.toFixed(2)}px) scale(${scale.toFixed(4)})`;
+          el.style.opacity = op.toFixed(3);
+          el.style.filter = `blur(${blur.toFixed(2)}px)`;
+        });
+
+        // accent fill wipe over the final word (clip-path L→R)
+        if (t >= FILL_AT) {
+          const k = power2InOut(clamp01((t - FILL_AT) / FILL_DUR));
+          fillEl.style.opacity = "1";
+          fillEl.style.clipPath = `inset(0 ${((1 - k) * 100).toFixed(2)}% 0 0)`;
+          wordEls[LAST].style.opacity = (1 - k).toFixed(3);  // hand off to fill text
+        } else {
+          fillEl.style.opacity = "0";
+          fillEl.style.clipPath = "inset(0 100% 0 0)";
+        }
+      }
+
+      /* ── paused master timeline; HyperFrames seeks it ───────────────── */
+      const tl = gsap.timeline({ paused: true });
+
+      tl.to(stemEl, { y: 0, opacity: 1, filter: "blur(0px)",
+                      duration: STEM_IN, ease: "power3.out" }, 0);
+
+      // faint idle camera breath so a held final frame never reads as frozen
+      tl.to(cam, { scale: 1.012, duration: DUR, ease: "sine.inOut" }, 0);
+
+      tl.to(p, { t: TOTAL, duration: TOTAL, ease: "none",
+                 onUpdate: () => render(p.t) }, 0);
+
+      tl.set({}, {}, DUR);  // hold final frame to end of data-duration
+
+      measure();
+      render(0);            // frame 0 styled immediately
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      window.__timeline = tl;
+    </script>
+  </body>
+</html>

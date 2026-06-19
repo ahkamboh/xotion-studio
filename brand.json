@@ -1,0 +1,26 @@
+{
+  "name": "Acme Co",
+  "colors": {
+    "bg": "#0a0a0c",
+    "fg": "#f5f1ea",
+    "fgMuted": "rgba(245,241,234,0.55)",
+    "accent": "#ff6b35",
+    "accent2": "#ff8c42"
+  },
+  "fonts": {
+    "headline": "Anton",
+    "headlineFile": "assets/fonts/anton-400.ttf",
+    "body": "Poppins",
+    "bodyFile": "assets/fonts/poppins-700.ttf",
+    "accent": "Instrument Serif",
+    "accentFile": "assets/fonts/instrument-serif-400.ttf"
+  },
+  "logo": "assets/logo.png",
+  "handle": "@acme",
+  "url": "acme.com",
+  "tone": "bold, confident, premium",
+  "captionStyle": "house",
+  "disclaimer": "",
+  "music": "",
+  "watermark": false
+}

@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" /><meta name="viewport" content="width=1080,height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }</script>
+    <style>
+      *{margin:0;padding:0;box-sizing:border-box;}
+      html,body{width:1080px;height:1920px;overflow:hidden;background:#eef1f6;font-family:"Helvetica Neue",Arial,sans-serif;}
+      #root{position:relative;width:1080px;height:1920px;overflow:hidden;}
+      .bg{position:absolute;inset:0;z-index:1;opacity:0;}
+      .b1{background:radial-gradient(1100px 900px at 28% 16%,#fdeee9,rgba(253,238,233,0)60%),linear-gradient(160deg,#f3ece8,#e9eef8);}
+      .b2{background:radial-gradient(1100px 900px at 72% 20%,#efe6ff,rgba(239,230,255,0)60%),linear-gradient(160deg,#efeaf6,#e6ecf7);}
+      .b3{background:radial-gradient(1100px 1000px at 50% 80%,#e6f0ff,rgba(230,240,255,0)62%),linear-gradient(160deg,#eef1f8,#eaf3ef);}
+      .b4{background:radial-gradient(1100px 900px at 30% 75%,#e9fbf2,rgba(233,251,242,0)60%),linear-gradient(160deg,#eef4f1,#e9eef8);}
+      .b5{background:radial-gradient(1200px 1000px at 50% 30%,#f6ecff,rgba(246,236,255,0)60%),linear-gradient(160deg,#efe9f7,#e7edf9);}
+      .b6{background:radial-gradient(1100px 900px at 70% 78%,#ffeef0,rgba(255,238,240,0)60%),linear-gradient(160deg,#f2ecef,#e8eef8);}
+      #gl{position:absolute;inset:0;width:1080px;height:1920px;z-index:5;}
+      .scene{position:absolute;inset:0;z-index:20;}
+      .ctr{position:absolute;left:50%;transform:translateX(-50%);text-align:center;width:920px;}
+      .eyebrow{font-size:30px;letter-spacing:.4em;text-transform:uppercase;font-weight:700;color:#8b6fd0;}
+      .head{font-size:128px;line-height:.94;font-weight:800;letter-spacing:-.03em;color:#221f29;}
+      .head .g{background:linear-gradient(90deg,#7b5cff,#c86bff);-webkit-background-clip:text;background-clip:text;color:transparent;}
+      .sub{font-size:42px;font-weight:500;color:#5d5866;line-height:1.2;}
+      .card{position:absolute;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.74);backdrop-filter:blur(20px);
+        border:1px solid rgba(255,255,255,.9);border-radius:36px;box-shadow:0 50px 100px -34px rgba(70,60,120,.5),0 10px 28px -12px rgba(70,60,120,.32);}
+      .prompt{width:760px;padding:40px 44px;text-align:left;}
+      .prompt .term{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:28px;color:#9a93a6;margin-bottom:10px;}
+      .prompt .q{font-size:44px;font-weight:700;color:#27232e;line-height:1.18;}
+      .prompt .q b{color:#7b5cff;}
+      .chips{margin-top:26px;display:flex;gap:14px;flex-wrap:wrap;}
+      .chip{font-size:26px;font-weight:700;padding:12px 24px;border-radius:999px;background:#f0ecff;color:#6a4bd6;}
+      .chip.on{background:linear-gradient(90deg,#7b5cff,#c86bff);color:#fff;}
+      .scard{position:absolute;border-radius:28px;box-shadow:0 36px 70px -28px rgba(60,50,110,.45);overflow:hidden;border:1px solid rgba(255,255,255,.7);}
+      .scard .lbl{position:absolute;left:18px;bottom:16px;color:#fff;font-weight:700;font-size:26px;text-shadow:0 2px 8px rgba(0,0,0,.35);}
+      .pill{position:absolute;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.8);backdrop-filter:blur(14px);
+        border:1px solid rgba(255,255,255,.9);border-radius:999px;box-shadow:0 24px 50px -24px rgba(70,60,120,.5);
+        font-size:34px;font-weight:700;color:#2c2733;padding:22px 44px;}
+      .pill .d{display:inline-block;width:16px;height:16px;border-radius:50%;background:#21b24b;margin-right:14px;vertical-align:middle;}
+      .logo{font-size:200px;font-weight:800;letter-spacing:-.05em;background:linear-gradient(90deg,#7b5cff,#c86bff,#7b5cff);-webkit-background-clip:text;background-clip:text;color:transparent;}
+      .phone{position:absolute;left:50%;transform:translateX(-50%);width:520px;height:1060px;border-radius:62px;background:#15131c;
+        box-shadow:0 70px 130px -40px rgba(50,40,90,.6),0 14px 34px -14px rgba(50,40,90,.4);border:10px solid #0d0b12;overflow:hidden;}
+      .phone .scr{position:absolute;inset:14px;border-radius:48px;overflow:hidden;background:linear-gradient(160deg,#111018,#1c1830);}
+      .phone .row{position:absolute;left:30px;right:30px;height:64px;border-radius:18px;background:rgba(255,255,255,.08);}
+      .phone .accent{background:linear-gradient(90deg,#7b5cff,#c86bff);}
+      .notch{position:absolute;left:50%;top:18px;transform:translateX(-50%);width:150px;height:32px;border-radius:18px;background:#0d0b12;}
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="18" data-width="1080" data-height="1920">
+      <div class="bg b1"></div><div class="bg b2"></div><div class="bg b3"></div>
+      <div class="bg b4"></div><div class="bg b5"></div><div class="bg b6"></div>
+      <canvas id="gl" width="1080" height="1920"></canvas>
+
+      <!-- B1 -->
+      <div class="scene" id="s1">
+        <div class="ctr eyebrow" style="top:560px;">Xotion · on-device</div>
+        <div class="ctr head" style="top:620px;">Editing<br>shouldn't be<br>this <span class="g">hard.</span></div>
+      </div>
+      <!-- B2 -->
+      <div class="scene" id="s2">
+        <div class="ctr head" style="top:600px;">Hours per<br>frame.</div>
+        <div class="ctr sub" style="top:980px;">Endless tools. Endless render fees.</div>
+      </div>
+      <!-- B3 -->
+      <div class="scene" id="s3">
+        <div class="ctr eyebrow" style="top:470px;">With Xotion</div>
+        <div class="ctr head" style="top:520px;">Just describe<br>the edit.</div>
+        <div class="card prompt" style="top:1080px;">
+          <div class="term">~/launch $ xotion</div>
+          <div class="q">make a 30s explainer, <b>female VO</b>, b-roll + animated stats</div>
+          <div class="chips"><span class="chip on">script</span><span class="chip on">voice</span><span class="chip on">render</span><span class="chip">on-device</span></div>
+        </div>
+      </div>
+      <!-- B4 -->
+      <div class="scene" id="s4">
+        <div class="ctr head" style="top:430px;">Any format.<br>Any style.</div>
+        <div class="scard" id="c41" style="left:120px;top:980px;width:300px;height:380px;background:linear-gradient(150deg,#7b5cff,#c86bff);"><div class="lbl">Reels 9:16</div></div>
+        <div class="scard" id="c42" style="left:440px;top:920px;width:300px;height:380px;background:linear-gradient(150deg,#21b24b,#7be0a0);"><div class="lbl">Promo 16:9</div></div>
+        <div class="scard" id="c43" style="left:660px;top:1010px;width:300px;height:380px;background:linear-gradient(150deg,#ff7ab0,#ffb37a);"><div class="lbl">Lyric</div></div>
+      </div>
+      <!-- B5 -->
+      <div class="scene" id="s5">
+        <div class="pill" id="p51" style="top:520px;"><span class="d"></span>100% on-device</div>
+        <div class="pill" id="p52" style="top:640px;"><span class="d"></span>Private by default</div>
+        <div class="ctr logo" style="top:980px;">xotion</div>
+        <div class="ctr sub" style="top:1280px;">your footage never leaves your Mac</div>
+      </div>
+      <!-- B6 -->
+      <div class="scene" id="s6">
+        <div class="ctr head" style="top:300px;">Runs on<br>your Mac.</div>
+        <div class="phone" id="ph" style="top:560px;">
+          <div class="scr">
+            <div class="notch"></div>
+            <div class="row accent" style="top:120px;width:60%;"></div>
+            <div class="row" style="top:210px;"></div>
+            <div class="row" style="top:300px;width:80%;"></div>
+            <div class="row accent" style="top:430px;width:50%;"></div>
+            <div class="row" style="top:520px;"></div>
+            <div class="row" style="top:610px;width:70%;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import * as THREE from "three";
+      const W=1080,H=1920;
+      const renderer=new THREE.WebGLRenderer({canvas:document.getElementById("gl"),antialias:true,alpha:true});
+      renderer.setSize(W,H,false); renderer.setClearColor(0,0);
+      renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.12; renderer.outputColorSpace=THREE.SRGBColorSpace;
+      const scene=new THREE.Scene(); const camera=new THREE.PerspectiveCamera(38,W/H,0.1,100); camera.position.set(0,0,9);
+      function studioEnv(){ const s=new THREE.Scene(); s.background=new THREE.Color(0x3a3a44);
+        const p=(x,y,z,w,h,hex,g)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({color:new THREE.Color(hex).multiplyScalar(g)}));m.position.set(x,y,z);m.lookAt(0,0,0);s.add(m);};
+        p(0,9,7,26,16,0xffffff,1.6);p(-9,4,5,4,20,0xffffff,6);p(9,1,4,3,18,0xcad8ff,5);p(-3,-8,5,18,6,0x6a5cff,2);p(0,0,-11,30,30,0x101018,1);
+        return new THREE.PMREMGenerator(renderer).fromScene(s,0.015).texture; }
+      scene.environment=studioEnv();
+      scene.add(new THREE.DirectionalLight(0xffffff,2.0).translateX(5).translateY(8).translateZ(7));
+      scene.add(new THREE.AmbientLight(0xffffff,0.2));
+      const orb=new THREE.Mesh(new THREE.SphereGeometry(2.0,128,128),
+        new THREE.MeshPhysicalMaterial({color:0x6a3df0,metalness:0,roughness:0.03,clearcoat:1,clearcoatRoughness:0.02,envMapIntensity:2.6}));
+      scene.add(orb);
+      // hue per beat (purple→violet→blue→teal→pink→indigo), position drifts to balance each layout
+      const HUES=[0x6a3df0,0x8a5cff,0x4f7bff,0x18b27a,0xff6aa6,0x7b5cff];
+      const POS=[[2.3,3.0],[-2.4,3.2],[2.6,-3.3],[-2.6,3.4],[0,3.6],[2.7,-3.0]];
+      function lerp(a,b,t){return a+(b-a)*t;}
+      function draw(t){
+        const beat=Math.min(5,Math.floor(t/3)); const f=(t/3)-beat;
+        const c0=new THREE.Color(HUES[beat]), c1=new THREE.Color(HUES[Math.min(5,beat+1)]);
+        orb.material.color.copy(c0).lerp(c1,Math.min(1,f*1.4));
+        const p0=POS[beat], p1=POS[Math.min(5,beat+1)];
+        orb.position.x=lerp(p0[0],p1[0],Math.min(1,f*1.4)); orb.position.y=lerp(p0[1],p1[1],Math.min(1,f*1.4))+Math.sin(t*1.1)*0.16;
+        orb.rotation.y=t*0.6; orb.rotation.x=Math.sin(t*0.5)*0.2;
+        camera.position.x=Math.sin(t*0.35)*0.4; camera.lookAt(0,0,0);
+        renderer.render(scene,camera);
+      }
+      draw(0); window.addEventListener("hf-seek",(e)=>draw((e.detail&&e.detail.time)||0));
+
+      const Q=s=>'[data-composition-id="main"] '+s;
+      const tl=gsap.timeline({paused:true}); window.__timelines=window.__timelines||{}; window.__timelines["main"]=tl;
+      const BG=['.b1','.b2','.b3','.b4','.b5','.b6'];
+      // cross-fade backgrounds per beat
+      gsap.set(Q('.b1'),{opacity:1});
+      for(let i=1;i<6;i++){ tl.to(Q(BG[i]),{opacity:1,duration:0.6,ease:"power1.inOut"}, i*3-0.3); }
+
+      // helper: bring a scene element in (blur-rise) at t, out at t2
+      function inOut(sel,t,t2,opts){ opts=opts||{}; const y=opts.y==null?44:opts.y;
+        gsap.set(Q(sel),{opacity:0,y:y,filter:"blur(10px)"});
+        tl.to(Q(sel),{opacity:1,y:0,filter:"blur(0px)",duration:opts.din||0.7,ease:opts.ease||"expo.out"},t);
+        if(opts.float!==false) tl.to(Q(sel),{y:-10,duration:Math.max(1,t2-t-0.6),ease:"sine.inOut"},t+0.7);
+        tl.to(Q(sel),{opacity:0,y:-26,filter:"blur(8px)",duration:0.45,ease:"power2.in"},t2-0.35);
+      }
+      // B1 0-3
+      inOut('#s1 .eyebrow',0.2,3.0,{y:18,float:false});
+      inOut('#s1 .head',0.4,3.0);
+      // B2 3-6
+      inOut('#s2 .head',3.2,6.0);
+      inOut('#s2 .sub',3.5,6.0,{y:22,float:false});
+      // B3 6-9.6
+      inOut('#s3 .eyebrow',6.3,9.4,{y:16,float:false});
+      inOut('#s3 .head',6.45,9.4);
+      gsap.set(Q('#s3 .card'),{opacity:0,y:70,scale:.95});
+      tl.to(Q('#s3 .card'),{opacity:1,y:0,scale:1,duration:.7,ease:"back.out(1.5)"},6.8)
+        .to(Q('#s3 .card'),{y:-12,duration:1.8,ease:"sine.inOut"},7.5)
+        .to(Q('#s3 .card'),{opacity:0,y:-30,duration:.45,ease:"power2.in"},9.1);
+      // B4 9.6-12.4
+      inOut('#s4 .head',9.7,12.3);
+      ['#c41','#c42','#c43'].forEach((c,i)=>{ gsap.set(Q(c),{opacity:0,y:90,rotate:(i-1)*4});
+        tl.to(Q(c),{opacity:1,y:0,duration:.65,ease:"back.out(1.5)"},9.95+i*0.12)
+          .to(Q(c),{y:-14,duration:1.6,ease:"sine.inOut"},10.8+i*0.1)
+          .to(Q(c),{opacity:0,y:-30,duration:.4,ease:"power2.in"},12.05); });
+      // B5 12.4-15.2
+      ['#p51','#p52'].forEach((p,i)=>{ gsap.set(Q(p),{opacity:0,x:"-50%",y:30});
+        tl.to(Q(p),{opacity:1,y:0,duration:.55,ease:"power3.out"},12.5+i*0.15)
+          .to(Q(p),{opacity:0,y:-20,duration:.4,ease:"power2.in"},15.0); });
+      gsap.set(Q('#s5 .logo'),{opacity:0,scale:.8,filter:"blur(14px)"});
+      tl.to(Q('#s5 .logo'),{opacity:1,scale:1,filter:"blur(0px)",duration:.8,ease:"expo.out"},12.9)
+        .to(Q('#s5 .logo'),{scale:1.02,duration:1.6,ease:"sine.inOut"},13.7)
+        .to(Q('#s5 .logo'),{opacity:0,scale:.95,duration:.45,ease:"power2.in"},15.0);
+      inOut('#s5 .sub',13.3,15.2,{y:20,float:false});
+      // B6 15.2-18
+      inOut('#s6 .head',15.4,18.0,{float:false});
+      gsap.set(Q('#ph'),{opacity:0,x:"-50%",y:120,scale:.92});
+      tl.to(Q('#ph'),{opacity:1,y:0,scale:1,duration:.8,ease:"back.out(1.3)"},15.6)
+        .to(Q('#ph'),{y:-16,duration:1.6,ease:"sine.inOut"},16.5);
+      // phone rows populate (already in DOM; subtle stagger reveal)
+      gsap.set(Q('#ph .row'),{scaleX:0,transformOrigin:"0% 50%"});
+      tl.to(Q('#ph .row'),{scaleX:1,duration:.4,stagger:.08,ease:"power2.out"},16.0);
+    </script>
+  </body>
+</html>

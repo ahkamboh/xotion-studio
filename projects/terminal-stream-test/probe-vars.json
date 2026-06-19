@@ -1,0 +1,7 @@
+{
+  "promptString": "~/xotion $",
+  "commandText": "npx xotion deploy --agent inbox-triage --region us-east-1 --replicas 3 --strategy canary",
+  "successLine": "Deployment succeeded — inbox-triage is now live and reachable at https://inbox-triage.xotion.app over HTTPS",
+  "typingSpeed": "0.045",
+  "outputLines": "spin:Connecting to Xotion Cloud|bar:Bundling agent runtime|spin:Resolving dependency graph|bar:Uploading bundle to edge|ok:Compiled 14 tools, 0 errors|spin:Wiring MCP · email · Slack|bar:Pushing to edge runtime|spin:Provisioning 3 replicas|warn:Region latency above target|ok:Health check passed"
+}
