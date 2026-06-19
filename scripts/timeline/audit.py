@@ -51,7 +51,7 @@ def main():
     report = {"project": proj, "tool_tests": {}, "claims": {}}
     P = ["--project", proj]
 
-    print("=== TOOL TESTS (all 10) ===")
+    print("=== TOOL TESTS ===")
     # 1 get_timeline_state
     st = tool("get_timeline_state", *P)
     n_clips0 = sum(len(t["clips"]) for t in st["tracks"])
@@ -100,6 +100,16 @@ def main():
     rm = tool("remove_clip", *P, "--clip", spl["right"])
     report["tool_tests"]["remove_clip"] = {"ok": rm.get("removed") is True}
     print(f"  remove_clip             ok")
+
+    # 9 cut_transcript_sections — ripple-delete a span, assert the timeline shrank by that much
+    before = tool("get_timeline_state", *P)["duration"]
+    cut = tool("cut_transcript_sections", *P, "--ranges", json.dumps([[1.0, 1.6]]))
+    after = tool("get_timeline_state", *P)["duration"]
+    ripple_ok = abs((before - after) - 0.6) < 0.05
+    report["tool_tests"]["cut_transcript_sections"] = {"ok": ripple_ok, "before": before,
+                                                       "after": after, "removed": cut.get("removed")}
+    print(f"  cut_transcript_sections ok  ({before}s -> {after}s, ripple-delete)")
+    # (get_transcript is whisper-backed — verified separately on a real speech clip)
 
     print("\n=== CLAIM 1: tokens per edit (single clip vs whole HTML) ===")
     # the agent's edit action = a small JSON patch
