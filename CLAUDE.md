@@ -227,10 +227,14 @@ where you do *many small edits* (trim/move/restyle/retime/swap a source) or want
 cheaply, drive a `timeline.json` **document** instead of hand-writing `index.html`. The agent edits
 ONE clip at a time via `scripts/timeline/timeline-tools.py` (`get_timeline_state`, `get_clip`,
 `add_clip`, `remove_clip`, `split_clip`, `update_clip`, `move_clips_to_track`, `set_keyframes`,
-`get_preview_frame`, `start_export`); a compiler turns the doc into the SAME HyperFrames `index.html`
-and `start_export` renders it through `render-with-qa.sh` (gates unchanged). **Additive:** projects
+`get_preview_frame`, `start_export`, plus **transcript editing** `get_transcript` +
+`cut_transcript_sections`); a compiler turns the doc into the SAME HyperFrames `index.html` and
+`start_export` renders it through `render-with-qa.sh` (gates unchanged). **Additive:** projects
 without a `timeline.json` are untouched. ~111× fewer tokens per edit + a 1-frame `get_preview_frame`
-to see state without a full render. Audit: `python3 scripts/timeline/audit.py`.
+to see state without a full render. **Transcript editing** = "delete the words → the footage goes
+with them": `get_transcript` (via `transcribe.py`) maps words to timeline time, `cut_transcript_sections`
+ripple-deletes the spans you pick (keeps video+audio+captions in sync). Audit:
+`python3 scripts/timeline/audit.py`.
 
 **Don't hand-write from scratch when an example fits.** Scaffold from a built-in example:
 ```bash
