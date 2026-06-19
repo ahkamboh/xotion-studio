@@ -1,3 +1,11 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Generated project OUTPUTS are LOCAL-ONLY. GitHub ships the ENGINE (scripts,
+# templates, presets, docs) — not the videos/projects the engine generates.
+# Everything under projects/ stays on disk but off GitHub (a .gitkeep keeps the dir).
+# ─────────────────────────────────────────────────────────────────────────────
+/projects/*
+!/projects/.gitkeep
+
 # Renders & work artifacts (large, regenerable)
 projects/*/renders/
 projects/*/work/
