@@ -89,13 +89,32 @@ def cmd_get_transcript(a):
     tdir = os.path.join(proj_dir, "work", "transcript")
     os.makedirs(tdir, exist_ok=True)
     tjson = os.path.join(tdir, f"{aid}.json")
+    timing = None
     if a.refresh or not os.path.exists(tjson):
-        cmd = ["python3", os.path.join(ROOT, "scripts", "transcribe.py"), media, "--model", "small", "--out", tjson]
-        if a.lang:
-            cmd += ["--lang", a.lang]
-        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
-        if r.returncode != 0 or not os.path.exists(tjson):
-            _err(f"transcribe failed: {(r.stderr or r.stdout).strip()[-400:]}")
+        venv = os.path.join(ROOT, ".venv-whisperx", "bin", "python")
+        # PREFER forced alignment (frame-accurate). Repo principle: timing comes from forcing the
+        # words onto the WAVEFORM, never from raw ASR timestamps (scripts/align.py). --code-switch
+        # routes through cs_transcribe + MMS_FA for mixed-language speech/songs (1100+ langs).
+        if os.path.exists(venv):
+            cmd = [venv, os.path.join(ROOT, "scripts", "align.py"), media, "--out", tjson]
+            if a.code_switch:
+                cmd += ["--code-switch"]
+            elif a.lang:
+                cmd += ["--lang", a.lang]
+            r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+            if r.returncode == 0 and os.path.exists(tjson):
+                timing = "forced-align" + ("/code-switch" if a.code_switch else "")
+        # fall back to raw whisper word timestamps if the aligner venv is missing or failed
+        if timing is None:
+            cmd = ["python3", os.path.join(ROOT, "scripts", "transcribe.py"), media, "--model", "small", "--out", tjson]
+            if a.lang:
+                cmd += ["--lang", a.lang]
+            r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+            if r.returncode != 0 or not os.path.exists(tjson):
+                _err(f"transcribe/align failed: {(r.stderr or r.stdout).strip()[-400:]}")
+            timing = "asr-timestamps"
+    else:
+        timing = "cached"
 
     words = json.load(open(tjson))
     clips = [c for t in tl["tracks"] for c in t["clips"] if c.get("source") == aid]
@@ -109,7 +128,7 @@ def cmd_get_transcript(a):
                 out.append({"text": w["text"], "start": round(cs + (ws - ti), 2),
                             "end": round(cs + (we - ti), 2), "clipId": c["id"]})
                 break
-    _ok({"source": aid, "wordCount": len(out), "words": out})
+    _ok({"source": aid, "timing": timing, "wordCount": len(out), "words": out})
 
 
 # ---------------------------------------------------------------------------
@@ -240,6 +259,7 @@ def build_parser():
     add("get_transcript", cmd_get_transcript,
         (["--source"], {"required": False, "default": None}),
         (["--lang"], {"required": False, "default": None}),
+        (["--code-switch"], {"action": "store_true"}),
         (["--refresh"], {"action": "store_true"}))
     add("add_clip", cmd_add_clip, (["--track"], {"required": True}), (["--json"], {"required": True}))
     add("remove_clip", cmd_remove_clip, (["--clip"], {"required": True}))

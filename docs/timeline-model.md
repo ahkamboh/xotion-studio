@@ -43,9 +43,13 @@ cut_transcript_sections --project P --ranges '[[a,b],...]'# ripple-delete those 
 ```
 
 ## Transcript-driven editing ("delete the words, the footage goes with them")
-`get_transcript` runs `scripts/transcribe.py` on the project's speech source (first video/audio
-clip, or `--source`), caches it under `work/transcript/<aid>.json`, and projects every word's
-*source* time through the clip(s) into **timeline** time:
+`get_transcript` transcribes the project's speech source (first video/audio clip, or `--source`)
+and projects every word's *source* time through the clip(s) into **timeline** time. **Timing comes
+from FORCED ALIGNMENT** (`scripts/align.py` — the words are forced onto the waveform, never raw ASR
+timestamps; reported as `"timing":"forced-align"`). Flags: `--lang xx`; `--code-switch` for
+mixed-language speech/songs (Hinglish/Punjabi-English etc., via `cs_transcribe` + MMS_FA, 1100+
+languages); `--refresh` to re-run. Falls back to `transcribe.py` ASR timestamps only if the
+`.venv-whisperx` aligner is unavailable. Result is cached under `work/transcript/<aid>.json`:
 ```json
 { "source":"vo", "wordCount":11,
   "words":[ {"text":"Hello","start":0.0,"end":0.22,"clipId":"clip_000001"}, ... ] }
