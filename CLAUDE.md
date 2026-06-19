@@ -232,7 +232,8 @@ ONE clip at a time via `scripts/timeline/timeline-tools.py` (`get_timeline_state
 `start_export` renders it through `render-with-qa.sh` (gates unchanged). **Additive:** projects
 without a `timeline.json` are untouched. ~111× fewer tokens per edit + a 1-frame `get_preview_frame`
 to see state without a full render. **Transcript editing** = "delete the words → the footage goes
-with them": `get_transcript` (via `transcribe.py`) maps words to timeline time, `cut_transcript_sections`
+with them": `get_transcript` maps words to timeline time using **forced alignment** (`align.py` —
+frame-accurate; `--code-switch` for mixed-language speech/songs), `cut_transcript_sections`
 ripple-deletes the spans you pick (keeps video+audio+captions in sync). Audit:
 `python3 scripts/timeline/audit.py`.
 
