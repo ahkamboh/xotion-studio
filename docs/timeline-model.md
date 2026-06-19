@@ -38,7 +38,24 @@ move_clips_to_track  --project P --clips '["id",...]' --track T
 set_keyframes        --project P --clip CID --json '[{at,dur,ease,props},...]'
 get_preview_frame    --project P --at 1.5                 # -> {framePath} (1 rendered frame)
 start_export         --project P [--json '{"fps":30}']    # -> {runId,index_html,output_mp4}
+get_transcript       --project P [--source AID] [--lang]  # transcribe speech -> words @ TIMELINE time
+cut_transcript_sections --project P --ranges '[[a,b],...]'# ripple-delete those spans
 ```
+
+## Transcript-driven editing ("delete the words, the footage goes with them")
+`get_transcript` runs `scripts/transcribe.py` on the project's speech source (first video/audio
+clip, or `--source`), caches it under `work/transcript/<aid>.json`, and projects every word's
+*source* time through the clip(s) into **timeline** time:
+```json
+{ "source":"vo", "wordCount":11,
+  "words":[ {"text":"Hello","start":0.0,"end":0.22,"clipId":"clip_000001"}, ... ] }
+```
+The agent reads that, decides which spans to drop (fillers, rambles, a bad take), and calls
+`cut_transcript_sections --ranges '[[1.0,1.24],[2.3,2.8]]'`. That **ripple-deletes**: each span is
+removed from *every* clip on *every* track and the rest slides left to close the gap, so video + its
+audio + captions stay in sync (one shared remap), video/audio `trim.in` advances to keep the source
+continuous, and keyframes rebase per surviving piece. Verified end-to-end: cutting 0.7 s of fillers
+took a rendered MP4 from 5.14 s → 4.49 s. Plays to the LLM's strength — *editing text*.
 
 Clip shape (text example):
 ```json
