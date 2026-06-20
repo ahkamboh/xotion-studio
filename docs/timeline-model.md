@@ -1,4 +1,4 @@
-# Structured timeline (Daydream-style) — `timeline.json` as the agent's document
+# Structured timeline (document-model) — `timeline.json` as the agent's document
 
 **What this is.** A second, *optional* way to drive the engine. Instead of the agent hand-writing a
 whole `index.html` for every change, the video is a **structured document** (`timeline.json`):
@@ -24,7 +24,7 @@ hand-authored `projects/<name>/index.html`. The full export still goes through t
 - `scripts/timeline/audit.py` — exercises all 10 tools and measures the three claims (below).
 - `projects/timeline-demo/` — a worked example (gradient bg + Fraunces title + subtitle, keyframed).
 
-## The tool surface (mirrors Daydream)
+## The tool surface
 All read JSON args, print one JSON result line. `--project` is a name under `projects/` or a path.
 
 ```
