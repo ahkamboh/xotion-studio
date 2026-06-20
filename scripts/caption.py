@@ -97,12 +97,26 @@ def _mms_words(media, lang, content, model, root, venv, tmp):
             for t in timed if t.get("start") is not None]
 
 
-def get_words(media, lang, aligner="auto", content="music", model="small"):
+def get_words(media, lang, aligner="auto", content="music", model="small", lang_mode="auto"):
     """Return [{text,start,end}] using whisperX if possible, else small.pt (model configurable).
     aligner='mms' (or auto for pa/ur) -> universal MMS_FA forced alignment."""
     root = repo_root(); tmp = "work/_caption_words.json"
     os.makedirs("work", exist_ok=True)
     venv = os.path.join(root, ".venv-whisperx/bin/python")
+    # SPEECH (auto) -> intelligent language router via align.py: single small (fast) when one
+    # language, large-v3 code-switch only when genuinely mixed. The song/music path below is
+    # UNTOUCHED (router is speech-only).
+    if content == "speech" and aligner == "auto" and os.path.exists(venv):
+        cmd = [venv, os.path.join(root, "scripts/align.py"), media,
+               "--lang-mode", lang_mode, "--model", model, "--out", tmp]
+        if lang:
+            cmd += ["--lang", lang]
+        sys.stderr.write(f"[caption] speech -> language router (lang-mode={lang_mode})...\n")
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        sys.stderr.write(r.stderr[-400:] + "\n")
+        if r.returncode == 0 and os.path.exists(tmp):
+            return json.load(open(tmp))
+        sys.stderr.write("[caption] router failed; falling back to legacy speech path\n")
     # pa/ur have no reliable whisperX aligner -> route to universal MMS_FA forced alignment
     if aligner == "auto" and lang in ("pa", "ur"):
         aligner = "mms"
@@ -376,8 +390,11 @@ def main():
     ap.add_argument("--out", default=".")
     ap.add_argument("--model", default="small",
                     help="ASR model for the small.pt path (small | large-v3). Default small.")
+    ap.add_argument("--lang-mode", dest="lang_mode", choices=["auto", "single", "code-switch"],
+                    default="auto", help="SPEECH routing: auto = detect & pick single/code-switch "
+                                         "(default); single = force small; code-switch = force large-v3")
     a=ap.parse_args()
-    words=get_words(a.input, a.lang, a.aligner, a.content, a.model)
+    words=get_words(a.input, a.lang, a.aligner, a.content, a.model, a.lang_mode)
     ev=build_events(words, a.style, a.maxchars, a.maxwords)
     emit(ev, a)
 
