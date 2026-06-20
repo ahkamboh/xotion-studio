@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-audit.py — end-to-end audit of the structured-timeline (Daydream-style) tool surface.
+audit.py — end-to-end audit of the structured-timeline tool surface.
 
 Exercises ALL 10 tools on a throwaway copy of a project, then MEASURES the three claims:
   1. tokens per edit   — update_clip patch size vs rewriting the whole compiled index.html

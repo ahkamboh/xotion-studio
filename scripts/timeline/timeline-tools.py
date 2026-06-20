@@ -2,7 +2,7 @@
 """
 timeline-tools.py — the agent-facing CLI surface for the structured timeline.
 
-Every Daydream-style tool is a subcommand that reads JSON args and writes a JSON result on stdout.
+Every timeline tool is a subcommand that reads JSON args and writes a JSON result on stdout.
 This is what the Bash-only desktop sidecar invokes (allowedTools = Bash/Read/Write/...), so the
 timeline tools work TODAY with ZERO SDK custom-tool wiring.
 
