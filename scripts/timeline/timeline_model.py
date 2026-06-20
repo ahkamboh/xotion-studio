@@ -648,6 +648,92 @@ def op_move_clips_to_track(tl, clip_ids, target_track_id):
     return moved
 
 
+def _merge_ranges(ranges):
+    """Normalize + merge overlapping/adjacent [a,b] time ranges; drop empty/invalid."""
+    rs = sorted([[_round3(a), _round3(b)] for a, b in ranges if float(b) > float(a)])
+    out = []
+    for a, b in rs:
+        if out and a <= out[-1][1] + 1e-9:
+            out[-1][1] = max(out[-1][1], b)
+        else:
+            out.append([a, b])
+    return out
+
+
+def op_cut_ranges(tl, ranges):
+    """RIPPLE-DELETE timeline time ranges (the 'delete the words' / transcript-edit behaviour).
+
+    Removes each [a,b] span from EVERY clip on EVERY track and slides later content left to close
+    the gap, so the whole timeline stays in sync (video + its audio + captions all shift together
+    because they're all remapped through the same gap function). For video/audio clips the source
+    `trim.in` advances so the footage stays continuous; keyframes are rebased + filtered per surviving
+    segment. A clip spanning a cut is split into the surviving pieces (first piece keeps the orig id).
+    Returns {removed, newDuration, clips}.
+    """
+    cuts = _merge_ranges(ranges)
+    if not cuts:
+        return {"removed": 0.0, "newDuration": tl["duration"], "clips": sum(len(t["clips"]) for t in tl["tracks"])}
+    total_removed = _round3(sum(b - a for a, b in cuts))
+
+    def gap_before(t):
+        g = 0.0
+        for a, b in cuts:
+            if a >= t:
+                break
+            g += min(b, t) - a
+        return g
+
+    def remap(t):
+        return _round3(t - gap_before(t))
+
+    dur = float(tl["duration"])
+    keeps = []  # complement of the cuts within [0, duration]
+    prev = 0.0
+    for a, b in cuts:
+        if a > prev:
+            keeps.append([prev, a])
+        prev = max(prev, b)
+    if prev < dur:
+        keeps.append([prev, dur])
+
+    for track in tl["tracks"]:
+        rebuilt = []
+        for clip in track["clips"]:
+            s = float(clip["start"])
+            e = s + float(clip["length"])
+            is_av = clip["type"] in ("video", "audio")
+            base_trim = float(clip.get("trim", {}).get("in", 0)) if is_av else 0.0
+            kfs = clip.get("keyframes") or []
+            seg_idx = 0
+            for kp, kq in keeps:
+                p = max(s, kp)
+                q = min(e, kq)
+                if q - p <= 1e-6:
+                    continue
+                seg = json.loads(json.dumps(clip))
+                seg["id"] = clip["id"] if seg_idx == 0 else _next_clip_id(tl)
+                offset = _round3(p - s)
+                seg["start"] = remap(p)
+                seg["length"] = _round3(q - p)
+                if is_av:
+                    seg.setdefault("trim", {})["in"] = _round3(base_trim + offset)
+                if kfs:
+                    seg["keyframes"] = [
+                        {**json.loads(json.dumps(k)), "at": _round3(float(k["at"]) - offset)}
+                        for k in kfs
+                        if offset - 1e-6 <= float(k["at"]) <= offset + (q - p) + 1e-6
+                    ]
+                rebuilt.append(seg)
+                seg_idx += 1
+        track["clips"] = rebuilt
+
+    tl["duration"] = max(0.1, _round3(dur - total_removed))
+    _recompute_duration(tl)
+    validate(tl)
+    return {"removed": total_removed, "newDuration": tl["duration"],
+            "clips": sum(len(t["clips"]) for t in tl["tracks"])}
+
+
 def op_set_keyframes(tl, clip_id, keyframes):
     """REPLACE a clip's keyframes wholesale. Validates props, rejects infinite/repeat, sorts by at."""
     _, clip = _find_clip(tl, clip_id)

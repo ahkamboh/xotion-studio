@@ -58,6 +58,79 @@ def cmd_get_clip(a):
     _ok(tm.op_get_clip(tl, a.clip))
 
 
+def cmd_get_transcript(a):
+    """Transcribe the project's speech source and map every word to TIMELINE time.
+
+    Picks the first video/audio clip's source (or --source), runs scripts/transcribe.py (cached
+    under work/transcript/<aid>.json), then projects each word's source time through the clip(s)
+    that reference it -> {text, start, end} in timeline seconds. The agent reads this, decides which
+    spans to drop, and calls cut_transcript_sections with those ranges.
+    """
+    tl = tm.load(a.project, create=False)
+    aid = a.source
+    if not aid:
+        for t in tl["tracks"]:
+            for c in t["clips"]:
+                src = c.get("source")
+                if src and tl["assets"].get(src, {}).get("kind") in ("video", "audio"):
+                    aid = src
+                    break
+            if aid:
+                break
+    if not aid or aid not in tl["assets"]:
+        _err("no video/audio source clip to transcribe (pass --source <assetId>)")
+
+    proj_dir = tm.project_dir(a.project)
+    asset = tl["assets"][aid]
+    media = asset["path"] if os.path.isabs(asset["path"]) else os.path.join(proj_dir, asset["path"])
+    if not os.path.exists(media):
+        _err(f"source media missing on disk: {media}")
+
+    tdir = os.path.join(proj_dir, "work", "transcript")
+    os.makedirs(tdir, exist_ok=True)
+    tjson = os.path.join(tdir, f"{aid}.json")
+    timing = None
+    if a.refresh or not os.path.exists(tjson):
+        venv = os.path.join(ROOT, ".venv-whisperx", "bin", "python")
+        # PREFER forced alignment (frame-accurate). Repo principle: timing comes from forcing the
+        # words onto the WAVEFORM, never from raw ASR timestamps (scripts/align.py). --code-switch
+        # routes through cs_transcribe + MMS_FA for mixed-language speech/songs (1100+ langs).
+        if os.path.exists(venv):
+            cmd = [venv, os.path.join(ROOT, "scripts", "align.py"), media, "--out", tjson]
+            if a.code_switch:
+                cmd += ["--code-switch"]
+            elif a.lang:
+                cmd += ["--lang", a.lang]
+            r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+            if r.returncode == 0 and os.path.exists(tjson):
+                timing = "forced-align" + ("/code-switch" if a.code_switch else "")
+        # fall back to raw whisper word timestamps if the aligner venv is missing or failed
+        if timing is None:
+            cmd = ["python3", os.path.join(ROOT, "scripts", "transcribe.py"), media, "--model", "small", "--out", tjson]
+            if a.lang:
+                cmd += ["--lang", a.lang]
+            r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+            if r.returncode != 0 or not os.path.exists(tjson):
+                _err(f"transcribe/align failed: {(r.stderr or r.stdout).strip()[-400:]}")
+            timing = "asr-timestamps"
+    else:
+        timing = "cached"
+
+    words = json.load(open(tjson))
+    clips = [c for t in tl["tracks"] for c in t["clips"] if c.get("source") == aid]
+    out = []
+    for w in words:
+        ws, we = float(w["start"]), float(w["end"])
+        for c in clips:
+            ti = float(c.get("trim", {}).get("in", 0))
+            cs, ln = float(c["start"]), float(c["length"])
+            if ti - 1e-6 <= ws <= ti + ln + 1e-6:
+                out.append({"text": w["text"], "start": round(cs + (ws - ti), 2),
+                            "end": round(cs + (we - ti), 2), "clipId": c["id"]})
+                break
+    _ok({"source": aid, "timing": timing, "wordCount": len(out), "words": out})
+
+
 # ---------------------------------------------------------------------------
 # mutate tools
 # ---------------------------------------------------------------------------
@@ -106,6 +179,21 @@ def cmd_set_keyframes(a):
     count = tm.op_set_keyframes(tl, a.clip, keyframes)
     tm.save(a.project, tl)
     _ok({"clipId": a.clip, "count": count})
+
+
+def cmd_cut_transcript_sections(a):
+    """RIPPLE-DELETE timeline ranges (seconds) — 'delete the words, the footage goes with them'.
+
+    --ranges '[[12.4,18.1],[33.0,35.5]]' (timeline seconds, usually picked from get_transcript).
+    Removes those spans from every clip and slides the rest left to close the gaps.
+    """
+    ranges = json.loads(a.ranges)
+    if not isinstance(ranges, list):
+        _err("--ranges must be a JSON array of [start,end] pairs")
+    tl = tm.load(a.project, create=False)
+    res = tm.op_cut_ranges(tl, ranges)
+    tm.save(a.project, tl)
+    _ok(res)
 
 
 # ---------------------------------------------------------------------------
@@ -168,6 +256,11 @@ def build_parser():
 
     add("get_timeline_state", cmd_get_timeline_state)
     add("get_clip", cmd_get_clip, (["--clip"], {"required": True}))
+    add("get_transcript", cmd_get_transcript,
+        (["--source"], {"required": False, "default": None}),
+        (["--lang"], {"required": False, "default": None}),
+        (["--code-switch"], {"action": "store_true"}),
+        (["--refresh"], {"action": "store_true"}))
     add("add_clip", cmd_add_clip, (["--track"], {"required": True}), (["--json"], {"required": True}))
     add("remove_clip", cmd_remove_clip, (["--clip"], {"required": True}))
     add("split_clip", cmd_split_clip, (["--clip"], {"required": True}), (["--at"], {"required": True}))
@@ -175,6 +268,7 @@ def build_parser():
     add("move_clips_to_track", cmd_move_clips_to_track,
         (["--clips"], {"required": True}), (["--track"], {"required": True}))
     add("set_keyframes", cmd_set_keyframes, (["--clip"], {"required": True}), (["--json"], {"required": True}))
+    add("cut_transcript_sections", cmd_cut_transcript_sections, (["--ranges"], {"required": True}))
     add("get_preview_frame", cmd_get_preview_frame, (["--at"], {"required": True}))
     add("start_export", cmd_start_export, (["--json"], {"required": False, "default": ""}))
     return ap

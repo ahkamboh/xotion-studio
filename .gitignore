@@ -1,3 +1,11 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Generated project OUTPUTS are LOCAL-ONLY. GitHub ships the ENGINE (scripts,
+# templates, presets, docs) — not the videos/projects the engine generates.
+# Everything under projects/ stays on disk but off GitHub (a .gitkeep keeps the dir).
+# ─────────────────────────────────────────────────────────────────────────────
+/projects/*
+!/projects/.gitkeep
+
 # Renders & work artifacts (large, regenerable)
 projects/*/renders/
 projects/*/work/
@@ -45,3 +53,35 @@ __pycache__/
 
 # per-project font copies (duplicates of shared assets/fonts/, regenerated at render time)
 projects/*/assets/fonts/
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PERSONAL — kept LOCAL only, NEVER tracked or pushed (byNothing songs + KAMBOJH).
+# These files still live on disk; git just ignores them. Put any FUTURE personal
+# work in personal/ or local/ (or projects/_local/) and it stays off GitHub too.
+# (These specific scripts come after the `!scripts/**` allow rule, so they win.)
+# ─────────────────────────────────────────────────────────────────────────────
+personal/
+local/
+projects/_local/
+projects/bynothing/
+projects/bynothing-thumb/
+projects/dil-bemaar/
+projects/thumb-dil/
+projects/thumb-andhere/
+projects/thumb-dhundla/
+projects/thumb-khamoshi/
+projects/kambojh-crest/
+projects/kambojh-label/
+projects/kambojh-logo/
+projects/kambojh-logo-trans/
+projects/kambojh-reel/
+scripts/sync-bynothing-lyrics.py
+scripts/render-bynothing.py
+scripts/render-bynothing-thumbs.py
+scripts/render-all-songs.py
+scripts/render-one-song.py
+scripts/make-song.sh
+scripts/sync_reel_caption.py
+scripts/build_reel.py
+scripts/ascii_fx.py
+scripts/cut-reels.sh

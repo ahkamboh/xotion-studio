@@ -222,6 +222,21 @@ lyrics, wrong language, or off-brand color. The frames decide.
 HyperFrames is the motion-graphics core. HTML is the source of truth; GSAP animates a paused
 timeline registered as `window.__timelines["<id>"]`; the CLI renders deterministically to MP4.
 
+**Structured timeline (optional, Daydream-style) — `docs/timeline-model.md`.** For clip-based cuts
+where you do *many small edits* (trim/move/restyle/retime/swap a source) or want to *check one moment*
+cheaply, drive a `timeline.json` **document** instead of hand-writing `index.html`. The agent edits
+ONE clip at a time via `scripts/timeline/timeline-tools.py` (`get_timeline_state`, `get_clip`,
+`add_clip`, `remove_clip`, `split_clip`, `update_clip`, `move_clips_to_track`, `set_keyframes`,
+`get_preview_frame`, `start_export`, plus **transcript editing** `get_transcript` +
+`cut_transcript_sections`); a compiler turns the doc into the SAME HyperFrames `index.html` and
+`start_export` renders it through `render-with-qa.sh` (gates unchanged). **Additive:** projects
+without a `timeline.json` are untouched. ~111× fewer tokens per edit + a 1-frame `get_preview_frame`
+to see state without a full render. **Transcript editing** = "delete the words → the footage goes
+with them": `get_transcript` maps words to timeline time using **forced alignment** (`align.py` —
+frame-accurate; `--code-switch` for mixed-language speech/songs), `cut_transcript_sections`
+ripple-deletes the spans you pick (keeps video+audio+captions in sync). Audit:
+`python3 scripts/timeline/audit.py`.
+
 **Don't hand-write from scratch when an example fits.** Scaffold from a built-in example:
 ```bash
 cd projects && npx hyperframes init <name> --width W --height H --fps 30 --duration D \

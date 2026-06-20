@@ -136,6 +136,37 @@ def _z_index(track_index, style):
     return track_index * 100 + int(style.get("zIndexBoost", 0))
 
 
+def _luminance(bg):
+    """Relative luminance 0..1 of a #hex background (else 0 = treat as dark)."""
+    s = bg.strip().lstrip("#") if isinstance(bg, str) else ""
+    if len(s) == 3:
+        s = "".join(c * 2 for c in s)
+    if len(s) < 6:
+        return 0.0
+    try:
+        r, g, b = int(s[0:2], 16), int(s[2:4], 16), int(s[4:6], 16)
+    except ValueError:
+        return 0.0
+    return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.0
+
+
+def _text_defaults(tl):
+    """Sensible, overridable defaults so a BARE text clip (no style) renders readably.
+
+    Without this, a text clip with no font-size/color inherits the browser default (tiny + often
+    low-contrast) — which makes the agent's `add_clip text` blind-unfriendly. The agent can still
+    override any of these via clip.style; these are only the fallbacks.
+    """
+    lum = _luminance(tl.get("background", "#000"))
+    fonts = tl.get("fonts") or []
+    return {
+        "color": "#15120e" if lum > 0.6 else "#ffffff",
+        "size": max(28, round(int(tl["height"]) * 0.05)),
+        "family": fonts[0]["family"] if fonts else "sans-serif",
+        "maxw": round(int(tl["width"]) * 0.86),
+    }
+
+
 # ---------------------------------------------------------------------------
 # element emission
 # ---------------------------------------------------------------------------
@@ -145,7 +176,7 @@ def _el_id(clip_id):
     return "c_" + clip_id
 
 
-def _emit_clip(clip, track_index, asset_rel, audio_els):
+def _emit_clip(clip, track_index, asset_rel, audio_els, defaults):
     """Return (html_for_element) and append any companion <audio> string to audio_els."""
     ctype = clip["type"]
     eid = _el_id(clip["id"])
@@ -195,11 +226,14 @@ def _emit_clip(clip, track_index, asset_rel, audio_els):
         pos_css, centered = _position_css(clip, default_full_frame=False)
         css = _style_to_css(style)
         transform = "transform:translate(-50%,-50%);" if centered else ""
+        # readable max-width so long bare text wraps inside the frame (centered auto-box only)
+        maxw = f"max-width:{defaults['maxw']}px;" if centered and "w" not in (clip.get("position") or {}) else ""
         text = html.escape(clip.get("text", ""))
+        # `text-clip` class supplies the overridable defaults (size/color/weight/align); inline css wins.
         el = (
-            f'<div id="{eid}" class="clip" data-start="{start}" data-duration="{length}" '
+            f'<div id="{eid}" class="clip text-clip" data-start="{start}" data-duration="{length}" '
             f'data-track-index="{track_index}" '
-            f'style="{pos_css};z-index:{z};{transform}{css}">{text}</div>'
+            f'style="{pos_css};z-index:{z};{maxw}{transform}{css}">{text}</div>'
         )
         return el
 
@@ -285,11 +319,20 @@ def compile_timeline(project, out_dir, copy=False):
     # ---- fonts: link/copy each .ttf, emit @font-face ----
     font_faces = []
     for fnt in tl.get("fonts", []) or []:
-        src_font = _resolve_asset_path(proj_dir, fnt["src"])
-        rel = fnt["src"] if not os.path.isabs(fnt["src"]) else f"assets/fonts/{os.path.basename(fnt['src'])}"
-        if os.path.exists(src_font):
-            dst = os.path.join(out_dir, rel)
-            _link_or_copy(src_font, dst, copy)
+        src = fnt["src"]
+        src_font = _resolve_asset_path(proj_dir, src)
+        # fonts usually live in the repo's SHARED assets/fonts/, not per-project — fall back to ROOT
+        # so a src like "assets/fonts/fraunces-900.ttf" resolves even when the project has no fonts dir.
+        if not os.path.exists(src_font) and not os.path.isabs(src):
+            alt = os.path.join(tm.ROOT, src)
+            if os.path.exists(alt):
+                src_font = alt
+        rel = src if not os.path.isabs(src) else f"assets/fonts/{os.path.basename(src)}"
+        if not os.path.exists(src_font):
+            raise tm.TimelineError(f"font '{fnt.get('family')}' file missing: {src} "
+                                   f"(looked in project and {tm.ROOT})")
+        dst = os.path.join(out_dir, rel)
+        _link_or_copy(src_font, dst, copy)
         weight = fnt.get("weight", "400")
         font_faces.append(
             f'@font-face{{font-family:"{fnt["family"]}";font-weight:{weight};'
@@ -297,11 +340,12 @@ def compile_timeline(project, out_dir, copy=False):
         )
 
     # ---- elements ----
+    defaults = _text_defaults(tl)
     body_els = []
     audio_els = []
     for track_index, track in enumerate(tl["tracks"]):
         for clip in track["clips"]:
-            body_els.append(_emit_clip(clip, track_index, asset_rel, audio_els))
+            body_els.append(_emit_clip(clip, track_index, asset_rel, audio_els, defaults))
 
     # ---- timeline script ----
     script_lines = []
@@ -329,6 +373,9 @@ def compile_timeline(project, out_dir, copy=False):
       html, body {{ width: {w}px; height: {h}px; overflow: hidden; background: {bg}; }}
       #root {{ position: relative; width: {w}px; height: {h}px; overflow: hidden; background: {bg}; }}
       .clip {{ visibility: hidden; }}
+      .text-clip {{ font-family: "{defaults['family']}", -apple-system, system-ui, sans-serif;
+        font-size: {defaults['size']}px; font-weight: 600; color: {defaults['color']};
+        text-align: center; line-height: 1.2; white-space: pre-wrap; }}
     </style>
   </head>
   <body>
