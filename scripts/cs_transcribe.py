@@ -18,9 +18,14 @@ never cause drift because uroman+MMS time the waveform, not the spelling.
 
 Run: .venv-whisperx/bin/python scripts/cs_transcribe.py <audio> [--model large-v3] [--dual hi en] [--initial-prompt "..."]
 """
-import sys, json, argparse
+import sys, json, argparse, re
 
 SR = 16000
+
+
+def _clean_tok(t):
+    """Collapse Whisper character-loop hallucinations (e.g. 'ਹੱੱੱੱੱ…' -> 'ਹੱ')."""
+    return re.sub(r"(.)\1{3,}", r"\1\1", t)
 _MODEL = None
 _MODEL_NAME = None
 
@@ -86,19 +91,81 @@ def _decode(model, audio_slice, lang, initial_prompt):
     for s in segs:
         logps.append(getattr(s, "avg_logprob", -5.0))
         for w in (s.words or []):
-            words.append({"w": w.word.strip(), "start": float(w.start),
+            tok = _clean_tok(w.word.strip())
+            if not tok:
+                continue
+            words.append({"w": tok, "start": float(w.start),
                           "end": float(w.end), "score": float(getattr(w, "probability", 0.0))})
     avg = sum(logps) / len(logps) if logps else -10.0
     detected = getattr(info, "language", lang)
     return words, avg, detected
 
 
-def transcribe(audio_path, model_name="large-v3", dual=None, initial_prompt=None):
+# ---------------------------------------------------------------------------
+# language-ID guard — keep per-segment detection inside the languages that are
+# actually PRESENT in the file. Without this, a noisy/ambiguous chunk can be
+# auto-detected as a wholly unrelated language (the Punjabi-clip → Sinhala
+# garbage bug) because Whisper's langID is over-confident on short audio.
+# ---------------------------------------------------------------------------
+
+def _all_lang_probs(model, audio_slice):
+    """faster-whisper detect_language -> {lang: prob}. Empty dict if unavailable."""
+    try:
+        res = model.detect_language(audio_slice)
+    except Exception:
+        return {}
+    if isinstance(res, tuple) and len(res) >= 3 and res[2]:
+        return {l: float(p) for (l, p) in res[2]}
+    if isinstance(res, tuple) and len(res) >= 2 and res[0]:
+        return {res[0]: float(res[1])}
+    return {}
+
+
+def _candidates(scan, explicit=None):
+    """The allowed languages for this file. `explicit` (e.g. ['ur','pa','hi','en'])
+    overrides. Otherwise VOTE: a language must be the top guess in >=2 segments to
+    qualify — so a single confidently-wrong detection (the Punjabi→Sinhala garbage)
+    is excluded, while genuine code-switch languages (present in several segments)
+    survive. The dominant language + English are always kept."""
+    if explicit:
+        return {l.strip() for l in explicit if l.strip()} | {"en"}
+    votes = {}
+    for pr in scan:
+        if pr:
+            top = max(pr, key=pr.get)
+            votes[top] = votes.get(top, 0) + 1
+    if not votes:
+        return None
+    thr = 2 if len(scan) >= 4 else 1
+    cands = {l for l, v in votes.items() if v >= thr}
+    cands.add(max(votes, key=votes.get))   # always keep the dominant language
+    cands.add("en")
+    return cands
+
+
+def _pick(pr, cands):
+    """Highest-probability language that's IN the candidate set (else None -> auto)."""
+    if not cands or not pr:
+        return None
+    inset = [(l, p) for l, p in pr.items() if l in cands]
+    return max(inset, key=lambda x: x[1])[0] if inset else None
+
+
+def transcribe(audio_path, model_name="large-v3", dual=None, initial_prompt=None, langs=None,
+               force_lang=None):
+    """force_lang: decode every segment in this ONE language (skips per-segment langID) —
+    used by the router's SINGLE path (small model + forced language, fast)."""
     model = _load_model(model_name)
     wav = _load_audio(audio_path)
     windows = vad_windows(wav)
+    skip_scan = bool(dual or force_lang)
+    # detect each window's language ONCE, reuse for voting + per-segment constraint
+    scan = [] if skip_scan else [_all_lang_probs(model, wav[int(s * SR):int(e * SR)]) for (s, e) in windows]
+    cands = None if skip_scan else _candidates(scan, explicit=langs)
+    if cands:
+        sys.stderr.write(f"[cs] language candidates (constrained): {sorted(cands)}\n")
     all_words, seg_report = [], []
-    for (s, e) in windows:
+    for i, (s, e) in enumerate(windows):
         a, b = int(s * SR), int(e * SR)
         chunk = wav[a:b]
         if dual:
@@ -108,8 +175,11 @@ def transcribe(audio_path, model_name="large-v3", dual=None, initial_prompt=None
                 if best is None or avg > best[1]:
                     best = (w, avg, lc)
             words, _, lang = best
+        elif force_lang:
+            words, _, lang = _decode(model, chunk, force_lang, initial_prompt)
         else:
-            words, _, lang = _decode(model, chunk, None, initial_prompt)  # auto-detect
+            lc = _pick(scan[i], cands)   # None -> auto fallback
+            words, _, lang = _decode(model, chunk, lc, initial_prompt)
         for w in words:
             w["start"] = round(w["start"] + s, 3)
             w["end"] = round(w["end"] + s, 3)
@@ -140,8 +210,12 @@ if __name__ == "__main__":
     ap.add_argument("--model", default="large-v3")
     ap.add_argument("--dual", nargs=2, default=None, metavar=("LANG_A", "LANG_B"))
     ap.add_argument("--initial-prompt", default=None)
+    ap.add_argument("--langs", default=None,
+                    help="comma-separated codes to constrain detection (e.g. ur,pa,hi,en); "
+                         "default = auto-scan which languages are in the file")
     a = ap.parse_args()
-    words, report = transcribe(a.audio, a.model, a.dual, a.initial_prompt)
+    langs = [x for x in a.langs.split(",")] if a.langs else None
+    words, report = transcribe(a.audio, a.model, a.dual, a.initial_prompt, langs=langs)
     sys.stderr.write(f"[cs] {len(words)} words across {len(report)} segments; "
                      f"langs={sorted(set(r['lang'] for r in report))}\n")
     print(json.dumps({"words": words, "segments": report}, ensure_ascii=False))
