@@ -151,13 +151,17 @@ def _pick(pr, cands):
     return max(inset, key=lambda x: x[1])[0] if inset else None
 
 
-def transcribe(audio_path, model_name="large-v3", dual=None, initial_prompt=None, langs=None):
+def transcribe(audio_path, model_name="large-v3", dual=None, initial_prompt=None, langs=None,
+               force_lang=None):
+    """force_lang: decode every segment in this ONE language (skips per-segment langID) —
+    used by the router's SINGLE path (small model + forced language, fast)."""
     model = _load_model(model_name)
     wav = _load_audio(audio_path)
     windows = vad_windows(wav)
+    skip_scan = bool(dual or force_lang)
     # detect each window's language ONCE, reuse for voting + per-segment constraint
-    scan = [] if dual else [_all_lang_probs(model, wav[int(s * SR):int(e * SR)]) for (s, e) in windows]
-    cands = None if dual else _candidates(scan, explicit=langs)
+    scan = [] if skip_scan else [_all_lang_probs(model, wav[int(s * SR):int(e * SR)]) for (s, e) in windows]
+    cands = None if skip_scan else _candidates(scan, explicit=langs)
     if cands:
         sys.stderr.write(f"[cs] language candidates (constrained): {sorted(cands)}\n")
     all_words, seg_report = [], []
@@ -171,6 +175,8 @@ def transcribe(audio_path, model_name="large-v3", dual=None, initial_prompt=None
                 if best is None or avg > best[1]:
                     best = (w, avg, lc)
             words, _, lang = best
+        elif force_lang:
+            words, _, lang = _decode(model, chunk, force_lang, initial_prompt)
         else:
             lc = _pick(scan[i], cands)   # None -> auto fallback
             words, _, lang = _decode(model, chunk, lc, initial_prompt)
