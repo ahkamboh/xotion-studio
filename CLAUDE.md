@@ -222,7 +222,7 @@ lyrics, wrong language, or off-brand color. The frames decide.
 HyperFrames is the motion-graphics core. HTML is the source of truth; GSAP animates a paused
 timeline registered as `window.__timelines["<id>"]`; the CLI renders deterministically to MP4.
 
-**Structured timeline (optional, Daydream-style) — `docs/timeline-model.md`.** For clip-based cuts
+**Structured timeline (optional, document-model) — `docs/timeline-model.md`.** For clip-based cuts
 where you do *many small edits* (trim/move/restyle/retime/swap a source) or want to *check one moment*
 cheaply, drive a `timeline.json` **document** instead of hand-writing `index.html`. The agent edits
 ONE clip at a time via `scripts/timeline/timeline-tools.py` (`get_timeline_state`, `get_clip`,

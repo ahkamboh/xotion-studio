@@ -87,7 +87,7 @@ with an open failure.** Every recurring mistake is owned by one agent and killed
 → see [`docs/agent-team.md`](docs/agent-team.md) and [`.claude/agents/`](.claude/agents).
 
 Specialized, reusable agents already power this:
-- **caption agent** — frame-accurate captions, 41 languages, 7 famous styles (Hormozi/pill/neon/TikTok…)
+- **caption agent** — frame-accurate captions (forced alignment), **~100 languages** auto (1100+ with provided lyrics), an **intelligent language router** that defaults to the fast small model and only escalates to large-v3 when the audio is genuinely mixed-language (~5× faster on the common case), 7 famous styles (Hormozi/pill/neon/TikTok…)
 - **scene-sync agent** — locks every graphic to the spoken word (zero drift)
 - **XChart** — tested chart library (counter/bar/donut/line) so data-graphics are always correct
 - **qa-correctness / qa-richness / qa-audio / license-auditor** — four parallel ship gates: broken-output, density+motion richness, loudness/clipping, and asset licenses
@@ -99,7 +99,7 @@ Specialized, reusable agents already power this:
 | Pillar | Engine | Examples |
 |---|---|---|
 | **Motion graphics** | HyperFrames (HTML+GSAP→MP4) | explainers, promos, kinetic type, **animated data/charts**, lyric & caption videos, logo reveals, 3D/glass showcases |
-| **Video editing** | ffmpeg | trim · speed · split-screen · concat · grade · stabilize · green-screen · transitions · reels · auto-cut · aspect convert |
+| **Video editing** | ffmpeg | trim · speed · split-screen · concat · grade · stabilize · green-screen · transitions · reels · auto-cut · **transcript-edit** (delete the words → the footage ripple-cuts) · aspect convert |
 | **Image editing** | ffmpeg / ImageMagick | resize · crop · compose · background removal · thumbnails · social graphics |
 
 Plus: stock b-roll (Pexels), TTS voiceover, music beds + ducking, premium finish (bloom/grain/grade),
@@ -181,7 +181,9 @@ CLAUDE.md            # the engine brain: pillars, rules, the agent-team operatin
 .claude/agents/      # 13 specialist subagents (the team)
 docs/agent-team.md   # the Director pipeline + QA gates
 COMMANDS.md          # the : command vocabulary
-scripts/             # caption · scene-sync · pixabay-* · tts · mix · enrich · overlay · qa-audio · qa-frames …
+scripts/             # caption · lang-router · align · scene-sync · pixabay-* · tts · mix · enrich · overlay · qa-audio · qa-frames …
+scripts/timeline/    # structured timeline.json document: tools · compiler · single-frame preview · transcript-edit
+schemas/             # timeline.v1.json (the document schema)
 templates/           # compositions + lib/charts.js (XChart)
 presets/             # 12 visual styles · motion presets · video presets
 prompts/             # copy-paste job prompts
@@ -200,6 +202,8 @@ Full attribution in [THIRD_PARTY.md](THIRD_PARTY.md).
 
 - ✅ Prompt → finished video, offline, via Claude Code + the agent team
 - ✅ Self-verifying QA gates (audio + visual) so it ships mistake-free
+- ✅ **Structured timeline document** + agent tools (edit one clip · transcript-edit · single-frame preview) — the editable doc under the prompt
+- ✅ **Intelligent caption language router** — ~5× faster on single-language speech, ~100 languages
 - ⏭ Standalone **desktop IDE** for editors (timeline-optional, prompt-first)
 - ⏭ On-device model (MLX/Ollama) driving the team — fully local, private
 - ⏭ More QA agents (safe-area, stock-relevance) + one-command `:make` end-to-end
