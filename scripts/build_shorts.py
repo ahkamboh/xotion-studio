@@ -3,7 +3,8 @@
 import os,json,subprocess,glob
 import librosa,numpy as np
 HOME=os.path.expanduser("~"); DL=HOME+"/Downloads"
-STUDIO="/Users/prolap.pk/Documents/claude/xotion-studio"
+# Repo root (this file lives in <root>/scripts/); override with XOTION_STUDIO if needed.
+STUDIO=os.environ.get("XOTION_STUDIO") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROJ=STUDIO+"/projects/short-v2"; A=PROJ+"/assets"
 OUT=DL+"/SHORTS"; os.makedirs(OUT,exist_ok=True)
 HF=STUDIO+"/node_modules/.bin/hyperframes"

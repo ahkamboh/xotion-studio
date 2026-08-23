@@ -210,6 +210,25 @@ Full attribution in [THIRD_PARTY.md](THIRD_PARTY.md).
 
 ---
 
+## License
+
+**[PolyForm Noncommercial 1.0.0](LICENSE) — free for any noncommercial use.**
+
+Use it, fork it, change it, share it, publish what you make with it. That covers
+personal projects, learning, research, and any charity, school or government use.
+
+The one thing it doesn't cover is **making money with it**. Selling Xotion, offering
+it as a paid product or service, or running it inside a commercial operation needs a
+separate licence from me first — just ask, I'm friendly about it:
+
+**[ahk@alihamzakamboh.com](mailto:ahk@alihamzakamboh.com)** · [@ahkamboh](https://github.com/ahkamboh)
+
+> Videos you render are yours. The licence covers the software, not your output.
+
+Third-party components keep their own licences — see [THIRD_PARTY.md](THIRD_PARTY.md).
+
+---
+
 <div align="center">
 
 **xotion — describe the edit, get the video.**
