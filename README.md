@@ -128,6 +128,75 @@ Everything runs **offline, no API keys** — bundled Whisper model + fonts, pinn
 
 ---
 
+## 🖥 Desktop app (macOS)
+
+Prefer a real app window over the terminal? Grab the `.dmg` from the
+**[latest release](https://github.com/ahkamboh/xotion-studio/releases/latest)**.
+
+The app is the front end — **it still needs this engine** (the Quick start above) and your
+Claude login. On first launch it shows a checklist and won't let you in until all three are
+green: Claude CLI installed, signed in, engine found. It re-checks every few seconds, so as
+soon as you finish a step the window clears itself.
+
+```
+1. install the engine        →  Quick start, above
+2. install the Claude CLI    →  brew install claude
+3. log in once               →  claude login
+4. open Xotion.app
+```
+
+By default it looks for the engine at `~/Documents/claude/xotion-studio`. Put it somewhere
+else and either point Settings → Engine path at it, or launch with
+`XOTION_ENGINE=/your/path open -a Xotion`.
+
+### ⚠️ "Apple could not verify Xotion is free of malware"
+
+**This is expected. Nothing is wrong with the app.**
+
+Apple charges $99/year for the certificate that suppresses this dialog, and Xotion doesn't pay
+it yet — so macOS flags it like every other unsigned open-source app. The build is made from
+the source in this repo, and you're welcome to build it yourself instead (see below).
+
+Note the dialog has **no "Open" button** — that's what trips people up. Here's how to get past it:
+
+<details open>
+<summary><strong>If you're comfortable in a terminal (one command)</strong></summary>
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Xotion.app
+```
+
+Run it once after dragging the app to Applications. Done — it opens normally forever after.
+</details>
+
+<details>
+<summary><strong>If you'd rather not touch the terminal (click-by-click)</strong></summary>
+
+1. Drag **Xotion** into your **Applications** folder.
+2. Double-click it. You'll get the *"Apple could not verify…"* warning — click **Done**.
+   *(Do **not** click "Move to Trash".)*
+3. Open  **System Settings → Privacy & Security**.
+4. Scroll down. You'll see: *"Xotion was blocked to protect your Mac."*
+5. Click **Open Anyway**, then confirm with Touch ID or your password.
+6. A last dialog appears — click **Open**.
+
+That's it. Every launch after this one is normal.
+
+> On older macOS you could right-click → Open to skip this. Apple removed that shortcut in
+> recent versions, so the Privacy & Security route is now the only click-through path.
+</details>
+
+**Heads up:** the warning comes back on every update, because each download is quarantined
+fresh. Re-run the `xattr` command (or the click-through) after installing a new version.
+
+> Want to verify the app rather than trust it? The engine it runs — all of the rendering, QA
+> and agent logic — is this repo, open in front of you. The desktop shell is just a window
+> around it, and its source is on the roadmap to open up too.
+
+Apple Silicon only for now — an Intel build isn't published yet.
+
+---
+
 ## ⚡ One-paste kickstart (any AI agent)
 
 New machine, or want an AI agent to set everything up and start editing? **Copy this whole block and
