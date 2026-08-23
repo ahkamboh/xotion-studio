@@ -85,3 +85,6 @@ scripts/sync_reel_caption.py
 scripts/build_reel.py
 scripts/ascii_fx.py
 scripts/cut-reels.sh
+
+# the README demo clip is a shipped asset, not a render output
+!assets/xotion-demo.mp4
