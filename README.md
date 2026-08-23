@@ -133,6 +133,15 @@ Everything runs **offline, no API keys** — bundled Whisper model + fonts, pinn
 Prefer a real app window over the terminal? Grab the `.dmg` from the
 **[latest release](https://github.com/ahkamboh/xotion-studio/releases/latest)**.
 
+<p align="center">
+  <img src="assets/xotion-desktop-app.png" alt="The Xotion desktop app — one prompt box, no timeline" width="900"/>
+</p>
+
+<p align="center">
+  <a href="https://x.com/ahkamb0h/status/2067267060066046194"><b>▶ Watch the demo</b></a> ·
+  <a href="https://xotion.ai">xotion.ai</a>
+</p>
+
 The app is the front end — **it still needs this engine** (the Quick start above) and your
 Claude login. On first launch it shows a checklist and won't let you in until all three are
 green: Claude CLI installed, signed in, engine found. It re-checks every few seconds, so as
