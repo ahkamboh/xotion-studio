@@ -134,11 +134,20 @@ Prefer a real app window over the terminal? Grab the `.dmg` from the
 **[latest release](https://github.com/ahkamboh/xotion-studio/releases/latest)**.
 
 <p align="center">
+  <video src="https://github.com/ahkamboh/xotion-studio/raw/main/assets/xotion-demo.mp4" poster="https://github.com/ahkamboh/xotion-studio/raw/main/assets/xotion-desktop-app.png" controls muted width="900"></video>
+</p>
+
+<p align="center">
+  <i>Brief in, finished video out.</i> If the player doesn't load,
+  <a href="https://github.com/ahkamboh/xotion-studio/raw/main/assets/xotion-demo.mp4"><b>▶ play the demo</b></a>
+  or <a href="https://x.com/ahkamb0h/status/2067267060066046194"><b>watch it on X</b></a>.
+</p>
+
+<p align="center">
   <img src="assets/xotion-desktop-app.png" alt="The Xotion desktop app — one prompt box, no timeline" width="900"/>
 </p>
 
 <p align="center">
-  <a href="https://x.com/ahkamb0h/status/2067267060066046194"><b>▶ Watch the demo</b></a> ·
   <a href="https://xotion.ai">xotion.ai</a>
 </p>
 
