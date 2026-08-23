@@ -9,6 +9,10 @@ No timeline scrubbing. No keyframing. Just a prompt.
 
 `video editing · image editing · motion graphics — offline, no per-render fees`
 
+**[xotion.ai](https://xotion.ai)** · [Download for Mac](https://github.com/ahkamboh/xotion-studio/releases/latest) · [Watch the demo](https://x.com/ahkamb0h/status/2067267060066046194)
+
+<sub>Mirror, if xotion.ai is unreachable: <a href="https://xotion.vercel.app">xotion.vercel.app</a></sub>
+
 </div>
 
 ---
@@ -148,7 +152,7 @@ Prefer a real app window over the terminal? Grab the `.dmg` from the
 </p>
 
 <p align="center">
-  <a href="https://xotion.ai">xotion.ai</a>
+  <a href="https://xotion.ai"><b>xotion.ai</b></a> · <a href="https://xotion.vercel.app">xotion.vercel.app</a> <sub>(mirror)</sub>
 </p>
 
 The app is the front end — **it still needs this engine** (the Quick start above) and your
