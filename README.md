@@ -111,6 +111,23 @@ JS graphics overlays (particles/3D/aurora/glass), multi-language subtitles, data
 
 ---
 
+## What it costs
+
+Rendering runs on your machine, so the frames cost nothing. Only the thinking costs money.
+One 40-second video, four ways:
+
+| | cost | speed | privacy |
+|---|---|---|---|
+| human motion designer | ~$2,000 | days | leaves your building |
+| frontier model | $3.64 | ~40s | leaves your machine |
+| small hosted model | $0.22 | ~40s | leaves your machine |
+| on-device model | $0 | ~11x slower | never leaves |
+
+Measured token counts, per-model pricing, output tok/s, and where each figure comes from:
+**[docs/what-it-costs.md](docs/what-it-costs.md)**
+
+---
+
 ## Quick start
 
 ```bash
