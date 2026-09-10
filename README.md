@@ -13,6 +13,10 @@ No timeline scrubbing. No keyframing. Just a prompt.
 
 <sub>Mirror, if xotion.ai is unreachable: <a href="https://xotion.vercel.app">xotion.vercel.app</a></sub>
 
+https://github.com/user-attachments/assets/acebff35-cf02-461d-af27-305079ec1f5b
+
+<sub><i>Brief in, finished video out.</i> · <a href="https://github.com/ahkamboh/xotion-studio/raw/main/assets/xotion-demo.mp4">direct link</a></sub>
+
 </div>
 
 ---
@@ -153,16 +157,6 @@ Everything runs **offline, no API keys** — bundled Whisper model + fonts, pinn
 
 Prefer a real app window over the terminal? Grab the `.dmg` from the
 **[latest release](https://github.com/ahkamboh/xotion-studio/releases/latest)**.
-
-<p align="center">
-  <video src="https://github.com/ahkamboh/xotion-studio/raw/main/assets/xotion-demo.mp4" poster="https://github.com/ahkamboh/xotion-studio/raw/main/assets/xotion-desktop-app.png" controls muted width="900"></video>
-</p>
-
-<p align="center">
-  <i>Brief in, finished video out.</i> If the player doesn't load,
-  <a href="https://github.com/ahkamboh/xotion-studio/raw/main/assets/xotion-demo.mp4"><b>▶ play the demo</b></a>
-  or <a href="https://x.com/ahkamb0h/status/2067267060066046194"><b>watch it on X</b></a>.
-</p>
 
 <p align="center">
   <img src="assets/xotion-desktop-app.png" alt="The Xotion desktop app — one prompt box, no timeline" width="900"/>
