@@ -15,8 +15,10 @@ import { spawn } from 'child_process';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 
-const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+const { resolveChrome } = createRequire(import.meta.url)('./lib/chrome.cjs');
+const CHROME = resolveChrome();
 
 const [,, htmlPath, outMp4, durArg, fpsArg, wArg, hArg] = process.argv;
 if (!htmlPath || !outMp4) {

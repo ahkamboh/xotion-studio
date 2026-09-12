@@ -8,6 +8,9 @@ Usage:
 """
 import os, re, sys, shutil, subprocess, tempfile
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+import runtime  # noqa: E402
+
 HOME    = os.path.expanduser("~")
 SDIR    = os.path.dirname(os.path.abspath(__file__))
 TPROJ   = os.path.join(SDIR, "..", "projects", "bynothing-thumb")
@@ -58,14 +61,14 @@ def render(title, force=False):
         # symlink fonts from bynothing project (shared)
         shared_fonts = os.path.join(VPROJ, "assets", "fonts")
         for fn in os.listdir(shared_fonts):
-            os.symlink(os.path.join(shared_fonts, fn), os.path.join(fonts, fn))
+            runtime.link_or_copy(os.path.join(shared_fonts, fn), os.path.join(fonts, fn))
 
         # symlink the bg JPEG
         bg_src = os.path.join(BG_IMAGES, f"{bg}.jpg")
         if not os.path.exists(bg_src):
             print(f"[WARN] no bg image {bg}.jpg, using forest fallback", flush=True)
             bg_src = os.path.join(BG_IMAGES, "forest.jpg")
-        os.symlink(os.path.abspath(bg_src), os.path.join(assets, f"{bg}.jpg"))
+        runtime.link_or_copy(os.path.abspath(bg_src), os.path.join(assets, f"{bg}.jpg"))
 
         # patch index.html
         with open(os.path.join(TPROJ, "index.html")) as f:

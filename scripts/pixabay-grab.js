@@ -22,11 +22,11 @@ if (!URL_ARG || !OUT) {
   process.exit(2);
 }
 
-const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const { resolveChrome } = require('./lib/chrome.cjs');
 
 (async () => {
   const browser = await puppeteer.launch({
-    executablePath: CHROME,
+    executablePath: resolveChrome(),
     headless: 'new',
     args: ['--no-sandbox', '--disable-blink-features=AutomationControlled']
   });

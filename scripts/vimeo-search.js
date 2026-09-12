@@ -18,7 +18,7 @@ for (const a of process.argv.slice(3)) {
 const N = parseInt(flags.n || 12);
 const STAFF = !!flags.staffpicks;
 
-const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const { resolveChrome } = require('./lib/chrome.cjs');
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36";
 
 let URL_;
@@ -31,7 +31,7 @@ if (STAFF && !QUERY) {
 }
 
 (async () => {
-  const b = await puppeteer.launch({ executablePath: CHROME, headless: 'new',
+  const b = await puppeteer.launch({ executablePath: resolveChrome(), headless: 'new',
     args: ['--no-sandbox','--disable-blink-features=AutomationControlled']});
   const p = await b.newPage();
   await p.setUserAgent(UA);

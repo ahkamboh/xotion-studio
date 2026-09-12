@@ -39,6 +39,7 @@ __pycache__/
 !templates/**
 !assets/fonts/**
 !scripts/**
+scripts/**/__pycache__/
 !prompts/**
 
 # SFX pack (small, reusable engine assets)
@@ -88,3 +89,18 @@ scripts/cut-reels.sh
 
 # the README demo clip is a shipped asset, not a render output
 !assets/xotion-demo.mp4
+
+# Windows desktop build output
+desktop/node_modules/
+desktop/dist/
+desktop/out/
+
+# Agent skills and helper MDs — live in Xaibridge .skill / user .cursor/skills
+.skill/
+.cursor/skills/
+flow.md
+doing.md
+pending.md
+AGENTS.md
+HELPING.md
+**/token.local

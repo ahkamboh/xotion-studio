@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# PATH shim so existing `python3` calls work on Windows Git Bash.
+if command -v py >/dev/null 2>&1; then
+  exec py -3 "$@"
+fi
+if command -v python >/dev/null 2>&1; then
+  exec python "$@"
+fi
+echo "xotion python3 shim: install Python 3.11+ and ensure py/python is on PATH" >&2
+exit 127

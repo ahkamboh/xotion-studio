@@ -17,9 +17,11 @@ THIS = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(THIS, "..", ".."))
 TOOLS = os.path.join(THIS, "timeline-tools.py")
 COMPILE = os.path.join(THIS, "compile-timeline.py")
+sys.path.insert(0, os.path.join(THIS, "..", "lib"))
+import runtime  # noqa: E402
 
 def tool(*args, expect_ok=True):
-    cmd = ["python3", TOOLS, *map(str, args)]
+    cmd = [runtime.python_cmd(), TOOLS, *map(str, args)]
     r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
     out = (r.stdout or "").strip()
     try:
@@ -116,7 +118,7 @@ def main():
     patch = json.dumps({"style": {"color": "#3a9b6e"}})
     # the "old way" = rewrite the whole compiled composition
     build = os.path.join(dst, "work", "audit-build")
-    subprocess.run(["python3", COMPILE, "--project", proj, "--out", build],
+    subprocess.run([runtime.python_cmd(), COMPILE, "--project", proj, "--out", build],
                    cwd=ROOT, capture_output=True, text=True, check=True)
     html_bytes = os.path.getsize(os.path.join(build, "index.html"))
     patch_bytes = len(patch.encode())

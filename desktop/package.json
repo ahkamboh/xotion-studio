@@ -1,0 +1,63 @@
+{
+  "name": "xotion-desktop",
+  "productName": "Xotion",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Xotion desktop shell for Windows — prompt box that drives the local engine.",
+  "main": "main.js",
+  "author": "Xotion contributors",
+  "license": "SEE LICENSE IN ../LICENSE",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --win nsis",
+    "dist:dir": "electron-builder --win dir"
+  },
+  "devDependencies": {
+    "electron": "^37.2.6",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "ai.xotion.desktop",
+    "productName": "Xotion",
+    "copyright": "PolyForm Noncommercial 1.0.0",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**"
+    ],
+    "extraResources": [
+      {
+        "from": "../scripts/doctor.js",
+        "to": "doctor.js"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "Xotion-Windows-${version}-x64.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Xotion",
+      "runAfterFinish": true,
+      "unicode": true,
+      "license": "../LICENSE",
+      "artifactName": "Xotion-Windows-${version}-x64.${ext}"
+    }
+  }
+}

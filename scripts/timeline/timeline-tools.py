@@ -28,6 +28,8 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
+import runtime  # noqa: E402
 import timeline_model as tm  # noqa: E402
 
 ROOT = tm.ROOT
@@ -91,7 +93,7 @@ def cmd_get_transcript(a):
     tjson = os.path.join(tdir, f"{aid}.json")
     timing = None
     if a.refresh or not os.path.exists(tjson):
-        venv = os.path.join(ROOT, ".venv-whisperx", "bin", "python")
+        venv = runtime.whisperx_python(ROOT)
         # PREFER forced alignment (frame-accurate). Repo principle: timing comes from forcing the
         # words onto the WAVEFORM, never from raw ASR timestamps (scripts/align.py). --code-switch
         # routes through cs_transcribe + MMS_FA for mixed-language speech/songs (1100+ langs).
@@ -106,7 +108,7 @@ def cmd_get_transcript(a):
                 timing = "forced-align" + ("/code-switch" if a.code_switch else "")
         # fall back to raw whisper word timestamps if the aligner venv is missing or failed
         if timing is None:
-            cmd = ["python3", os.path.join(ROOT, "scripts", "transcribe.py"), media, "--model", "small", "--out", tjson]
+            cmd = [runtime.python_cmd(), os.path.join(ROOT, "scripts", "transcribe.py"), media, "--model", "small", "--out", tjson]
             if a.lang:
                 cmd += ["--lang", a.lang]
             r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)

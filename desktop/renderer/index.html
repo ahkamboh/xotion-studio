@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Xotion</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <header class="top">
+      <div class="mark" aria-hidden="true">
+        <svg viewBox="0 0 512 512" width="36" height="36">
+          <rect width="512" height="512" rx="118" fill="#0e0d0c"/>
+          <circle cx="256" cy="256" r="154" fill="none" stroke="#e0451f" stroke-width="30"/>
+          <polygon points="213,180 213,332 343,256" fill="#e0451f"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Xotion</h1>
+        <p class="tag">Describe the edit. The engine makes the video.</p>
+      </div>
+    </header>
+
+    <section id="gate" class="gate">
+      <h2>First-run checklist</h2>
+      <p class="lede">Same gate as the Mac app. The studio opens when the engine, Node, ffmpeg, and Python are green. Claude CLI unlocks the Run button.</p>
+      <ul id="checks" class="checks"></ul>
+      <div class="row">
+        <button type="button" id="pick">Set engine folder</button>
+        <button type="button" id="refresh" class="ghost">Re-check</button>
+        <button type="button" id="open" class="ghost">Open engine</button>
+      </div>
+    </section>
+
+    <section id="studio" class="studio hidden">
+      <label for="prompt">What should we make?</label>
+      <textarea id="prompt" rows="6" placeholder="make a 30s explainer on how AI is changing editing, female voice, stock b-roll and animated stats"></textarea>
+      <div class="row">
+        <button type="button" id="run">Run with Claude</button>
+        <button type="button" id="copy" class="ghost">Copy prompt</button>
+        <span id="hint" class="hint"></span>
+      </div>
+    </section>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

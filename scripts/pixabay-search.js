@@ -45,7 +45,7 @@ if (fs.existsSync(ENV)) {
 }
 const KEY = process.env.PIXABAY_API_KEY;
 
-const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const { resolveChrome } = require('./lib/chrome.cjs');
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36";
 
 function getJSON(url) {
@@ -126,7 +126,7 @@ async function searchScrape(kind) {
   if (!slug) throw new Error(`unknown scrape kind: ${kind}`);
   const url = `https://pixabay.com/${slug}/search/${encodeURIComponent(QUERY.trim())}/?pagi=${PAGE}`;
 
-  const b = await puppeteer.launch({ executablePath: CHROME, headless: 'new',
+  const b = await puppeteer.launch({ executablePath: resolveChrome(), headless: 'new',
     args:['--no-sandbox','--disable-blink-features=AutomationControlled']});
   const p = await b.newPage();
   await p.setUserAgent(UA);

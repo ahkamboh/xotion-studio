@@ -1,0 +1,5 @@
+node_modules/
+dist/
+out/
+build/verify-window.png
+build/verify-installed.png

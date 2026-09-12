@@ -11,7 +11,9 @@
     "lint": "hyperframes lint",
     "render": "hyperframes render",
     "inspect": "hyperframes inspect",
-    "setup": "bash scripts/setup.sh"
+    "setup": "node scripts/setup.js",
+    "doctor": "node scripts/doctor.js",
+    "test": "node scripts/run-node-tests.js && node scripts/run-pytest.js"
   },
   "dependencies": {
     "hyperframes": "0.6.70"

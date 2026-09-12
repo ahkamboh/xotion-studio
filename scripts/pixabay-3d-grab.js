@@ -31,7 +31,7 @@ if (!QUERY || !OUTDIR) {
 }
 fs.mkdirSync(OUTDIR, { recursive: true });
 
-const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const { resolveChrome } = require('./lib/chrome.cjs');
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36";
 
 function dl(url, dest, referer) {
@@ -56,7 +56,7 @@ function dl(url, dest, referer) {
     ? QUERY  // allow passing a detail URL directly
     : `https://pixabay.com/3d-models/search/${encodeURIComponent(QUERY.trim())}/`;
 
-  const b = await puppeteer.launch({ executablePath: CHROME, headless: 'new',
+  const b = await puppeteer.launch({ executablePath: resolveChrome(), headless: 'new',
     args: ['--no-sandbox', '--disable-blink-features=AutomationControlled'] });
   const p = await b.newPage();
   await p.setUserAgent(UA);

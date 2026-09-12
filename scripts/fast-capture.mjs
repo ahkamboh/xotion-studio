@@ -23,8 +23,10 @@ import puppeteer from 'puppeteer-core';
 import { spawn } from 'child_process';
 import path from 'path';
 import http from 'http';
+import { createRequire } from 'module';
 
-const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+const { resolveChrome, encoderArgs } = createRequire(import.meta.url)('./lib/chrome.cjs');
+const CHROME = resolveChrome();
 
 // ── Set up one worker page: navigate, await stage, hide playback bar. ────
 async function preparePage(browser, url, w, h) {
@@ -86,8 +88,7 @@ async function render({ browser, htmlPath, outMp4, dur, fps, w, h, workers = 4, 
       '-vcodec', 'mjpeg',
       '-r', String(fps),
       '-i', 'pipe:0',
-      '-c:v', 'h264_videotoolbox',
-      '-b:v', '12M',
+      ...encoderArgs(),
       '-pix_fmt', 'yuv420p',
       '-movflags', '+faststart',
       outMp4,

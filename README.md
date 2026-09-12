@@ -135,10 +135,20 @@ Measured token counts, per-model pricing, output tok/s, and where each figure co
 ## Quick start
 
 ```bash
+# macOS / Linux
 brew install git-lfs && git lfs install          # the Whisper model ships in-repo via LFS
 git clone https://github.com/ahkamboh/xotion-studio.git
 cd xotion-studio && git lfs pull
 ./scripts/setup.sh                               # installs the render engine (pinned), python deps, models
+
+# Windows (PowerShell) — Git, Git LFS, Node 22+, ffmpeg, Python 3.11+
+winget install Git.Git GitHub.GitLFS OpenJS.NodeJS.22 Gyan.FFmpeg Python.Python.3.12
+git lfs install
+git clone https://github.com/ahkamboh/xotion-studio.git
+cd xotion-studio; git lfs pull
+npm run setup                                    # or: powershell -File scripts\setup.ps1
+npm test
+node scripts\doctor.js
 ```
 
 Open **Claude Code** in the folder and just say what you want:
@@ -227,6 +237,32 @@ fresh. Re-run the `xattr` command (or the click-through) after installing a new 
 > around it, and its source is on the roadmap to open up too.
 
 Apple Silicon only for now — an Intel build isn't published yet.
+
+### Windows desktop (x64)
+
+The engine and the desktop shell both run on Windows 10/11. The Windows app is **Electron + NSIS** (`desktop/`) so we can ship a complete `.exe` installer without a Rust/MSVC toolchain (Tauri 2 would be smaller, Kotlin a full rewrite — both need compilers this port does not assume). CI builds `Xotion-Windows-0.1.0-x64.exe` (license page, choose folder, Start Menu + desktop shortcuts).
+
+```powershell
+# engine (once)
+npm run setup
+node scripts\doctor.js
+
+# desktop
+cd desktop
+npm install
+npm start          # dev window
+npm run dist       # Xotion-Windows-0.1.0-x64.exe
+```
+
+The window uses the same first-run gate: engine folder, Node 22+, ffmpeg, Python. **Run with Claude** needs the Claude CLI on PATH. If Claude isn't installed yet, copy the prompt into this repo in Cursor / Claude Code.
+
+Default engine search: `XOTION_ENGINE`, this repo, `%USERPROFILE%\Documents\claude\xotion-studio`, `%USERPROFILE%\Documents\xotion-studio`.
+
+HTML capture uses Chrome **or** Edge (`scripts/lib/chrome.cjs`). Fast encode uses `libx264` on Windows (set `XOTION_ENCODER=h264_nvenc` if you have NVIDIA). Bash scripts run under Git Bash; `scripts\bin\python3.cmd` covers `python3` calls from cmd.
+
+```
+npm test           # Node + pytest, no GPU
+```
 
 ---
 

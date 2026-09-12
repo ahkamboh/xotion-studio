@@ -13,6 +13,8 @@ if command -v nproc >/dev/null 2>&1; then
   CORES=$(nproc)
 elif command -v sysctl >/dev/null 2>&1; then
   CORES=$(sysctl -n hw.ncpu 2>/dev/null || echo 4)
+elif [ -n "${NUMBER_OF_PROCESSORS:-}" ]; then
+  CORES=$NUMBER_OF_PROCESSORS
 else
   CORES=4
 fi

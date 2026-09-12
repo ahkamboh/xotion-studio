@@ -39,7 +39,9 @@ import shutil
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
 import timeline_model as tm  # noqa: E402
+import runtime  # noqa: E402
 
 GSAP_CDN = "https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"
 
@@ -56,10 +58,7 @@ def _link_or_copy(src, dst, copy):
             os.remove(dst)
         except OSError:
             shutil.rmtree(dst, ignore_errors=True)
-    if copy:
-        shutil.copy2(src, dst)
-    else:
-        os.symlink(os.path.abspath(src), dst)
+    runtime.link_or_copy(src, dst, copy=copy)
 
 
 def _resolve_asset_path(proj_dir, path):

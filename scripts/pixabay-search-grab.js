@@ -26,7 +26,7 @@ if (!['music', 'sfx'].includes(TYPE)) {
   process.exit(2);
 }
 
-const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const { resolveChrome } = require('./lib/chrome.cjs');
 const SEARCH_PATH = TYPE === 'music' ? '/music/search/' : '/sound-effects/search/';
 // QUERY may be a search term OR a direct Pixabay detail URL — agent often passes
 // the URL after vetting candidates via pixabay-search.sh.
@@ -35,7 +35,7 @@ const SEARCH_URL = IS_URL ? QUERY : `https://pixabay.com${SEARCH_PATH}${encodeUR
 
 (async () => {
   const browser = await puppeteer.launch({
-    executablePath: CHROME,
+    executablePath: resolveChrome(),
     headless: 'new',
     args: ['--no-sandbox', '--disable-blink-features=AutomationControlled'],
   });

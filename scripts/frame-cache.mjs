@@ -39,8 +39,10 @@ import { spawn } from 'child_process';
 import { promises as fs } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { createRequire } from 'module';
 
-const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+const { resolveChrome, encoderArgs } = createRequire(import.meta.url)('./lib/chrome.cjs');
+const CHROME = resolveChrome();
 
 // ── arg parsing ──────────────────────────────────────────────────────────
 const argv = process.argv.slice(2);
@@ -187,7 +189,7 @@ await new Promise((resolve, reject) => {
     '-framerate', String(FPS),
     '-i', path.join(cacheDir, 'f%05d.jpg'),
     '-frames:v', String(TOTAL),
-    '-c:v', 'h264_videotoolbox', '-b:v', '12M',
+    ...encoderArgs(),
     '-pix_fmt', 'yuv420p', '-movflags', '+faststart',
     outMp4,
   ], { stdio: ['ignore', 'inherit', 'inherit'] });
