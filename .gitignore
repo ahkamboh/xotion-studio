@@ -90,10 +90,15 @@ scripts/cut-reels.sh
 # the README demo clip is a shipped asset, not a render output
 !assets/xotion-demo.mp4
 
+# Windows desktop launch scratch (full prompt written so cmd.exe cannot shred it)
+.xotion-last-prompt.md
+
 # Windows desktop build output
 desktop/node_modules/
 desktop/dist/
 desktop/out/
+desktop/build/verify-*.png
+desktop/build/ui-smoke.json
 
 # Agent skills and helper MDs — live in Xaibridge .skill / user .cursor/skills
 .skill/

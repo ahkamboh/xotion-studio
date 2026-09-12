@@ -1,7 +1,7 @@
 {
   "name": "xotion-desktop",
   "productName": "Xotion",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Xotion desktop shell for Windows — prompt box that drives the local engine.",
   "main": "main.js",
@@ -27,6 +27,7 @@
     },
     "files": [
       "main.js",
+      "launch.cjs",
       "preload.js",
       "renderer/**"
     ],

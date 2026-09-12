@@ -111,6 +111,9 @@ if (process.argv.includes('--json')) {
   console.log(`xotion doctor  (${data.platform})  engine=${data.engine}`);
   row('node', data.node, data.node.ok ? '' : '(need >= 22)');
   row('ffmpeg', data.ffmpeg);
+  if (data.ffmpeg.ok && !which('ffmpeg')) {
+    console.log('    (not on PATH — use `node scripts/hf-render.js` so HyperFrames can encode)');
+  }
   row('python', data.python);
   row('chrome', data.chrome, data.chrome.ok ? '' : '(needed for HTML capture / stock scrape)');
   row('claude', data.claude, data.claude.ok ? '' : '(desktop Run button; optional for engine scripts)');

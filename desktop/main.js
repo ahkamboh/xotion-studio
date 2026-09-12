@@ -5,6 +5,7 @@ const { spawn, spawnSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { resolveClaudeBin, writeLaunchPrompt, claudeLaunchArgs, spawnOptions } = require('./launch.cjs');
 
 const PREFS = path.join(app.getPath('userData'), 'prefs.json');
 
@@ -204,7 +205,7 @@ ipcMain.handle('run-prompt', async (_evt, prompt) => {
   if (!text) return { ok: false, error: 'Write a prompt first.' };
   const engine = resolveEngine();
   if (!looksLikeEngine(engine)) return { ok: false, error: 'Engine folder not found. Set it in the checklist.' };
-  const claude = which('claude');
+  const claude = resolveClaudeBin(which('claude'));
   if (!claude) {
     return {
       ok: false,
@@ -212,12 +213,10 @@ ipcMain.handle('run-prompt', async (_evt, prompt) => {
       prompt: text,
     };
   }
-  const child = spawn(claude, [text], {
+  writeLaunchPrompt(engine, text);
+  const child = spawn(claude, claudeLaunchArgs(), {
     cwd: engine,
-    detached: true,
-    stdio: 'ignore',
-    windowsHide: false,
-    shell: process.platform === 'win32',
+    ...spawnOptions(),
   });
   child.unref();
   return { ok: true, pid: child.pid };

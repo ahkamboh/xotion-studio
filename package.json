@@ -9,7 +9,7 @@
   "scripts": {
     "hf": "hyperframes",
     "lint": "hyperframes lint",
-    "render": "hyperframes render",
+    "render": "node scripts/hf-render.js",
     "inspect": "hyperframes inspect",
     "setup": "node scripts/setup.js",
     "doctor": "node scripts/doctor.js",

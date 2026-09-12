@@ -11,6 +11,12 @@ const studio = document.getElementById('studio');
 const hint = document.getElementById('hint');
 const prompt = document.getElementById('prompt');
 const runBtn = document.getElementById('run');
+let userHintUntil = 0;
+
+function setUserHint(text) {
+  hint.textContent = text;
+  userHintUntil = Date.now() + 8000;
+}
 
 function render(status) {
   checks.innerHTML = '';
@@ -28,6 +34,7 @@ function render(status) {
   }
   studio.classList.toggle('hidden', !status.ready);
   runBtn.disabled = !status.items.claude.ok;
+  if (Date.now() < userHintUntil) return;
   hint.textContent = status.items.claude.ok
     ? 'Ready. This launches Claude CLI in the engine folder.'
     : status.ready
@@ -46,11 +53,11 @@ document.getElementById('pick').addEventListener('click', async () => {
 document.getElementById('open').addEventListener('click', () => window.xotion.openEngine());
 document.getElementById('copy').addEventListener('click', async () => {
   await navigator.clipboard.writeText(prompt.value);
-  hint.textContent = 'Prompt copied.';
+  setUserHint('Prompt copied.');
 });
 document.getElementById('run').addEventListener('click', async () => {
   const res = await window.xotion.runPrompt(prompt.value);
-  hint.textContent = res.ok ? `Claude started (pid ${res.pid}).` : res.error;
+  setUserHint(res.ok ? `Claude started (pid ${res.pid}).` : res.error);
 });
 
 refresh();
