@@ -323,7 +323,7 @@ The one thing it doesn't cover is **making money with it**. Selling Xotion, offe
 it as a paid product or service, or running it inside a commercial operation needs a
 separate licence from me first — just ask, I'm friendly about it:
 
-**[ahk@alihamzakamboh.com](mailto:ahk@alihamzakamboh.com)** · [@ahkamboh](https://github.com/ahkamboh)
+**[hi@alihamzakamboh.com](mailto:hi@alihamzakamboh.com)** · [@ahkamboh](https://github.com/ahkamboh)
 
 > Videos you render are yours. The licence covers the software, not your output.
 
